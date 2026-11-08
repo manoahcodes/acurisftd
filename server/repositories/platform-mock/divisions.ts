@@ -38,7 +38,7 @@ function numbered(text: string, division: Division): string {
   return text.replace(/\bSTU-(\d+)/g, `${division.code}-$1`);
 }
 
-function renumber(screen: PlatformScreen, division: Division): PlatformScreen {
+export function renumber(screen: PlatformScreen, division: Division): PlatformScreen {
   return {
     ...screen,
     tables: screen.tables.map((t) => ({ ...t, rows: t.rows.map((row) => row.map((c) => numbered(c, division))) })),

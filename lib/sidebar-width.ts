@@ -18,3 +18,11 @@ export const SIDEBAR_COLLAPSED_COOKIE = "stecia_sidebar_collapsed";
 export const SIDEBAR_COLLAPSED_WIDTH = 72;
 
 export const parseSidebarCollapsed = (value: string | undefined): boolean => value === "1";
+
+/**
+ * Runs in <head> before first paint and copies the saved sidebar size into the
+ * --sidebar-w CSS variable, so the loading placeholder is already the right
+ * width while the real sidebar streams in. Built from the same constants and
+ * rules as the parsers above.
+ */
+export const SIDEBAR_PREPAINT_SCRIPT = `(function(){try{var c=document.cookie;var m=c.match(/(?:^|; )${SIDEBAR_COOKIE}=(\\d{2,4})(?:;|$)/);var w=${SIDEBAR_DEFAULT};if(m){w=Math.min(${SIDEBAR_MAX},Math.max(${SIDEBAR_MIN},Math.round(+m[1])))}if(/(?:^|; )${SIDEBAR_COLLAPSED_COOKIE}=1(?:;|$)/.test(c)){w=${SIDEBAR_COLLAPSED_WIDTH}}document.documentElement.style.setProperty("--sidebar-w",w+"px")}catch(e){}})();`;

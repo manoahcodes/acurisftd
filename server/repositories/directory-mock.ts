@@ -1,9 +1,11 @@
+import { GENERIC_TERMS, divisionsLabel, resolveLabel, termsFor } from "@/config/institution";
 import { ROLES, hrefFor, type RoleKey } from "@/config/navigation";
 import type { AcademicYear, SearchResult } from "@/types/directory";
 import type {
   AcademicYearRepository,
   SearchRepository,
 } from "./directory-types";
+import { mockTenantDirectory } from "./tenants-mock";
 
 const YEARS: AcademicYear[] = [
   { id: "2026", label: "Academic Year 2026", isCurrent: true },
@@ -24,16 +26,13 @@ type Entry = {
   kind: string;
   /** Label of the nav item this result opens (detail pages don't exist yet). */
   navLabel: string;
+  /** Extra words that should find this entry (for example Term and Semester wording). */
+  keywords?: string;
 };
 
 const DATA: Record<RoleKey, Entry[]> = {
   platform: [
-    { id: "tenant-lusaka-hills", title: "Lusaka Hills Academy", subtitle: "1,248 learners · Active", kind: "Tenant", navLabel: "Tenants & schools" },
-    { id: "tenant-chilenje", title: "Chilenje Secondary", subtitle: "2,104 learners · Active", kind: "Tenant", navLabel: "Tenants & schools" },
-    { id: "tenant-northview", title: "Northview Primary", subtitle: "684 learners · Trial", kind: "Tenant", navLabel: "Tenants & schools" },
-    { id: "tenant-mukuba", title: "Mukuba Learning Centre", subtitle: "950 learners · Active", kind: "Tenant", navLabel: "Tenants & schools" },
-    { id: "tenant-kafue-valley", title: "Kafue Valley School", subtitle: "1,720 learners · Active", kind: "Tenant", navLabel: "Tenants & schools" },
-    { id: "sub-chilenje", title: "Chilenje Secondary subscription", subtitle: "Plan: Growth", kind: "Subscription", navLabel: "Subscriptions" },
+    // Tenants, subscriptions and pages are added from live data in entriesFor().
     { id: "ticket-sup-1048", title: "Support ticket #SUP-1048", subtitle: "Escalated · High", kind: "Ticket", navLabel: "Support queue" },
   ],
   teacher: [
@@ -89,6 +88,55 @@ const DATA: Record<RoleKey, Entry[]> = {
   ],
 };
 
+/**
+ * Platform Admin search covers the schools on the platform (so new tenants are
+ * found) and every page of the admin (so "tuition" or "hostel" jumps there).
+ * Pages are found by their Term and Semester wording alike.
+ */
+async function platformEntries(): Promise<Entry[]> {
+  const tenants = await mockTenantDirectory.list();
+  const schoolTerms = termsFor("high_school");
+  const tertiaryTerms = termsFor("university");
+
+  const tenantEntries = tenants.flatMap((t): Entry[] => [
+    {
+      id: `tenant-${t.id}`,
+      title: t.name,
+      subtitle: `${divisionsLabel(t.divisions)} · ${t.learners.toLocaleString("en-US")} learners · ${t.status}`,
+      kind: "Tenant",
+      navLabel: "Tenants & schools",
+    },
+    {
+      id: `sub-${t.id}`,
+      title: `${t.name} subscription`,
+      subtitle: `Plan: ${t.plan}`,
+      kind: "Subscription",
+      navLabel: "Subscriptions",
+    },
+  ]);
+
+  const config = ROLES.platform;
+  const groupOf = new Map<string, string>();
+  for (const group of config.navGroups ?? []) {
+    for (const label of group.items) groupOf.set(label, group.label);
+  }
+
+  const pageEntries = config.nav
+    .filter((item) => item.slug)
+    .map(
+      (item): Entry => ({
+        id: `page-${item.slug}`,
+        title: resolveLabel(item.label, GENERIC_TERMS),
+        subtitle: groupOf.get(item.label) ?? "Platform",
+        kind: "Page",
+        navLabel: item.label,
+        keywords: `${resolveLabel(item.label, schoolTerms)} ${resolveLabel(item.label, tertiaryTerms)}`,
+      }),
+    );
+
+  return [...tenantEntries, ...pageEntries];
+}
+
 function hrefForNavLabel(role: RoleKey, navLabel: string): string {
   const item = ROLES[role].nav.find((n) => n.label === navLabel);
   if (!item) {
@@ -106,11 +154,13 @@ export const mockSearchRepository: SearchRepository = {
     if (!q) return [];
 
     const scored: { entry: Entry; score: number }[] = [];
-    for (const entry of DATA[role]) {
+    const entries = role === "platform" ? [...(await platformEntries()), ...DATA.platform] : DATA[role];
+    for (const entry of entries) {
       const title = entry.title.toLowerCase();
+      const keywords = (entry.keywords ?? "").toLowerCase();
       let score: number | null = null;
       if (title.startsWith(q)) score = 0;
-      else if (title.includes(q)) score = 1;
+      else if (title.includes(q) || keywords.includes(q)) score = 1;
       else if (
         entry.subtitle.toLowerCase().includes(q) ||
         entry.kind.toLowerCase().includes(q)

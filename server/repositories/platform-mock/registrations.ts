@@ -1,4 +1,4 @@
-import { COURSE_ROWS, LEARNERS, flavour, groupNames, table, type Builder } from "./shared";
+import { COURSE_ROWS, LEARNERS, flavour, groupNames, table, tableOf, type Builder } from "./shared";
 
 const periodRegistration: Builder = (ctx) => {
   const f = flavour(ctx);
@@ -36,7 +36,7 @@ const courseRegistration: Builder = (ctx) => {
     description: `${f.terms.course} registration per learner for the current ${f.terms.period.toLowerCase()}.`,
     actions: [`Register ${f.terms.course.toLowerCase()}`],
     tables: [
-      table(
+      tableOf("course-registration",
         `${f.terms.course} registration`,
         ["Student", "Code", f.terms.course, f.terms.period, "Status"],
         LEARNERS.slice(0, 6).map((l, i) => [
@@ -59,7 +59,7 @@ const examRegistration: Builder = (ctx) => {
     description: "Learners entered for the end-of-period examinations.",
     actions: ["Register for exams"],
     tables: [
-      table(
+      tableOf("exam-registration",
         "Exam registration",
         ["Student", f.terms.course, "Exam session", "Exam fee paid", "Status"],
         LEARNERS.slice(0, 6).map((l, i) => [
@@ -79,7 +79,7 @@ const examReceipts: Builder = () => ({
   description: "Receipts for examination fees.",
   actions: ["Issue receipt"],
   tables: [
-    table(
+    tableOf("exam-receipts",
       "Exam receipts",
       ["Receipt", "Student", "Exam fee", "Date", "Status"],
       LEARNERS.slice(0, 6).map((l, i) => [

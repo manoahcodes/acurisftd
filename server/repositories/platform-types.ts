@@ -1,4 +1,4 @@
-import type { Division } from "@/config/institution";
+import type { Division, InstitutionType } from "@/config/institution";
 import type { PlatformScreen, TenantSummary } from "@/types/platform";
 
 /**
@@ -21,7 +21,16 @@ export type PlatformContext = {
  */
 export interface TenantDirectory {
   list(): Promise<TenantSummary[]>;
+  /** Adds a school. Throws if its divisions do not share one academic system. */
+  create(input: NewTenant): Promise<TenantSummary>;
+  /** Changes a school's details. Its divisions are fixed once created. */
+  update(id: string, changes: Partial<Pick<TenantSummary, "name" | "plan" | "status" | "campuses">>): Promise<TenantSummary | undefined>;
 }
+
+export type NewTenant = Pick<TenantSummary, "name" | "plan" | "status" | "campuses"> & {
+  /** At least one institution type; each becomes a division. */
+  types: InstitutionType[];
+};
 
 export interface PlatformScreenRepository {
   /**

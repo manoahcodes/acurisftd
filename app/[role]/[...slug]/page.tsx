@@ -97,7 +97,7 @@ async function PlatformSection({ item }: { item: NavItem }) {
       {needsSchool ? (
         <SelectSchoolPrompt title={title} tenants={tenants} />
       ) : screen ? (
-        <PlatformScreenView screen={screen} />
+        <PlatformScreenView screen={screen} slug={item.slug} />
       ) : null}
     </>
   );

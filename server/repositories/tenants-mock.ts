@@ -24,8 +24,28 @@ export const TENANTS: TenantSummary[] = [
 // Data sanity: every tenant keeps one academic system across its divisions.
 TENANTS.forEach((t) => assertSharedSystem(t.name, t.divisions));
 
+const slugify = (name: string) =>
+  name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "school";
+
 export const mockTenantDirectory: TenantDirectory = {
   async list() {
-    return TENANTS;
+    return [...TENANTS];
+  },
+  async create({ name, plan, status, campuses, types }) {
+    const divisions = combined(...types);
+    // Same rule as the seed data: one academic system per school.
+    assertSharedSystem(name, divisions);
+    let id = slugify(name);
+    for (let n = 2; TENANTS.some((t) => t.id === id); n++) id = `${slugify(name)}-${n}`;
+    const tenant: TenantSummary = { id, name, divisions, campuses, learners: 0, plan, status };
+    TENANTS.push(tenant);
+    return tenant;
+  },
+  async update(id, changes) {
+    const i = TENANTS.findIndex((t) => t.id === id);
+    if (i < 0) return undefined;
+    // Replace rather than mutate, so cached lists never show half an update.
+    TENANTS[i] = { ...TENANTS[i], ...changes };
+    return TENANTS[i];
   },
 };

@@ -1,7 +1,7 @@
 import { INSTITUTIONS, INSTITUTION_TYPES, LEVEL_LABELS, divisionsLabel, systemLabel, tenantSystem, tenantSystemLabel } from "@/config/institution";
 import { scopeLabel, visibleDivisions } from "@/lib/division-scope";
 import type { PlatformContext } from "../platform-types";
-import { K, table, type Builder } from "./shared";
+import { K, table, tableOf, type Builder } from "./shared";
 import { staffFor } from "./staff";
 
 const tenants: Builder = ({ tenants }) => ({
@@ -14,7 +14,7 @@ const tenants: Builder = ({ tenants }) => ({
     { title: "Term system", caption: "School-level tenants", value: String(tenants.filter((t) => tenantSystem(t.divisions) === "term").length) },
   ],
   tables: [
-    table(
+    tableOf("tenants",
       "Tenants & schools",
       ["School", "Institution type", "Divisions", "Academic system", "Campuses", "Learners", "Plan", "Status"],
       tenants.map((t) => [
@@ -59,7 +59,7 @@ const platformUsers: Builder = () => ({
   description: "People who run the ACURIS platform itself (not school staff).",
   actions: ["Invite platform user"],
   tables: [
-    table(
+    tableOf("platform-users",
       "Platform users",
       ["Name", "Role", "Email", "Last active", "Status"],
       [
@@ -99,7 +99,7 @@ const support: Builder = ({ tenants }) => ({
   description: "Open support tickets from schools.",
   actions: ["New ticket"],
   tables: [
-    table(
+    tableOf("tickets",
       "Support queue",
       ["Ticket", "School", "Subject", "Priority", "Opened", "Status"],
       [
@@ -131,7 +131,7 @@ const settings: Builder = () => ({
       }),
       { note: "Primary (grades 1–7) is for smaller tenants. University and College are Tertiary and use semesters; Primary and High School use terms. A tenant can have several divisions (for example Primary and High School), each with its own students, fees, classes and results. All divisions of a tenant share one academic system, so a High School cannot be combined with a University." },
     ),
-    table("General", ["Setting", "Value", "Scope"], [
+    tableOf("settings","General", ["Setting", "Value", "Scope"], [
       ["Default currency", "Zambian Kwacha (ZMW)", "Platform"],
       ["Time zone", "Africa/Lusaka", "Platform"],
       ["Academic year start", "January", "Platform"],
@@ -178,7 +178,7 @@ const access: Builder = (ctx) => ({
   actions: ["Add role"],
   tables: [
     ...divisionAccess(ctx),
-    table(
+    tableOf("roles",
       "Staff roles",
       ["Role", "Level", "Scope", "Users", "Description"],
       [

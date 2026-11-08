@@ -1,4 +1,4 @@
-import { COURSE_ROWS, LEARNERS, flavour, table, type Builder } from "./shared";
+import { COURSE_ROWS, LEARNERS, flavour, tableOf, type Builder } from "./shared";
 
 const programmes: Builder = (ctx) => {
   const f = flavour(ctx);
@@ -10,7 +10,7 @@ const programmes: Builder = (ctx) => {
         : "Classes and grades in the school (Grades 8–12).",
     actions: [f.tertiary ? "Add programme" : "Add class"],
     tables: [
-      table(
+      tableOf("programmes",
         f.terms.programmes,
         f.tertiary
           ? ["Code", "Programme", "School", "Duration", "Students", "Status"]
@@ -48,7 +48,7 @@ const courses: Builder = (ctx) => {
     description: `${f.terms.courses} offered this year.`,
     actions: [`Add ${f.terms.course.toLowerCase()}`],
     tables: [
-      table(
+      tableOf("courses",
         f.terms.courses,
         ["Code", f.terms.course, f.tertiary ? "Credits" : "Periods per week", "Department", f.tertiary ? "Lecturer" : "Teacher", "Status"],
         rows.map(([code, title], i) => [
@@ -72,7 +72,7 @@ const exemptions: Builder = (ctx) => {
     description: `${f.terms.course} exemptions granted to learners.`,
     actions: ["Grant exemption"],
     tables: [
-      table(
+      tableOf("exemptions",
         "Exemptions",
         ["Student", f.terms.course, "Reason", "Granted by", "Status"],
         [
@@ -94,7 +94,7 @@ const assessments: Builder = (ctx) => {
     description: "Assignments, tests and examinations across the school.",
     actions: ["Create assessment"],
     tables: [
-      table(
+      tableOf("assessments",
         "Assessments & assignments",
         ["Title", f.terms.course, "Type", "Due", "Weight", "Status"],
         [

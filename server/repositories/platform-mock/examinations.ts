@@ -1,4 +1,4 @@
-import { COURSE_ROWS, LEARNERS, flavour, groupNames, table, type Builder } from "./shared";
+import { COURSE_ROWS, LEARNERS, flavour, groupNames, table, tableOf, type Builder } from "./shared";
 
 const uploadResults: Builder = (ctx) => {
   const f = flavour(ctx);
@@ -79,7 +79,7 @@ const examRegister: Builder = (ctx) => {
     description: "Examination timetable and attendance register.",
     actions: ["Add session"],
     tables: [
-      table(
+      tableOf("exam-sessions",
         "Exam register",
         ["Date", f.terms.course, "Venue", "Candidates", "Invigilator", "Status"],
         [

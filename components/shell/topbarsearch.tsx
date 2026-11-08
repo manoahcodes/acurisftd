@@ -35,13 +35,27 @@ export function TopbarSearch({
 
   const [expanded, setExpanded] = useState(false); // small screens only
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [status, setStatus] = useState<Status>("idle");
+  // The last response. Whether it answers the current query is worked out below,
+  // so loading never needs a setState inside the effect.
+  const [fetched, setFetched] = useState<{
+    key: string;
+    results: SearchResult[];
+    failed: boolean;
+  } | null>(null);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
 
   const trimmed = query.trim();
   const tooShort = trimmed.length < MIN_CHARS;
+  const searchKey = `${role}:${trimmed}`;
+  const results = fetched?.results ?? [];
+  const status: Status = tooShort
+    ? "idle"
+    : fetched?.key !== searchKey
+      ? "loading"
+      : fetched.failed
+        ? "error"
+        : "done";
   const panelVisible = open && trimmed.length > 0;
   const showList =
     panelVisible &&
@@ -60,7 +74,6 @@ export function TopbarSearch({
     if (trimmed.length < MIN_CHARS) return;
 
     const controller = new AbortController();
-    setStatus("loading");
 
     const timer = setTimeout(async () => {
       try {
@@ -72,12 +85,11 @@ export function TopbarSearch({
         const data: unknown = await res.json();
         const list = (data as { results?: unknown }).results;
         if (!Array.isArray(list)) throw new Error("Unexpected response");
-        setResults(list as SearchResult[]);
+        setFetched({ key: searchKey, results: list as SearchResult[], failed: false });
         setActive(-1);
-        setStatus("done");
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
-        setStatus("error");
+        setFetched({ key: searchKey, results: [], failed: true });
       }
     }, DEBOUNCE_MS);
 
@@ -85,7 +97,7 @@ export function TopbarSearch({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [trimmed, role]);
+  }, [trimmed, role, searchKey]);
 
   // "/" or Ctrl/Cmd+K focuses the search from anywhere.
   useEffect(() => {
@@ -135,8 +147,6 @@ export function TopbarSearch({
     setExpanded(false);
     setOpen(false);
     setQuery("");
-    setResults([]);
-    setStatus("idle");
     requestAnimationFrame(() => iconButtonRef.current?.focus());
   };
 
@@ -144,8 +154,6 @@ export function TopbarSearch({
     router.push(result.href);
     setOpen(false);
     setQuery("");
-    setResults([]);
-    setStatus("idle");
     setActive(-1);
     setExpanded(false);
     inputRef.current?.blur();
@@ -240,10 +248,6 @@ export function TopbarSearch({
             setQuery(value);
             setOpen(true);
             setActive(-1);
-            if (value.trim().length < MIN_CHARS) {
-              setResults([]);
-              setStatus("idle");
-            }
           }}
           onKeyDown={onInputKeyDown}
           className="w-full min-w-0 bg-transparent text-[15px] text-ink outline-none placeholder:text-muted"
@@ -259,8 +263,6 @@ export function TopbarSearch({
             aria-label="Clear search"
             onClick={() => {
               setQuery("");
-              setResults([]);
-              setStatus("idle");
               setActive(-1);
               inputRef.current?.focus();
             }}

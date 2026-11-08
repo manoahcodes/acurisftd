@@ -1,4 +1,4 @@
-import { K, LEARNERS, flavour, table, type Builder } from "./shared";
+import { K, LEARNERS, flavour, tableOf, type Builder } from "./shared";
 
 const hostels: Builder = (ctx) => {
   const f = flavour(ctx);
@@ -11,7 +11,7 @@ const hostels: Builder = (ctx) => {
       { title: "Maintenance", caption: "Rooms out of service", value: "6" },
     ],
     tables: [
-      table(
+      tableOf("hostels",
         "Hostels & rooms",
         ["Hostel", "Block", "Gender", "Rooms", "Capacity", "Occupied", "Status"],
         [
@@ -33,7 +33,7 @@ const allocations: Builder = (ctx) => {
     description: "Room allocations for the current period.",
     actions: ["Allocate room"],
     tables: [
-      table(
+      tableOf("allocations",
         "Room allocations",
         ["Student", "Hostel", "Room", f.terms.period, "Fee", "Status"],
         LEARNERS.slice(0, 6).map((l, i) => [

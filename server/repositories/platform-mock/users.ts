@@ -1,5 +1,5 @@
 import { scopeLabel } from "@/lib/division-scope";
-import { LEARNERS, flavour, groupNames, table, type Builder } from "./shared";
+import { LEARNERS, flavour, groupNames, tableOf, type Builder } from "./shared";
 import { staffFor } from "./staff";
 
 const students: Builder = (ctx) => {
@@ -9,7 +9,7 @@ const students: Builder = (ctx) => {
     description: `Enrolled ${f.tertiary ? "students" : "learners"} at ${f.tenantName}.`,
     actions: ["Add student", "Import CSV"],
     tables: [
-      table(
+      tableOf("students",
         "Students",
         ["Student no.", "Name", f.tertiary ? "Programme" : "Class", "Campus", "Status"],
         LEARNERS.map((l, i) => [
@@ -34,7 +34,7 @@ const staff: Builder = (ctx) => {
       : "Staff by role and level. A staff member's level decides which modules they can use.",
     actions: ["Add staff member"],
     tables: [
-      table(
+      tableOf("staff",
         "Staff",
         ["Name", "Staff no.", "Role", "Level", "Department", ...(multi ? ["Division access"] : []), "Status"],
         staffFor(ctx).map((m) => [
@@ -59,7 +59,7 @@ const educators: Builder = (ctx) => {
     description: `${title} and the ${f.terms.courses.toLowerCase()} they teach.`,
     actions: [`Add ${title.toLowerCase().replace(/s$/, "")}`],
     tables: [
-      table(
+      tableOf("educators",
         title,
         ["Name", "Staff no.", "Department", f.terms.courses, "Weekly hours", "Status"],
         f.tertiary

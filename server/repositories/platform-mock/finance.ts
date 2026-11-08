@@ -1,4 +1,4 @@
-import { K, LEARNERS, flavour, table, type Builder } from "./shared";
+import { K, LEARNERS, flavour, tableOf, type Builder } from "./shared";
 
 const bursary: Builder = (ctx) => {
   const f = flavour(ctx);
@@ -11,7 +11,7 @@ const bursary: Builder = (ctx) => {
       { title: "Total awarded", caption: "This year", value: K(742000) },
     ],
     tables: [
-      table(
+      tableOf("bursaries",
         "Bursary management",
         ["Bursary", "Sponsor", "Beneficiaries", "Value each", "Total awarded", "Status"],
         [
@@ -51,7 +51,7 @@ const tuition: Builder = (ctx) => {
     description: `Tuition is billed per ${f.terms.period.toLowerCase()}.`,
     actions: ["Add fee structure"],
     tables: [
-      table(
+      tableOf("tuition",
         "Tuition fees",
         [f.tertiary ? "Programme" : "Class", `Fee per ${f.terms.period.toLowerCase()}`, "Per year", "Effective", "Status"],
         rows,
@@ -67,7 +67,7 @@ const otherFees: Builder = (ctx) => {
     description: "Fees charged on top of tuition.",
     actions: ["Add fee"],
     tables: [
-      table(
+      tableOf("other-fees",
         "Other fees",
         ["Fee", "Applies to", "Amount", "Frequency", "Status"],
         [
@@ -96,7 +96,7 @@ const payments: Builder = (ctx) => {
       { title: "Unallocated", caption: "Needs matching", value: K(2350), note: "3 payments" },
     ],
     tables: [
-      table(
+      tableOf("payments",
         "Student payments",
         ["Receipt", "Student", "Method", "Amount", "Date", "Status"],
         LEARNERS.map((l, i) => [

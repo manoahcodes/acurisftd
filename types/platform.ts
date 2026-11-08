@@ -1,5 +1,6 @@
 import type { Division } from "@/config/institution";
 import type { Kpi } from "./dashboard";
+import type { ScreenForms } from "./forms";
 
 /** A school (tenant) as the Platform Admin sees it. */
 export type TenantSummary = {
@@ -14,6 +15,8 @@ export type TenantSummary = {
 };
 
 export type TableSection = {
+  /** Stable id; forms attach to tables by it (titles change with wording). */
+  id?: string;
   title: string;
   subtitle?: string;
   columns: string[];
@@ -29,6 +32,8 @@ export type PlatformScreen = {
   description: string;
   kpis?: Kpi[];
   tables: TableSection[];
-  /** Primary actions. They are stubs until the forms are built. */
+  /** Primary actions. Those with a form (see `forms`) open it; the rest are not built yet. */
   actions?: string[];
+  /** Create / edit forms for this screen, added on the way out of the repository. */
+  forms?: ScreenForms;
 };

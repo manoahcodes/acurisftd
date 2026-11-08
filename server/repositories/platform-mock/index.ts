@@ -1,5 +1,11 @@
 import type { PlatformScreenRepository } from "../platform-types";
-import { buildForDivisions, isDivisionScoped } from "./divisions";
+import { applyOverlay } from "@/lib/forms/overlay";
+import { entriesFor, offeredEntries } from "@/server/forms/registry";
+import { recordScope } from "@/server/forms/scope";
+import type { ScreenForms } from "@/types/forms";
+import type { PlatformScreen } from "@/types/platform";
+import { mockRecordStore } from "../records-mock";
+import { buildForDivisions, isDivisionScoped, renumber } from "./divisions";
 import { academicScreens } from "./academics";
 import { examinationScreens } from "./examinations";
 import { financeScreens } from "./finance";
@@ -25,10 +31,43 @@ const SCREENS: Record<string, Builder> = {
 
 // The mock builds every screen from the institution type alone: all mock data
 // belongs to one imaginary school, so it ignores ctx.tenant.id.
+/** The screen's builder with form-created records and edits laid over its tables. */
+const withRecords =
+  (slug: string, build: Builder): Builder =>
+  (ctx) => {
+    let screen = build(ctx);
+    const multi = (ctx.tenant?.divisions.length ?? 0) > 1;
+    // Numbering first, so edit keys match what the table shows.
+    if (isDivisionScoped(slug) && multi && ctx.division) screen = renumber(screen, ctx.division);
+
+    const scope = recordScope(slug, ctx);
+    const entries = entriesFor(slug, ctx);
+    return {
+      ...screen,
+      tables: screen.tables.map((t) => {
+        if (!t.id) return t;
+        const keyColumns = entries.find((e) => e.spec.tableId === t.id)?.spec.keyColumns;
+        return applyOverlay(t, mockRecordStore.overlay(scope, t.id), keyColumns);
+      }),
+    };
+  };
+
+function attachForms(screen: PlatformScreen, slug: string, ctx: Parameters<Builder>[0]): PlatformScreen {
+  const forms: ScreenForms = { actions: {}, edits: {} };
+  const tableIds = new Set(screen.tables.map((t) => t.id));
+  for (const { action, spec } of offeredEntries(slug, ctx)) {
+    if (action && screen.actions?.includes(action)) forms.actions[action] = spec;
+    if (!spec.createOnly && tableIds.has(spec.tableId)) forms.edits[spec.tableId] = spec;
+  }
+  return Object.keys(forms.actions).length + Object.keys(forms.edits).length > 0 ? { ...screen, forms } : screen;
+}
+
 export const mockPlatformScreenRepository: PlatformScreenRepository = {
   async getScreen(ctx, slug) {
-    const build = SCREENS[slug];
-    if (!build) return undefined;
-    return isDivisionScoped(slug) ? buildForDivisions(build, ctx) : build(ctx);
+    const base = SCREENS[slug];
+    if (!base) return undefined;
+    const build = withRecords(slug, base);
+    const screen = isDivisionScoped(slug) ? buildForDivisions(build, ctx) : build(ctx);
+    return attachForms(screen, slug, ctx);
   },
 };

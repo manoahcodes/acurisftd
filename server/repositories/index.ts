@@ -11,6 +11,8 @@ import { mockCampusRepository } from "./campus-mock";
 import { mockNavBadgeRepository } from "./sidebar-mock";
 import { mockPlatformScreenRepository } from "./platform-mock";
 import { mockTenantDirectory } from "./tenants-mock";
+import { mockRecordStore } from "./records-mock";
+import type { RecordStore } from "./records-types";
 import type {
   PlatformScreenRepository,
   TenantDirectory,
@@ -41,3 +43,4 @@ export const campuses: CampusRepository = mockCampusRepository;
 export const navBadges: NavBadgeRepository = mockNavBadgeRepository;
 export const tenantDirectory: TenantDirectory = mockTenantDirectory;
 export const platformScreens: PlatformScreenRepository = mockPlatformScreenRepository;
+export const records: RecordStore = mockRecordStore;

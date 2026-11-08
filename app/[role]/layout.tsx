@@ -94,7 +94,10 @@ function UnknownRole() {
 function ShellFallback() {
   return (
     <div className="flex h-dvh overflow-hidden">
-      <aside style={{ width: SIDEBAR_DEFAULT }} className="hidden shrink-0 bg-navy lg:block" />
+      <aside
+        style={{ width: `var(--sidebar-w, ${SIDEBAR_DEFAULT}px)` }}
+        className="hidden shrink-0 bg-navy lg:block"
+      />
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="h-[72px] shrink-0 border-b border-line bg-white" />
         <div className="flex-1 overflow-y-auto bg-canvas" />

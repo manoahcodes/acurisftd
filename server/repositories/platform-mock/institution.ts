@@ -1,4 +1,4 @@
-import { table, flavour, type Builder } from "./shared";
+import { tableOf, flavour, type Builder } from "./shared";
 
 const campuses: Builder = (ctx) => {
   const f = flavour(ctx);
@@ -6,7 +6,7 @@ const campuses: Builder = (ctx) => {
     description: `Campuses of ${f.tenantName}.`,
     actions: ["Add campus"],
     tables: [
-      table(
+      tableOf("campuses",
         "Campuses",
         ["Campus", "Code", "Location", "Departments", "Learners", "Status"],
         [
@@ -30,7 +30,7 @@ const schools: Builder = (ctx) => {
         : "Sections of the school (for example junior and senior).",
     actions: [f.tertiary ? "Add school" : "Add section"],
     tables: [
-      table(
+      tableOf("schools",
         f.tertiary ? "Schools" : "Sections",
         ["Name", "Head", "Departments", f.terms.programmes, "Learners", "Status"],
         f.tertiary
@@ -82,7 +82,7 @@ const departments: Builder = (ctx) => {
     description: `Departments of ${f.tenantName}.`,
     actions: ["Add department"],
     tables: [
-      table("Departments", ["Department", f.tertiary ? "School" : "Section", "Head", "Campus", "Staff", "Status"], rows, { statusColumn: "Status" }),
+      tableOf("departments","Departments", ["Department", f.tertiary ? "School" : "Section", "Head", "Campus", "Staff", "Status"], rows, { statusColumn: "Status" }),
     ],
   };
 };

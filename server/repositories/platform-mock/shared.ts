@@ -14,6 +14,12 @@ export const table = (
   extra: Partial<Omit<TableSection, "title" | "columns" | "rows">> = {},
 ): TableSection => ({ title, columns, rows, ...extra });
 
+/** Like table(), with a stable id that forms attach to. */
+export const tableOf = (
+  id: string,
+  ...args: Parameters<typeof table>
+): TableSection => ({ ...table(...args), id });
+
 /** What a school's data looks like: tertiary (semesters) or school-level (terms). */
 export type Flavour = {
   tertiary: boolean;
