@@ -22,6 +22,8 @@ export interface ThemeRepository {
 
 export const DEFAULT_THEME: ThemeSettings = {
   primary: "#0b66f5",
+  secondary: "",
+  tertiary: "",
   harmony: "analogous",
   mode: "light",
   sidebarStyle: "dark",

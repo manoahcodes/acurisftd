@@ -1,6 +1,7 @@
 import type { ThemeSettings } from "@/types/theme";
 
 const base: Omit<ThemeSettings, "primary" | "harmony"> = {
+  secondary: "", tertiary: "",
   mode: "light", sidebarStyle: "dark", radius: "rounded", density: "comfortable",
   shadow: "soft", font: "inter", baseFontSize: 16,
 };

@@ -13,6 +13,10 @@ import type {
 export type ThemeSettings = {
   /** The one colour the admin picks, as #rrggbb. The rest of the palette is generated from it. */
   primary: string;
+  /** Optional second colour (#rrggbb) used as the accent, or "" to use the generated one. */
+  secondary: string;
+  /** Optional third colour used to tint the sidebar, or "" to tint it from the primary. */
+  tertiary: string;
   harmony: Harmony;
   mode: Mode;
   sidebarStyle: SidebarStyle;

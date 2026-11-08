@@ -1,5 +1,5 @@
 import { isHex } from "./color";
-import { generatePalette, type Palette } from "./generate";
+import { paletteFor, type Palette } from "./generate";
 import {
   FALLBACK_FONT_STACK,
   FONTS,
@@ -34,8 +34,8 @@ const block = (selector: string, vars: Record<string, string>) =>
 export function themeToCss(t: ThemeSettings): string {
   if (!isHex(t.primary)) throw new Error("Theme primary colour must be #rrggbb.");
   const layout = layoutVars(t);
-  const light = { ...paletteVars(generatePalette(t.primary, t.harmony, t.sidebarStyle, "light")), ...layout };
-  const dark = { ...paletteVars(generatePalette(t.primary, t.harmony, t.sidebarStyle, "dark")), ...layout };
+  const light = { ...paletteVars(paletteFor(t, "light")), ...layout };
+  const dark = { ...paletteVars(paletteFor(t, "dark")), ...layout };
 
   const parts: string[] = [];
   if (t.mode === "dark") parts.push(block(":root", dark));
@@ -49,5 +49,5 @@ export function themeToCss(t: ThemeSettings): string {
 
 /** Inline-style variables for the editor's live preview, scoped to one element. */
 export function previewVars(t: ThemeSettings, mode: "light" | "dark"): Record<string, string> {
-  return { ...paletteVars(generatePalette(t.primary, t.harmony, t.sidebarStyle, mode)), ...layoutVars(t) };
+  return { ...paletteVars(paletteFor(t, mode)), ...layoutVars(t) };
 }

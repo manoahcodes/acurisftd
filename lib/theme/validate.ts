@@ -27,6 +27,14 @@ export function parseThemeSettings(input: Record<string, unknown>): Result<Theme
   const errors: ThemeFieldErrors = {};
   const primary = clean(input.primary).toLowerCase();
   if (!isHex(primary)) errors.primary = "Pick a colour as #rrggbb.";
+  // Optional colours: "" means use the generated one.
+  const optional = (key: "secondary" | "tertiary") => {
+    const v = clean(input[key]).toLowerCase();
+    if (v !== "" && !isHex(v)) errors[key] = "Pick a colour as #rrggbb, or leave it empty.";
+    return v;
+  };
+  const secondary = optional("secondary");
+  const tertiary = optional("tertiary");
   const harmony = oneOf(HARMONIES, input.harmony);
   if (!harmony) errors.harmony = "Choose a listed colour harmony.";
   const mode = oneOf(MODES, input.mode);
@@ -48,7 +56,7 @@ export function parseThemeSettings(input: Record<string, unknown>): Result<Theme
   return {
     ok: true,
     value: {
-      primary, harmony: harmony!, mode: mode!, sidebarStyle: sidebarStyle!, radius: radius!,
+      primary, secondary, tertiary, harmony: harmony!, mode: mode!, sidebarStyle: sidebarStyle!, radius: radius!,
       density: density!, shadow: shadow!, font: font!, baseFontSize: baseFontSize!,
     },
   };

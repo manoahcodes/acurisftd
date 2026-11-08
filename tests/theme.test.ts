@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { contrast, ensureContrast, hexToHsl, hslToHex, isHex } from "@/lib/theme/color";
-import { auditPalette, generatePalette } from "@/lib/theme/generate";
+import { auditPalette, colourNotes, generatePalette, paletteFor } from "@/lib/theme/generate";
 import { themeToCss } from "@/lib/theme/css";
 import { HARMONIES } from "@/lib/theme/options";
 import { parseBranding, parseThemeSettings, readLogo } from "@/lib/theme/validate";
@@ -8,7 +8,7 @@ import type { ThemeSettings } from "@/types/theme";
 
 const PRIMARIES = ["#6f2c91", "#0b66f5", "#d4a017", "#0f766e", "#e11d48", "#f5c518", "#ffffff", "#000000"];
 const base: ThemeSettings = {
-  primary: "#0b66f5", harmony: "analogous", mode: "light", sidebarStyle: "dark",
+  primary: "#0b66f5", secondary: "", tertiary: "", harmony: "analogous", mode: "light", sidebarStyle: "dark",
   radius: "rounded", density: "comfortable", shadow: "soft", font: "inter", baseFontSize: 16,
 };
 
@@ -121,5 +121,53 @@ describe("built-in presets", () => {
         expect(auditPalette(generatePalette(p.theme.primary, p.theme.harmony, p.theme.sidebarStyle, m)).filter((c) => !c.pass)).toEqual([]);
       }
     }
+  });
+});
+
+describe("secondary and tertiary colours", () => {
+  const SCHOOL_COLOURS = [
+    { primary: "#6f2c91", secondary: "#f5c518", tertiary: "#0f766e" }, // purple, gold, teal
+    { primary: "#0b66f5", secondary: "#ffffff", tertiary: "#e11d48" }, // white as accent
+    { primary: "#d4a017", secondary: "#000000", tertiary: "#ffff00" }, // extreme values
+    { primary: "#e11d48", secondary: "#0b66f5", tertiary: "" },
+  ];
+  for (const c of SCHOOL_COLOURS)
+    for (const mode of ["light", "dark"] as const)
+      for (const sidebarStyle of ["dark", "brand"] as const)
+        it(`stays readable: ${c.primary}/${c.secondary || "-"}/${c.tertiary || "-"} ${mode} ${sidebarStyle}`, () => {
+          const t = { ...base, ...c, sidebarStyle };
+          expect(auditPalette(paletteFor(t, mode)).filter((x) => !x.pass)).toEqual([]);
+        });
+
+  it("an empty secondary and tertiary change nothing", () => {
+    expect(paletteFor(base, "light")).toEqual(generatePalette(base.primary, base.harmony, base.sidebarStyle, "light"));
+  });
+  it("a secondary colour replaces the generated accent, a tertiary tints the sidebar", () => {
+    const plain = paletteFor(base, "light");
+    const custom = paletteFor({ ...base, secondary: "#f5c518", tertiary: "#0f766e" }, "light");
+    expect(custom.accent).not.toBe(plain.accent);
+    expect(custom.navy).not.toBe(plain.navy);
+    expect(custom.brand).toBe(plain.brand);
+    expect(hexToHsl(custom.navy).h).toBeCloseTo(hexToHsl("#0f766e").h, -1);
+  });
+  it("a readable secondary colour is kept exactly", () => {
+    expect(paletteFor({ ...base, secondary: "#f5c518" }, "light").accent).toBe("#f5c518");
+  });
+  it("explains adjustments", () => {
+    expect(colourNotes({ ...base, secondary: "#000000" }, "light").join(" ")).toContain("secondary");
+    expect(colourNotes(base, "light")).toEqual([]);
+  });
+  it("outputs the colours in the CSS", () => {
+    expect(themeToCss({ ...base, secondary: "#f5c518" })).toContain("--color-accent:#f5c518");
+  });
+  it("validates the optional colours", () => {
+    expect(parseThemeSettings({ ...base, secondary: "", tertiary: "" }).ok).toBe(true);
+    const r = parseThemeSettings({ ...base, secondary: "#F5C518", tertiary: "#0F766E" });
+    expect(r.ok && [r.value.secondary, r.value.tertiary]).toEqual(["#f5c518", "#0f766e"]);
+    for (const bad of ["red", "#fff", "#12345g", "#f5c518;}"]) {
+      expect(parseThemeSettings({ ...base, secondary: bad }).ok).toBe(false);
+      expect(parseThemeSettings({ ...base, tertiary: bad }).ok).toBe(false);
+    }
+    expect(parseThemeSettings({ ...base, secondary: undefined }).ok).toBe(true);
   });
 });

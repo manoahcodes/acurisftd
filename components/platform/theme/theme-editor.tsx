@@ -5,7 +5,7 @@ import { Check, Trash2, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/format";
 import { hexToHsl, hslToHex, isHex } from "@/lib/theme/color";
 import { previewVars } from "@/lib/theme/css";
-import { auditPalette, generatePalette } from "@/lib/theme/generate";
+import { auditPalette, colourNotes, paletteFor } from "@/lib/theme/generate";
 import {
   BASE_SIZES, DENSITIES, FONTS, HARMONIES, MODES, RADII, SHADOWS, SIDEBAR_STYLES, type FontKey,
 } from "@/lib/theme/options";
@@ -42,15 +42,10 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
 
   const previewMode = theme.mode === "dark" ? "dark" : "light";
   const vars = useMemo(() => (isHex(theme.primary) ? previewVars(theme, previewMode) : undefined), [theme, previewMode]);
-  const audit = useMemo(
-    () => (isHex(theme.primary) ? auditPalette(generatePalette(theme.primary, theme.harmony, theme.sidebarStyle, previewMode)) : []),
-    [theme, previewMode],
-  );
-  const swatches = useMemo(() => {
-    if (!isHex(theme.primary)) return [];
-    const p = generatePalette(theme.primary, theme.harmony, theme.sidebarStyle, previewMode);
-    return [p.brand, p.accent, p.navy, p.canvas, p.ink];
-  }, [theme, previewMode]);
+  const palette = useMemo(() => (isHex(theme.primary) ? paletteFor(theme, previewMode) : undefined), [theme, previewMode]);
+  const audit = useMemo(() => (palette ? auditPalette(palette) : []), [palette]);
+  const notes = useMemo(() => (isHex(theme.primary) ? colourNotes(theme, previewMode) : []), [theme, previewMode]);
+  const swatches = palette ? [palette.brand, palette.accent, palette.navy, palette.canvas, palette.ink] : [];
 
   const err = (k: string) => (errors as Record<string, string | undefined>)[k];
   const field = (label: string, key: keyof Branding, props: { type?: string; max?: number; value?: string; onChange?: (v: string) => void } = {}) => (
@@ -64,6 +59,23 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
       />
       {err(key) && <span className="mt-1 block text-sm text-red-600">{err(key)}</span>}
     </label>
+  );
+
+  const optionalColour = (key: "secondary" | "tertiary", label: string, help: string, fallback: string | undefined) => (
+    <div>
+      <span className="mb-1 block text-sm font-medium text-ink">{label}</span>
+      <p className="mb-2 text-xs text-muted">{help}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <input type="color" aria-label={`${label} colour`} value={isHex(theme[key]) ? theme[key] : (fallback ?? "#000000")}
+          onChange={(e) => set(key, e.target.value.toLowerCase())} className="h-11 w-14 cursor-pointer rounded-lg border border-line bg-surface p-1" />
+        <input name={key} aria-label={`${label} hex`} value={theme[key]} placeholder="Generated" maxLength={7}
+          onChange={(e) => set(key, e.target.value)} aria-invalid={err(key) ? true : undefined} className={cn(input, "w-32 font-mono")} />
+        {theme[key] !== "" && (
+          <button type="button" onClick={() => set(key, "")} className="h-10 rounded-lg border border-line px-3 text-sm font-medium text-ink">Use generated</button>
+        )}
+      </div>
+      {err(key) && <span className="mt-1 block text-sm text-red-600">{err(key)}</span>}
+    </div>
   );
 
   const choice = <T extends string | number>(label: string, key: keyof ThemeSettings, options: readonly T[], show: (o: T) => string = (o) => cap(String(o))) => (
@@ -166,7 +178,18 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
               </button>
             </div>
             {err("primary") && <span className="mt-1 block text-sm text-red-600">{err("primary")}</span>}
-            <div className="mt-5">{choice("Harmony (accent colour)", "harmony", HARMONIES)}</div>
+            <div className="mt-5 grid gap-5 sm:grid-cols-2">
+              {optionalColour("secondary", "Secondary colour (optional)", "Used for the accent: highlights and the active page in the sidebar.", palette?.accent)}
+              {optionalColour("tertiary", "Tertiary colour (optional)", "Tints the sidebar. Leave empty to tint it from the primary colour.", palette?.navy)}
+            </div>
+            <div className={cn("mt-5", theme.secondary !== "" && "opacity-60")}>
+              {choice("Harmony (generates the accent when no secondary colour is set)", "harmony", HARMONIES)}
+            </div>
+            {notes.length > 0 && (
+              <ul className="mt-3 space-y-1 text-sm text-muted">
+                {notes.map((n) => <li key={n}>{n}</li>)}
+              </ul>
+            )}
             <div className="mt-5 flex gap-2" aria-label="Generated palette">
               {swatches.map((c, i) => <span key={i} title={c} style={{ background: c }} className="h-10 flex-1 rounded-lg border border-line" />)}
             </div>
