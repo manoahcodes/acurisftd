@@ -82,7 +82,7 @@ export function UserMenu({ userName, roleLabel, entries }: Props) {
       {open && (
         <div
           id={panelId}
-          className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-xl border border-line bg-white shadow-lg"
+          className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-xl border border-line bg-surface shadow-lg"
         >
           <div className="border-b border-line px-4 py-3">
             <div className="text-[15px] font-semibold text-ink">{userName}</div>

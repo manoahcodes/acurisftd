@@ -17,7 +17,7 @@ export type RecordTarget = {
 };
 
 const inputClass =
-  "h-11 w-full rounded-lg border border-line bg-white px-3 text-[15px] text-ink placeholder:text-muted focus-visible:outline-2 focus-visible:outline-brand disabled:bg-canvas disabled:text-muted aria-[invalid=true]:border-red-500";
+  "h-11 w-full rounded-lg border border-line bg-surface px-3 text-[15px] text-ink placeholder:text-muted focus-visible:outline-2 focus-visible:outline-brand disabled:bg-canvas disabled:text-muted aria-[invalid=true]:border-red-500";
 
 const IDLE: FormState = { status: "idle" };
 
@@ -71,7 +71,7 @@ export function RecordForm({
         // A click on the backdrop (outside the panel) closes it.
         if (e.target === dialogRef.current) dialogRef.current?.close();
       }}
-      className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-line bg-white p-0 shadow-xl backdrop:bg-ink/40"
+      className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-line bg-surface p-0 shadow-xl backdrop:bg-ink/40"
     >
       <form action={action} id={formId} className="flex max-h-[85dvh] flex-col">
         <input type="hidden" name="slug" value={slug} />

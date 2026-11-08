@@ -68,7 +68,7 @@ export function NotificationsBell({ summary }: { summary: NotificationSummary })
       {open && (
         <div
           id={panelId}
-          className="fixed inset-x-4 top-[76px] z-50 overflow-hidden rounded-xl border border-line bg-white shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96"
+          className="fixed inset-x-4 top-[76px] z-50 overflow-hidden rounded-xl border border-line bg-surface shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96"
         >
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <div className="text-[15px] font-semibold text-ink">Notifications</div>

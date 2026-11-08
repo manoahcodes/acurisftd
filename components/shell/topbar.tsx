@@ -58,7 +58,7 @@ export function Topbar({
   ) : null;
 
   return (
-    <header className="flex h-[72px] shrink-0 items-center gap-2 border-b border-line bg-white px-4 sm:gap-4 sm:px-6 lg:px-8">
+    <header className="flex h-[72px] shrink-0 items-center gap-2 border-b border-line bg-surface px-4 sm:gap-4 sm:px-6 lg:px-8">
       <MobileNav
         brand={<SidebarBrand role={role} userName={userName} />}
         contextSlot={drawerContext}

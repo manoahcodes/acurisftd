@@ -40,7 +40,7 @@ export function ChildSelect({ learners, selectedId, variant = "bar" }: Props) {
           )}
         >
           {learners.map((c) => (
-            <option key={c.id} value={c.id} className="bg-white text-ink">
+            <option key={c.id} value={c.id} className="bg-surface text-ink">
               {isDrawer ? `${c.name} · ${c.grade}` : shortLabel(c)}
             </option>
           ))}

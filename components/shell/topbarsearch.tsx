@@ -292,7 +292,7 @@ export function TopbarSearch({
       )}
 
       {panelVisible && (
-        <div className="absolute left-0 top-full z-40 mt-2 w-full max-w-xl overflow-hidden rounded-xl border border-line bg-white shadow-lg">
+        <div className="absolute left-0 top-full z-40 mt-2 w-full max-w-xl overflow-hidden rounded-xl border border-line bg-surface shadow-lg">
           {showList ? (
             <ul
               id={listId}
@@ -322,7 +322,7 @@ export function TopbarSearch({
                     </div>
                     <div className="truncate text-sm text-muted">{r.subtitle}</div>
                   </div>
-                  <span className="shrink-0 rounded-md border border-line bg-white px-2 py-0.5 text-xs font-medium text-muted">
+                  <span className="shrink-0 rounded-md border border-line bg-surface px-2 py-0.5 text-xs font-medium text-muted">
                     {r.kind}
                   </span>
                 </li>
