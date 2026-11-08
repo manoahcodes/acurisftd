@@ -102,7 +102,7 @@ export function DataTable({
         role="region"
         aria-label={`${title} table`}
         tabIndex={0}
-        className="mt-5 overflow-x-auto focus-visible:outline-2 focus-visible:outline-brand"
+        className="relative mt-5 overflow-x-auto focus-visible:outline-2 focus-visible:outline-brand"
       >
         <table className="w-full min-w-max border-collapse text-left text-[15px]">
           <thead>
