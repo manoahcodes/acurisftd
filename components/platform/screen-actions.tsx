@@ -26,7 +26,7 @@ export function ScreenActions({
               key={label}
               type="button"
               onClick={() => setOpen(label)}
-              className="rounded-lg bg-brand px-4 py-2 text-[15px] font-semibold text-white hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              className="rounded-lg bg-brand px-4 py-2 text-[15px] font-semibold text-on-brand hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             >
               {label}
             </button>
@@ -36,7 +36,7 @@ export function ScreenActions({
               type="button"
               disabled
               title="Not built yet"
-              className="rounded-lg bg-brand px-4 py-2 text-[15px] font-semibold text-white opacity-50"
+              className="rounded-lg bg-brand px-4 py-2 text-[15px] font-semibold text-on-brand opacity-50"
             >
               {label}
             </button>

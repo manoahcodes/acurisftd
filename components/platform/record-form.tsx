@@ -17,7 +17,7 @@ export type RecordTarget = {
 };
 
 const inputClass =
-  "h-11 w-full rounded-lg border border-line bg-surface px-3 text-[15px] text-ink placeholder:text-muted focus-visible:outline-2 focus-visible:outline-brand disabled:bg-canvas disabled:text-muted aria-[invalid=true]:border-red-500";
+  "h-11 w-full rounded-lg border border-line bg-surface px-3 text-[15px] text-ink placeholder:text-muted focus-visible:outline-2 focus-visible:outline-brand disabled:bg-canvas disabled:text-muted aria-[invalid=true]:border-danger";
 
 const IDLE: FormState = { status: "idle" };
 
@@ -71,7 +71,7 @@ export function RecordForm({
         // A click on the backdrop (outside the panel) closes it.
         if (e.target === dialogRef.current) dialogRef.current?.close();
       }}
-      className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-line bg-surface p-0 shadow-xl backdrop:bg-ink/40"
+      className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-line bg-surface p-0 shadow-xl backdrop:bg-black/50"
     >
       <form action={action} id={formId} className="flex max-h-[85dvh] flex-col">
         <input type="hidden" name="slug" value={slug} />
@@ -102,7 +102,7 @@ export function RecordForm({
 
         <div className="space-y-4 overflow-y-auto px-6 py-5">
           {state.status === "error" && state.message && (
-            <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">
               {state.message}
             </p>
           )}
@@ -138,7 +138,7 @@ export function RecordForm({
                   ))}
                 </select>
               )}
-              {errors.division && <p className="mt-1 text-sm text-red-700">{errors.division}</p>}
+              {errors.division && <p className="mt-1 text-sm text-danger">{errors.division}</p>}
             </div>
           )}
 
@@ -173,7 +173,7 @@ export function RecordForm({
           <button
             type="submit"
             disabled={pending}
-            className="rounded-lg bg-brand px-4 py-2 text-[15px] font-semibold text-white hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60"
+            className="rounded-lg bg-brand px-4 py-2 text-[15px] font-semibold text-on-brand hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60"
           >
             {pending ? "Saving..." : spec.submitLabel}
           </button>
@@ -263,7 +263,7 @@ function Field({
       ) : (
         <label htmlFor={id} className="mb-1 block text-sm font-medium text-ink">
           {field.label}
-          {field.required && <span aria-hidden className="text-red-600"> *</span>}
+          {field.required && <span aria-hidden className="text-danger"> *</span>}
         </label>
       )}
       {control}
@@ -273,7 +273,7 @@ function Field({
         </p>
       )}
       {error && (
-        <p id={`${id}-error`} className="mt-1 text-sm text-red-700">
+        <p id={`${id}-error`} className="mt-1 text-sm text-danger">
           {error}
         </p>
       )}

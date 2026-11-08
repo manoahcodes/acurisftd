@@ -131,7 +131,7 @@ export function NavGroup({
               }}
               className="fixed z-50 w-64 overflow-y-auto rounded-xl border border-navy-line bg-navy p-2 shadow-lg"
             >
-              <p className="px-3 pb-1 pt-1.5 text-xs font-semibold uppercase tracking-wider text-accent/80">
+              <p className="px-3 pb-1 pt-1.5 text-xs font-semibold uppercase tracking-wider text-accent">
                 {label}
               </p>
               <div className="flex flex-col gap-1">
@@ -172,7 +172,7 @@ export function NavGroup({
             <>
               <span
                 aria-hidden
-                className="min-w-6 rounded-full bg-brand px-2 py-0.5 text-center text-xs font-semibold text-white"
+                className="min-w-6 rounded-full bg-brand px-2 py-0.5 text-center text-xs font-semibold text-on-brand"
               >
                 {pending > 99 ? "99+" : pending}
               </span>

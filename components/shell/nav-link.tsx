@@ -39,7 +39,7 @@ export function NavLink({
           "relative flex items-center rounded-lg text-[15px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white",
           collapsed ? "justify-center py-3" : "gap-3 px-4 py-3",
           active
-            ? "bg-brand font-semibold text-white"
+            ? "bg-brand font-semibold text-on-brand"
             : "text-slate-200 hover:bg-navy-raised hover:text-white",
         )}
       >
@@ -56,7 +56,7 @@ export function NavLink({
                 aria-hidden
                 className={cn(
                   "absolute right-2 top-2 size-2.5 rounded-full ring-2 ring-navy",
-                  active ? "bg-white" : "bg-brand",
+                  active ? "bg-on-brand" : "bg-brand",
                 )}
               />
               <span className="sr-only">, {count} pending</span>
@@ -66,8 +66,8 @@ export function NavLink({
               <span
                 aria-hidden
                 className={cn(
-                  "min-w-6 shrink-0 rounded-full px-2 py-0.5 text-center text-xs font-semibold text-white",
-                  active ? "bg-white/25" : "bg-brand",
+                  "min-w-6 shrink-0 rounded-full px-2 py-0.5 text-center text-xs font-semibold",
+                  active ? "bg-on-brand text-brand" : "bg-brand text-on-brand",
                 )}
               >
                 {count > 99 ? "99+" : count}

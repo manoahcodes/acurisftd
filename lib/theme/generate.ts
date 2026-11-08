@@ -11,6 +11,8 @@ export type Palette = {
   navyRaised: string;
   navyLine: string;
   brand: string;
+  /** Text and icons on top of the brand colour (buttons, badges). White or near-black, whichever reads better. */
+  onBrand: string;
   accent: string;
   canvas: string;
   surface: string;
@@ -18,10 +20,22 @@ export type Palette = {
   muted: string;
   line: string;
   positive: string;
+  positiveSoft: string;
+  warning: string;
+  warningSoft: string;
+  danger: string;
+  dangerSoft: string;
   avatar: string;
 };
 
 const WHITE = "#ffffff";
+const DARK_TEXT = "#0b1220";
+
+/** Status text colour that reads on both its tinted chip background and the surfaces it appears on. */
+const statusText = (base: string, soft: string, surface: string, canvas: string) =>
+  [soft, surface, canvas].reduce((c, bg) => ensureContrast(c, bg, 4.5), base);
+
+const textOn = (bg: string) => (contrast(WHITE, bg) >= contrast(DARK_TEXT, bg) ? WHITE : DARK_TEXT);
 const HUE_SHIFT: Record<Harmony, number> = { analogous: 30, complementary: 180, triadic: 120 };
 
 /**
@@ -52,35 +66,54 @@ export function generatePalette(
   if (mode === "dark") {
     const canvas = hslToHex({ h, s: 25, l: 8 });
     const surface = hslToHex({ h, s: 22, l: 12 });
+    const darkBrand = ensureContrast(primary, surface, 4.5);
     return {
       navy,
       navyRaised,
       navyLine,
-      brand: ensureContrast(primary, surface, 4.5),
+      brand: darkBrand,
+      onBrand: textOn(darkBrand),
       accent,
       canvas,
       surface,
       ink: ensureContrast(hslToHex({ h, s: 20, l: 94 }), canvas, 7),
       muted: ensureContrast(hslToHex({ h, s: 15, l: 68 }), canvas, 4.5),
       line: hslToHex({ h, s: 20, l: 22 }),
-      positive: ensureContrast("#34d399", surface, 4.5),
+      ...(() => {
+        const positiveSoft = hslToHex({ h: 152, s: 40, l: 14 });
+        const warningSoft = hslToHex({ h: 40, s: 45, l: 14 });
+        const dangerSoft = hslToHex({ h: 0, s: 40, l: 16 });
+        return {
+          positiveSoft, warningSoft, dangerSoft,
+          warning: statusText("#fbbf24", warningSoft, surface, canvas),
+          danger: statusText("#f87171", dangerSoft, surface, canvas),
+        };
+      })(),
+      positive: statusText("#34d399", hslToHex({ h: 152, s: 40, l: 14 }), surface, canvas),
       avatar: hslToHex({ h, s: 40, l: 28 }),
     };
   }
 
   const canvas = hslToHex({ h, s: 30, l: 96 });
+  const lightBrand = ensureContrast(primary, WHITE, 4.5);
   return {
     navy,
     navyRaised,
     navyLine,
-    brand: ensureContrast(primary, WHITE, 4.5),
+    brand: lightBrand,
+    onBrand: textOn(lightBrand),
     accent,
     canvas,
     surface: WHITE,
     ink: ensureContrast(hslToHex({ h, s: 60, l: 15 }), canvas, 7),
     muted: ensureContrast(hslToHex({ h, s: 15, l: 45 }), canvas, 4.5),
     line: hslToHex({ h, s: 28, l: 90 }),
-    positive: ensureContrast("#0e9f5f", canvas, 4.5),
+    positiveSoft: "#ecfdf3",
+    warningSoft: "#fffbeb",
+    dangerSoft: "#fef2f2",
+    positive: statusText("#0e9f5f", "#ecfdf3", WHITE, canvas),
+    warning: statusText("#b45309", "#fffbeb", WHITE, canvas),
+    danger: statusText("#dc2626", "#fef2f2", WHITE, canvas),
     avatar: hslToHex({ h, s: 75, l: 90 }),
   };
 }
@@ -97,6 +130,11 @@ export function auditPalette(p: Palette): AuditCheck[] {
     check("Body text on page", p.ink, p.canvas, 7),
     check("Secondary text on page", p.muted, p.canvas, 4.5),
     check("Brand colour on cards", p.brand, p.surface, 4.5),
+    check("Text on buttons and badges", p.onBrand, p.brand, 4.5),
+    check("Success text on its chip", p.positive, p.positiveSoft, 4.5),
+    check("Warning text on its chip", p.warning, p.warningSoft, 4.5),
+    check("Error text on its chip", p.danger, p.dangerSoft, 4.5),
+    check("Error text on cards", p.danger, p.surface, 4.5),
     check("Text on sidebar", WHITE, p.navy, 4.5),
     check("Accent on sidebar", p.accent, p.navy, 4.5),
   ];

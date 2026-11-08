@@ -15,7 +15,7 @@ import type { Branding, ThemeFormState, ThemePreset, ThemeSettings } from "@/typ
 
 const IDLE: ThemeFormState = { ok: false };
 const input =
-  "h-11 w-full rounded-lg border border-line bg-surface px-3 text-[15px] text-ink placeholder:text-muted focus-visible:outline-2 focus-visible:outline-brand aria-[invalid=true]:border-red-500";
+  "h-11 w-full rounded-lg border border-line bg-surface px-3 text-[15px] text-ink placeholder:text-muted focus-visible:outline-2 focus-visible:outline-brand aria-[invalid=true]:border-danger";
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 
 type Props = {
@@ -57,7 +57,7 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
         onChange={props.onChange ? (e) => props.onChange!(e.target.value) : undefined}
         aria-invalid={err(key) ? true : undefined} className={input}
       />
-      {err(key) && <span className="mt-1 block text-sm text-red-600">{err(key)}</span>}
+      {err(key) && <span className="mt-1 block text-sm text-danger">{err(key)}</span>}
     </label>
   );
 
@@ -74,7 +74,7 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
           <button type="button" onClick={() => set(key, "")} className="h-10 rounded-lg border border-line px-3 text-sm font-medium text-ink">Use generated</button>
         )}
       </div>
-      {err(key) && <span className="mt-1 block text-sm text-red-600">{err(key)}</span>}
+      {err(key) && <span className="mt-1 block text-sm text-danger">{err(key)}</span>}
     </div>
   );
 
@@ -93,7 +93,7 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
           </label>
         ))}
       </div>
-      {err(key) && <span className="mt-1 block text-sm text-red-600">{err(key)}</span>}
+      {err(key) && <span className="mt-1 block text-sm text-danger">{err(key)}</span>}
     </fieldset>
   );
 
@@ -129,8 +129,8 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
                     const f = e.target.files?.[0];
                     if (f) { setLogoPreview(URL.createObjectURL(f)); setRemoveLogo(false); }
                   }}
-                  className="block w-full text-sm text-muted file:mr-3 file:h-10 file:rounded-lg file:border-0 file:bg-brand file:px-4 file:font-semibold file:text-white" />
-                {err("logo") && <span className="mt-1 block text-sm text-red-600">{err("logo")}</span>}
+                  className="block w-full text-sm text-muted file:mr-3 file:h-10 file:rounded-lg file:border-0 file:bg-brand file:px-4 file:font-semibold file:text-on-brand" />
+                {err("logo") && <span className="mt-1 block text-sm text-danger">{err("logo")}</span>}
                 {branding.logoUrl && (
                   <label className="mt-2 flex items-center gap-2 text-sm text-muted">
                     <input type="checkbox" name="removeLogo" checked={removeLogo}
@@ -153,7 +153,7 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
                 <select name="timezone" defaultValue={branding.timezone} aria-invalid={err("timezone") ? true : undefined} className={input}>
                   {timezones.map((z) => <option key={z} value={z}>{z}</option>)}
                 </select>
-                {err("timezone") && <span className="mt-1 block text-sm text-red-600">{err("timezone")}</span>}
+                {err("timezone") && <span className="mt-1 block text-sm text-danger">{err("timezone")}</span>}
               </label>
             </div>
           </section>
@@ -177,7 +177,7 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
                 Surprise me
               </button>
             </div>
-            {err("primary") && <span className="mt-1 block text-sm text-red-600">{err("primary")}</span>}
+            {err("primary") && <span className="mt-1 block text-sm text-danger">{err("primary")}</span>}
             <div className="mt-5 grid gap-5 sm:grid-cols-2">
               {optionalColour("secondary", "Secondary colour (optional)", "Used for the accent: highlights and the active page in the sidebar.", palette?.accent)}
               {optionalColour("tertiary", "Tertiary colour (optional)", "Tints the sidebar. Leave empty to tint it from the primary colour.", palette?.navy)}
@@ -195,7 +195,7 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
             </div>
             <ul className="mt-4 space-y-1 text-sm">
               {audit.map((c) => (
-                <li key={c.label} className={cn("flex items-center gap-2", c.pass ? "text-muted" : "text-red-600")}>
+                <li key={c.label} className={cn("flex items-center gap-2", c.pass ? "text-muted" : "text-danger")}>
                   {c.pass ? <Check size={14} aria-hidden /> : <TriangleAlert size={14} aria-hidden />}
                   {c.label}: {c.ratio}:1 (needs {c.min}:1)
                 </li>
@@ -231,7 +231,7 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
                     <span style={{ background: p.theme.primary }} className="h-3 w-3 rounded-full" aria-hidden />{p.name}
                   </button>
                   {!BUILT_IN_PRESETS.some((b) => b.id === p.id) && (
-                    <button type="button" aria-label={`Delete preset ${p.name}`} onClick={() => deleteThemePreset(p.id)} className="border-l border-line bg-surface px-2 text-muted hover:text-red-600">
+                    <button type="button" aria-label={`Delete preset ${p.name}`} onClick={() => deleteThemePreset(p.id)} className="border-l border-line bg-surface px-2 text-muted hover:text-danger">
                       <Trash2 size={14} />
                     </button>
                   )}
@@ -245,7 +245,7 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
               </label>
               <button formAction={savePreset} disabled={presetPending} className="h-11 rounded-lg border border-line px-4 text-sm font-semibold text-ink disabled:opacity-60">Save preset</button>
             </div>
-            {presetState.message && <p role="status" className={cn("mt-2 text-sm", presetState.ok ? "text-positive" : "text-red-600")}>{presetState.message}</p>}
+            {presetState.message && <p role="status" className={cn("mt-2 text-sm", presetState.ok ? "text-positive" : "text-danger")}>{presetState.message}</p>}
           </section>
 
           <section className={section}>
@@ -278,7 +278,7 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
                     <p className="text-xs text-muted">Fees collected</p>
                     <p className="text-lg font-semibold text-brand">K 482,000</p>
                   </div>
-                  <button type="button" className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white">Primary action</button>
+                  <button type="button" className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand">Primary action</button>
                 </div>
               </div>
             </div>
@@ -287,7 +287,7 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <button disabled={saving} className="h-11 rounded-lg bg-brand px-6 text-[15px] font-semibold text-white disabled:opacity-60">
+        <button disabled={saving} className="h-11 rounded-lg bg-brand px-6 text-[15px] font-semibold text-on-brand disabled:opacity-60">
           {saving ? "Saving..." : "Save changes"}
         </button>
         {isTenant && !inherited && (
@@ -296,7 +296,7 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
           </button>
         )}
         {(saved.message || resetState.message) && (
-          <p role="status" className={cn("text-sm", (saved.message ? saved.ok : resetState.ok) ? "text-positive" : "text-red-600")}>
+          <p role="status" className={cn("text-sm", (saved.message ? saved.ok : resetState.ok) ? "text-positive" : "text-danger")}>
             {saved.message ?? resetState.message}
           </p>
         )}

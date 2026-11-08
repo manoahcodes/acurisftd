@@ -39,7 +39,7 @@ export function SidebarBody({ role, tenant }: { role: RoleKey; tenant: TenantCon
         )}
       </div>
 
-      <div className="mt-7 px-3 text-xs font-semibold uppercase tracking-wider text-accent/80 group-data-[collapsed=true]/sidebar:hidden">
+      <div className="mt-7 px-3 text-xs font-semibold uppercase tracking-wider text-accent group-data-[collapsed=true]/sidebar:hidden">
         Workspace
       </div>
       {/* In the collapsed rail a thin rule replaces the heading. */}

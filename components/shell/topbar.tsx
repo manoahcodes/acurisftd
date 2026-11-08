@@ -104,7 +104,7 @@ export function Topbar({
       {quickAction && (
         <Link
           href={quickAction.href}
-          className="hidden items-center gap-2 rounded-lg bg-brand px-4 py-2 text-[15px] font-semibold text-white hover:opacity-90 xl:inline-flex"
+          className="hidden items-center gap-2 rounded-lg bg-brand px-4 py-2 text-[15px] font-semibold text-on-brand hover:opacity-90 xl:inline-flex"
         >
           <Plus size={16} aria-hidden />
           {quickAction.label}

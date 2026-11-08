@@ -23,9 +23,9 @@ const BAD = new Set([
 
 function chipClass(value: string) {
   const v = value.toLowerCase();
-  if (GOOD.has(v)) return "bg-emerald-50 text-emerald-700";
-  if (WARN.has(v)) return "bg-amber-50 text-amber-800";
-  if (BAD.has(v)) return "bg-red-50 text-red-700";
+  if (GOOD.has(v)) return "bg-positive-soft text-positive";
+  if (WARN.has(v)) return "bg-warning-soft text-warning";
+  if (BAD.has(v)) return "bg-danger-soft text-danger";
   return "bg-canvas text-muted";
 }
 

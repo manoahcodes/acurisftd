@@ -52,5 +52,5 @@ Last updated: 2026-11-08. Covered so far: all list screens, create/edit forms on
 - [ ] Print the document header, footer and signature line on receipts, dockets and transcripts
 - [ ] Move the logo from a data URL to file storage when a real backend exists
 - [ ] Theme can flash default colours while the shell fallback shows (`ShellFallback`)
-- [ ] Check dark mode on every screen (hard-coded `text-white` / `bg-white/10` on non-navy surfaces)
+- [x] Dark mode checked on every screen of every role (automated contrast scan, light and dark; add new pages to that check)
 - [ ] Verify Poppins, Lato and Source Sans 3 load in a networked build (sandbox could not reach Google Fonts)

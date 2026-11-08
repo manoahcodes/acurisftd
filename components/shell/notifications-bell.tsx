@@ -58,7 +58,7 @@ export function NotificationsBell({ summary }: { summary: NotificationSummary })
         {count > 0 && (
           <span
             aria-hidden
-            className="absolute right-1 top-1 flex min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-semibold leading-4 text-white"
+            className="absolute right-1 top-1 flex min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-semibold leading-4 text-on-brand"
           >
             {badge}
           </span>
