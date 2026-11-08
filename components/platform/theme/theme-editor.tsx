@@ -72,7 +72,7 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
       <div className="flex flex-wrap gap-2">
         {options.map((o) => (
           <label key={String(o)} className={cn(
-            "cursor-pointer rounded-lg border px-3 py-2 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand",
+            "relative cursor-pointer rounded-lg border px-3 py-2 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand",
             String(theme[key]) === String(o) ? "border-brand bg-avatar font-semibold text-ink" : "border-line bg-surface text-muted",
           )}>
             <input type="radio" name={key} value={String(o)} checked={String(theme[key]) === String(o)}

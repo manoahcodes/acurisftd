@@ -72,7 +72,7 @@ async function Shell({ params, children }: { params: Params; children: React.Rea
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 overflow-y-auto bg-canvas px-6 py-8 focus:outline-none lg:px-12"
+          className="relative flex-1 overflow-y-auto bg-canvas px-6 py-8 focus:outline-none lg:px-12"
         >
           {children}
         </main>
