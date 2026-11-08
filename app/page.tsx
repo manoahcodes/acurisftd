@@ -12,7 +12,7 @@ export default function Home() {
           <li key={key}>
             <Link
               href={`/${key}`}
-              className="block rounded-xl border border-line bg-white px-4 py-3 font-medium hover:border-brand"
+              className="block rounded-xl border border-line bg-surface px-4 py-3 font-medium hover:border-brand"
             >
               {ROLES[key].label}
             </Link>

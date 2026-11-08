@@ -37,7 +37,7 @@ export function AcademicYearSelect({ years, selectedId, variant = "bar" }: Props
           )}
         >
           {years.map((y) => (
-            <option key={y.id} value={y.id} className="bg-white text-ink">
+            <option key={y.id} value={y.id} className="bg-surface text-ink">
               {y.label}
               {y.isCurrent && isDrawer ? " (current)" : ""}
             </option>

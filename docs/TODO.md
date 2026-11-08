@@ -44,3 +44,13 @@ Last updated: 2026-11-08. Covered so far: all list screens, create/edit forms on
 
 ## Out of scope for Platform Admin (separate work)
 - Teacher, Bursar, Cashier, Parent and Student pages are still "hasn't been built yet" placeholders
+
+## 6. Branding and theme (added with the theme editor)
+- [ ] Swap `ThemeRepository` mock for a real one that checks role and tenant on every write (`server/repositories/theme-types.ts`)
+- [ ] Apply the saved time zone: `lib/format.ts` still hard-codes Africa/Lusaka
+- [ ] Use logo, welcome message and sign-in banner on the sign-in page (no sign-in page exists yet)
+- [ ] Print the document header, footer and signature line on receipts, dockets and transcripts
+- [ ] Move the logo from a data URL to file storage when a real backend exists
+- [ ] Theme can flash default colours while the shell fallback shows (`ShellFallback`)
+- [ ] Check dark mode on every screen (hard-coded `text-white` / `bg-white/10` on non-navy surfaces)
+- [ ] Verify Poppins, Lato and Source Sans 3 load in a networked build (sandbox could not reach Google Fonts)

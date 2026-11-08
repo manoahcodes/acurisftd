@@ -8,7 +8,7 @@ import type { TenantSummary } from "@/types/platform";
  */
 export function SelectSchoolPrompt({ title, tenants }: { title: string; tenants: TenantSummary[] }) {
   return (
-    <section className="mt-8 rounded-2xl border border-line bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <section className="mt-8 rounded-2xl border border-line bg-surface p-6 shadow-card">
       <h2 className="text-xl font-semibold text-ink">Select a school to view {title}</h2>
       <p className="mt-1 max-w-2xl text-[15px] text-muted">
         This page shows one school&apos;s records. Choose a school here, or use the school card in the

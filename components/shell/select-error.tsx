@@ -16,7 +16,7 @@ export function SelectError({
       role="alert"
       className={cn(
         "absolute right-0 top-full z-50 mt-1 whitespace-nowrap rounded-md px-2 py-1 text-xs shadow-md",
-        light ? "bg-white text-ink" : "bg-ink text-white",
+        light ? "bg-surface text-ink" : "bg-ink text-white",
       )}
     >
       Could not save. Try again.

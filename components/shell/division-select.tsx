@@ -28,7 +28,7 @@ export function DivisionSelect({
           className="h-10 w-full cursor-pointer appearance-none rounded-lg bg-white/10 py-2 pl-3 pr-9 text-sm text-white focus-visible:outline-2 focus-visible:outline-white"
         >
           {options.map((o) => (
-            <option key={o.id} value={o.id} className="bg-white text-ink">
+            <option key={o.id} value={o.id} className="bg-surface text-ink">
               {o.name}
             </option>
           ))}

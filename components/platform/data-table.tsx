@@ -75,7 +75,7 @@ export function DataTable({
   return (
     <section
       aria-labelledby={headingId}
-      className="relative rounded-2xl border border-line bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+      className="relative rounded-2xl border border-line bg-surface p-6 shadow-card"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -93,7 +93,7 @@ export function DataTable({
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Filter rows..."
             autoComplete="off"
-            className="h-10 w-56 rounded-lg border border-line bg-white pl-9 pr-3 text-[15px] text-ink placeholder:text-muted focus-visible:outline-2 focus-visible:outline-brand"
+            className="h-10 w-56 rounded-lg border border-line bg-surface pl-9 pr-3 text-[15px] text-ink placeholder:text-muted focus-visible:outline-2 focus-visible:outline-brand"
           />
         </label>
       </div>

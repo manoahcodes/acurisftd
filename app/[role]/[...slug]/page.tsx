@@ -11,6 +11,7 @@ import { divisionsLabel, resolveLabel, tenantSystemLabel, tenantTermsType, terms
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PageSkeleton } from "@/components/dashboard/page-skeleton";
 import { PlatformScreenView } from "@/components/platform/platform-screen-view";
+import { ThemeSection } from "@/components/platform/theme/theme-section";
 import { SelectSchoolPrompt } from "@/components/platform/select-school-prompt";
 import { platformScreens } from "@/server/repositories";
 import { getTenantSelection } from "@/server/queries/platform";
@@ -99,6 +100,7 @@ async function PlatformSection({ item }: { item: NavItem }) {
       ) : screen ? (
         <PlatformScreenView screen={screen} slug={item.slug} />
       ) : null}
+      {item.slug === "platform-settings" && <ThemeSection />}
     </>
   );
 }

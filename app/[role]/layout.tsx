@@ -11,6 +11,8 @@ import {
   parseSidebarCollapsed,
   parseSidebarWidth,
 } from "@/lib/sidebar-width";
+import { ThemeStyle } from "@/components/platform/theme/theme-style";
+import { getResolvedTheme } from "@/server/queries/theme";
 import { session } from "@/server/repositories";
 
 type Params = Promise<{ role: string }>;
@@ -46,6 +48,7 @@ async function Shell({ params, children }: { params: Params; children: React.Rea
   if (!isRoleKey(role)) return <UnknownRole />;
 
   const user = await session.getCurrentUser();
+  const { theme } = await getResolvedTheme(role);
   const cookieStore = await cookies();
   const sidebarWidth = parseSidebarWidth(cookieStore.get(SIDEBAR_COOKIE)?.value);
   const sidebarCollapsed = parseSidebarCollapsed(cookieStore.get(SIDEBAR_COLLAPSED_COOKIE)?.value);
@@ -55,10 +58,11 @@ async function Shell({ params, children }: { params: Params; children: React.Rea
     // descendants (such as sr-only text), so they can never extend the document
     // and add a page-level scrollbar next to the sidebar's and main's own.
     <div className="relative flex h-dvh overflow-hidden">
+      <ThemeStyle theme={theme} />
       {/* First focusable element: keyboard users can jump past the sidebar and top bar. */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-ink focus:shadow-lg"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-ink focus:shadow-lg"
       >
         Skip to content
       </a>
@@ -99,7 +103,7 @@ function ShellFallback() {
         className="hidden shrink-0 bg-navy lg:block"
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="h-[72px] shrink-0 border-b border-line bg-white" />
+        <div className="h-[72px] shrink-0 border-b border-line bg-surface" />
         <div className="flex-1 overflow-y-auto bg-canvas" />
       </div>
     </div>

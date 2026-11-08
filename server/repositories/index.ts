@@ -12,6 +12,8 @@ import { mockNavBadgeRepository } from "./sidebar-mock";
 import { mockPlatformScreenRepository } from "./platform-mock";
 import { mockTenantDirectory } from "./tenants-mock";
 import { mockRecordStore } from "./records-mock";
+import { mockThemeRepository } from "./theme-mock";
+import type { ThemeRepository } from "./theme-types";
 import type { RecordStore } from "./records-types";
 import type {
   PlatformScreenRepository,
@@ -44,3 +46,4 @@ export const navBadges: NavBadgeRepository = mockNavBadgeRepository;
 export const tenantDirectory: TenantDirectory = mockTenantDirectory;
 export const platformScreens: PlatformScreenRepository = mockPlatformScreenRepository;
 export const records: RecordStore = mockRecordStore;
+export const themes: ThemeRepository = mockThemeRepository;

@@ -6,7 +6,7 @@ export function ListCard({ title, subtitle, rows, span }: Section) {
   return (
     <section
       className={cn(
-        "flex min-h-[300px] flex-col rounded-2xl border border-line bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]",
+        "flex min-h-[300px] flex-col rounded-2xl border border-line bg-surface p-6 shadow-card",
         span === "full" && "lg:col-span-2",
       )}
     >
