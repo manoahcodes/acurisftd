@@ -3,6 +3,8 @@ import type { Mode } from "./options";
 /** A person's own light/dark choice, remembered per browser. It overrides the school's Mode setting. */
 export const MODE_COOKIE = "acuris_mode";
 export const MODE_PREFERENCES = ["light", "dark", "system"] as const;
+/** Added to <html> while the mode changes, so colours ease instead of snapping (see globals.css). */
+export const THEME_FADE_CLASS = "theme-fading";
 export type ModePreference = (typeof MODE_PREFERENCES)[number];
 
 /** Reads the cookie value. Anything that is not one of the three choices means "no choice made". */

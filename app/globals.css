@@ -107,3 +107,25 @@ body {
     }
   }
 }
+
+/*
+ * Light/dark switch: while <html> has .theme-fading (added by the top bar
+ * switcher), colours ease over 0.3s instead of snapping. It is only on during
+ * a switch, so normal hover and focus effects are unchanged. Skipped for people
+ * who ask their device for reduced motion.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  html.theme-fading,
+  html.theme-fading *,
+  html.theme-fading *::before,
+  html.theme-fading *::after {
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease,
+      border-color 0.3s ease,
+      fill 0.3s ease,
+      stroke 0.3s ease,
+      box-shadow 0.3s ease,
+      outline-color 0.3s ease !important;
+  }
+}
