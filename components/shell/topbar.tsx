@@ -7,6 +7,7 @@ import {
   resolveUserMenu,
   type RoleKey,
 } from "@/config/navigation";
+import type { ModePreference } from "@/lib/theme/mode";
 import type { TenantContext } from "@/types/dashboard";
 import { AcademicYearControl } from "./academic-year-control";
 import { ChildControl } from "./child-control";
@@ -15,6 +16,7 @@ import { NotificationsControl } from "./notifications-control";
 import { RoleSwitcher } from "./role-switcher";
 import { SidebarBody } from "./sidebar-body";
 import { SidebarBrand } from "./sidebar-brand";
+import { ThemeModeSwitch } from "./theme-mode-switch";
 import { TopbarSearch } from "./topbarsearch";
 import { UserMenu } from "./usermenu";
 
@@ -22,10 +24,13 @@ export function Topbar({
   role,
   userName,
   tenant,
+  modePreference,
 }: {
   role: RoleKey;
   userName: string;
   tenant: TenantContext;
+  /** Which colour-mode option to show as selected. */
+  modePreference: ModePreference;
 }) {
   const { label: roleLabel, topbar } = ROLES[role];
   const { searchPlaceholder, context, childSwitcher } = topbar;
@@ -105,6 +110,8 @@ export function Topbar({
           {quickAction.label}
         </Link>
       )}
+
+      <ThemeModeSwitch selected={modePreference} />
 
       <Suspense fallback={<div className="size-10" aria-hidden />}>
         <NotificationsControl role={role} />

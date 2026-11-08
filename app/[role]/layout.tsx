@@ -11,6 +11,7 @@ import {
   parseSidebarCollapsed,
   parseSidebarWidth,
 } from "@/lib/sidebar-width";
+import { effectiveMode, MODE_COOKIE, parseModePreference, selectedPreference } from "@/lib/theme/mode";
 import { ThemeStyle } from "@/components/platform/theme/theme-style";
 import { getResolvedTheme } from "@/server/queries/theme";
 import { session } from "@/server/repositories";
@@ -51,6 +52,7 @@ async function Shell({ params, children }: { params: Params; children: React.Rea
   const { theme } = await getResolvedTheme(role);
   const cookieStore = await cookies();
   const sidebarWidth = parseSidebarWidth(cookieStore.get(SIDEBAR_COOKIE)?.value);
+  const modeChoice = parseModePreference(cookieStore.get(MODE_COOKIE)?.value);
   const sidebarCollapsed = parseSidebarCollapsed(cookieStore.get(SIDEBAR_COLLAPSED_COOKIE)?.value);
 
   return (
@@ -58,7 +60,7 @@ async function Shell({ params, children }: { params: Params; children: React.Rea
     // descendants (such as sr-only text), so they can never extend the document
     // and add a page-level scrollbar next to the sidebar's and main's own.
     <div className="relative flex h-dvh overflow-hidden">
-      <ThemeStyle theme={theme} />
+      <ThemeStyle theme={{ ...theme, mode: effectiveMode(theme.mode, modeChoice) }} />
       {/* First focusable element: keyboard users can jump past the sidebar and top bar. */}
       <a
         href="#main-content"
@@ -68,7 +70,7 @@ async function Shell({ params, children }: { params: Params; children: React.Rea
       </a>
       <Sidebar role={role} userName={user.name} tenant={user.tenant} width={sidebarWidth} collapsed={sidebarCollapsed} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar role={role} userName={user.name} tenant={user.tenant} />
+        <Topbar role={role} userName={user.name} tenant={user.tenant} modePreference={selectedPreference(theme.mode, modeChoice)} />
         <main
           id="main-content"
           tabIndex={-1}
