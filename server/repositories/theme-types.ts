@@ -1,4 +1,4 @@
-import type { Branding, ThemeConfig, ThemePreset, ThemeScope, ThemeSettings } from "@/types/theme";
+import type { Branding, ThemeConfig, ThemeOverride, ThemePreset, ThemeScope, ThemeSettings } from "@/types/theme";
 import type { DirectoryContext } from "./directory-types";
 
 /**
@@ -7,13 +7,13 @@ import type { DirectoryContext } from "./directory-types";
  * `tenantId` is a school they may change, on every write.
  */
 export interface ThemeRepository {
-  /** What a school actually shows: its own override, else the platform default. */
+  /** What a school actually shows: the platform default with its own changes on top. */
   resolve(ctx: DirectoryContext): Promise<ThemeConfig>;
   getPlatformDefault(): Promise<ThemeConfig>;
-  /** undefined when the school has no override and inherits the default. */
-  getTenantOverride(tenantId: string): Promise<ThemeConfig | undefined>;
+  /** Only what the school changed. undefined when it has no override and inherits everything. */
+  getTenantOverride(tenantId: string): Promise<ThemeOverride | undefined>;
   savePlatformDefault(config: ThemeConfig): Promise<void>;
-  saveTenantOverride(tenantId: string, config: ThemeConfig): Promise<void>;
+  saveTenantOverride(tenantId: string, override: ThemeOverride): Promise<void>;
   clearTenantOverride(tenantId: string): Promise<void>;
   listPresets(scope: ThemeScope): Promise<ThemePreset[]>;
   savePreset(scope: ThemeScope, name: string, theme: ThemeSettings): Promise<ThemePreset>;

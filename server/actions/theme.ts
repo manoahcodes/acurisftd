@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { applyOverride, diffConfig, isEmptyOverride } from "@/lib/theme/merge";
 import { parseBranding, parseThemeSettings, readLogo } from "@/lib/theme/validate";
 import type { ThemeFormState } from "@/types/theme";
 import { requirePlatformAdmin } from "../forms/guard";
@@ -27,7 +28,8 @@ export async function saveTheme(_prev: ThemeFormState, formData: FormData): Prom
 
   const raw = Object.fromEntries(formData.entries());
   const theme = parseThemeSettings(raw);
-  const existing = scope === "platform" ? await themes.getPlatformDefault() : (await themes.getTenantOverride(scope)) ?? (await themes.getPlatformDefault());
+  const platform = await themes.getPlatformDefault();
+  const existing = scope === "platform" ? platform : applyOverride(platform, await themes.getTenantOverride(scope));
 
   const logo = await readLogo(formData.get("logo"));
   if (logo.error) return fail("Fix the highlighted fields.", { logo: logo.error });
@@ -40,7 +42,12 @@ export async function saveTheme(_prev: ThemeFormState, formData: FormData): Prom
 
   const config = { theme: theme.value, branding: branding.value };
   if (scope === "platform") await themes.savePlatformDefault(config);
-  else await themes.saveTenantOverride(scope, config);
+  else {
+    // Keep only what differs from the platform default, so everything else keeps following it.
+    const override = diffConfig(platform, config);
+    if (isEmptyOverride(override)) await themes.clearTenantOverride(scope);
+    else await themes.saveTenantOverride(scope, override);
+  }
 
   revalidatePath("/", "layout");
   return { ok: true, message: scope === "platform" ? "Platform default saved." : "School branding saved." };

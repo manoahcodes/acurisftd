@@ -3,6 +3,7 @@ import type { RoleKey } from "@/config/navigation";
 import { themes } from "@/server/repositories";
 import { getTenantContext } from "@/server/request-context";
 import type { ThemeConfig, ThemePreset, ThemeScope } from "@/types/theme";
+import { applyOverride } from "@/lib/theme/merge";
 import { themeTenantFor } from "@/lib/theme/scope";
 import { getTenantSelection } from "./platform";
 
@@ -48,7 +49,7 @@ export const getThemeEditorState = cache(async (): Promise<ThemeEditorState> => 
   return {
     scope: selected.id,
     scopeLabel: selected.name,
-    config: override ?? platformDefault,
+    config: applyOverride(platformDefault, override),
     inherited: !override,
     platformDefault,
     presets: await themes.listPresets(selected.id),

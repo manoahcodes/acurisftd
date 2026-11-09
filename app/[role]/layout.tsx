@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -17,6 +18,14 @@ import { getResolvedTheme } from "@/server/queries/theme";
 import { session } from "@/server/repositories";
 
 type Params = Promise<{ role: string }>;
+
+/** Browser tab title: the school's name and tagline (the platform's for the Platform Admin). */
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const { role } = await params;
+  if (!isRoleKey(role)) return {};
+  const { branding } = await getResolvedTheme(role);
+  return { title: branding.tagline ? `${branding.name} - ${branding.tagline}` : branding.name };
+}
 
 // The set of roles is fixed, so Next can prerender every role's shell.
 export function generateStaticParams() {

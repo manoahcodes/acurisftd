@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { applyOverride, diffConfig, isEmptyOverride } from "@/lib/theme/merge";
 import { mockThemeRepository as repo, resetMockTheme } from "@/server/repositories/theme-mock";
 import { DEFAULT_THEME } from "@/server/repositories/theme-types";
 
@@ -10,20 +11,26 @@ describe("theme repository", () => {
     expect(r.theme).toEqual(DEFAULT_THEME);
   });
 
-  it("a school override wins, and clearing it restores the default", async () => {
-    const base = await repo.getPlatformDefault();
-    await repo.saveTenantOverride("chilenje", { ...base, theme: { ...base.theme, primary: "#6f2c91" } });
+  it("a school's own changes win, and clearing them restores the default", async () => {
+    await repo.saveTenantOverride("chilenje", { theme: { primary: "#6f2c91" }, branding: {} });
     expect((await repo.resolve({ tenantId: "chilenje" })).theme.primary).toBe("#6f2c91");
     expect((await repo.resolve({ tenantId: "mukuba" })).theme.primary).toBe(DEFAULT_THEME.primary);
     await repo.clearTenantOverride("chilenje");
     expect((await repo.resolve({ tenantId: "chilenje" })).theme.primary).toBe(DEFAULT_THEME.primary);
   });
 
-  it("changing the platform default does not change a school that has its own", async () => {
+  it("a school keeps following the platform default for anything it did not change", async () => {
     const base = await repo.getPlatformDefault();
-    await repo.saveTenantOverride("chilenje", base);
-    await repo.savePlatformDefault({ ...base, theme: { ...base.theme, primary: "#e11d48" } });
-    expect((await repo.resolve({ tenantId: "chilenje" })).theme.primary).toBe(DEFAULT_THEME.primary);
+    await repo.saveTenantOverride("chilenje", { theme: { primary: "#6f2c91" }, branding: { shortName: "CS" } });
+    await repo.savePlatformDefault({
+      theme: { ...base.theme, primary: "#e11d48", radius: "pill" },
+      branding: { ...base.branding, tagline: "New tagline" },
+    });
+    const school = await repo.resolve({ tenantId: "chilenje" });
+    expect(school.theme.primary).toBe("#6f2c91"); // its own choice
+    expect(school.branding.shortName).toBe("CS"); // its own choice
+    expect(school.theme.radius).toBe("pill"); // followed the new default
+    expect(school.branding.tagline).toBe("New tagline"); // followed the new default
     expect((await repo.resolve({ tenantId: "mukuba" })).theme.primary).toBe("#e11d48");
   });
 
@@ -31,6 +38,10 @@ describe("theme repository", () => {
     const a = await repo.getPlatformDefault();
     a.theme.primary = "#000000";
     expect((await repo.getPlatformDefault()).theme.primary).toBe(DEFAULT_THEME.primary);
+    await repo.saveTenantOverride("chilenje", { theme: { primary: "#6f2c91" }, branding: {} });
+    const o = await repo.getTenantOverride("chilenje");
+    o!.theme.primary = "#000000";
+    expect((await repo.getTenantOverride("chilenje"))!.theme.primary).toBe("#6f2c91");
   });
 
   it("keeps presets per scope", async () => {
@@ -40,5 +51,25 @@ describe("theme repository", () => {
     await repo.deletePreset("platform", p.id);
     expect(await repo.listPresets("platform")).toEqual([]);
     expect(await repo.listPresets("chilenje")).toHaveLength(1);
+  });
+});
+
+describe("diffConfig and applyOverride", () => {
+  it("stores only what differs and round-trips", async () => {
+    const base = await repo.getPlatformDefault();
+    const next = { theme: { ...base.theme, primary: "#6f2c91", font: "lato" as const }, branding: { ...base.branding, name: "Chilenje" } };
+    const diff = diffConfig(base, next);
+    expect(diff).toEqual({ theme: { primary: "#6f2c91", font: "lato" }, branding: { name: "Chilenje" } });
+    expect(applyOverride(base, diff)).toEqual(next);
+  });
+  it("an unchanged config produces an empty override", async () => {
+    const base = await repo.getPlatformDefault();
+    expect(isEmptyOverride(diffConfig(base, base))).toBe(true);
+  });
+  it("no override gives a copy of the base", async () => {
+    const base = await repo.getPlatformDefault();
+    const copy = applyOverride(base, undefined);
+    expect(copy).toEqual(base);
+    expect(copy).not.toBe(base);
   });
 });

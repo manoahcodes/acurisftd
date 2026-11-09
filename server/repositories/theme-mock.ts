@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
-import type { ThemeConfig, ThemePreset } from "@/types/theme";
+import { applyOverride } from "@/lib/theme/merge";
+import type { ThemeConfig, ThemeOverride, ThemePreset } from "@/types/theme";
 import { DEFAULT_BRANDING, DEFAULT_THEME, type ThemeRepository } from "./theme-types";
 
 type Store = {
   platform: ThemeConfig;
-  tenants: Map<string, ThemeConfig>;
+  tenants: Map<string, ThemeOverride>;
   presets: Map<string, ThemePreset[]>;
 };
 
@@ -12,29 +13,30 @@ type Store = {
 const g = globalThis as unknown as { __acurisTheme?: Store };
 const store = (g.__acurisTheme ??= {
   platform: { theme: { ...DEFAULT_THEME }, branding: { ...DEFAULT_BRANDING } },
-  tenants: new Map<string, ThemeConfig>(),
+  tenants: new Map<string, ThemeOverride>(),
   presets: new Map<string, ThemePreset[]>(),
 });
 
 // Stored copies are replaced, never mutated, so a cached read never shows half a save.
 const copy = (c: ThemeConfig): ThemeConfig => ({ theme: { ...c.theme }, branding: { ...c.branding } });
+const copyOverride = (o: ThemeOverride): ThemeOverride => ({ theme: { ...o.theme }, branding: { ...o.branding } });
 
 export const mockThemeRepository: ThemeRepository = {
   async resolve(ctx) {
-    return copy(store.tenants.get(ctx.tenantId) ?? store.platform);
+    return applyOverride(store.platform, store.tenants.get(ctx.tenantId));
   },
   async getPlatformDefault() {
     return copy(store.platform);
   },
   async getTenantOverride(tenantId) {
-    const c = store.tenants.get(tenantId);
-    return c ? copy(c) : undefined;
+    const o = store.tenants.get(tenantId);
+    return o ? copyOverride(o) : undefined;
   },
   async savePlatformDefault(config) {
     store.platform = copy(config);
   },
-  async saveTenantOverride(tenantId, config) {
-    store.tenants.set(tenantId, copy(config));
+  async saveTenantOverride(tenantId, override) {
+    store.tenants.set(tenantId, copyOverride(override));
   },
   async clearTenantOverride(tenantId) {
     store.tenants.delete(tenantId);

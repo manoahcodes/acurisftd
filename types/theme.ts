@@ -47,6 +47,12 @@ export type Branding = {
 
 export type ThemeConfig = { theme: ThemeSettings; branding: Branding };
 
+/**
+ * What a school has changed from the platform default. Settings it has not
+ * changed are absent, so they keep following the default when it is edited.
+ */
+export type ThemeOverride = { theme: Partial<ThemeSettings>; branding: Partial<Branding> };
+
 export type ThemePreset = { id: string; name: string; theme: ThemeSettings };
 
 /** "platform" is the default every school inherits; a tenant id is that school's override. */
