@@ -49,7 +49,7 @@ async function Shell({ params, children }: { params: Params; children: React.Rea
   if (!isRoleKey(role)) return <UnknownRole />;
 
   const user = await session.getCurrentUser();
-  const { theme } = await getResolvedTheme(role);
+  const { theme, branding } = await getResolvedTheme(role);
   const cookieStore = await cookies();
   const sidebarWidth = parseSidebarWidth(cookieStore.get(SIDEBAR_COOKIE)?.value);
   const modeChoice = parseModePreference(cookieStore.get(MODE_COOKIE)?.value);
@@ -68,9 +68,9 @@ async function Shell({ params, children }: { params: Params; children: React.Rea
       >
         Skip to content
       </a>
-      <Sidebar role={role} userName={user.name} tenant={user.tenant} width={sidebarWidth} collapsed={sidebarCollapsed} />
+      <Sidebar role={role} userName={user.name} brand={branding} tenant={user.tenant} width={sidebarWidth} collapsed={sidebarCollapsed} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar role={role} userName={user.name} tenant={user.tenant} modePreference={selectedPreference(theme.mode, modeChoice)} />
+        <Topbar role={role} userName={user.name} brand={branding} tenant={user.tenant} modePreference={selectedPreference(theme.mode, modeChoice)} />
         <main
           id="main-content"
           tabIndex={-1}

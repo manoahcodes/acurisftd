@@ -2,17 +2,19 @@ import type { RoleKey } from "@/config/navigation";
 import type { TenantContext } from "@/types/dashboard";
 import { ResizableSidebar } from "./resizable-sidebar";
 import { SidebarBody } from "./sidebar-body";
-import { SidebarBrand } from "./sidebar-brand";
+import { SidebarBrand, type ShellBrand } from "./sidebar-brand";
 
 export function Sidebar({
   role,
   userName,
+  brand,
   tenant,
   width,
   collapsed,
 }: {
   role: RoleKey;
   userName: string;
+  brand: ShellBrand;
   tenant: TenantContext;
   /** Saved width in pixels (see lib/sidebar-width.ts). */
   width: number;
@@ -23,7 +25,7 @@ export function Sidebar({
     <ResizableSidebar
       initialWidth={width}
       initialCollapsed={collapsed}
-      header={<SidebarBrand role={role} userName={userName} />}
+      header={<SidebarBrand role={role} userName={userName} brand={brand} />}
     >
       <SidebarBody role={role} tenant={tenant} />
     </ResizableSidebar>

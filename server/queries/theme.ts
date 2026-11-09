@@ -3,19 +3,19 @@ import type { RoleKey } from "@/config/navigation";
 import { themes } from "@/server/repositories";
 import { getTenantContext } from "@/server/request-context";
 import type { ThemeConfig, ThemePreset, ThemeScope } from "@/types/theme";
+import { themeTenantFor } from "@/lib/theme/scope";
 import { getTenantSelection } from "./platform";
 
 /**
- * The theme the shell should render for this role. Platform Admins see the
- * school they are working in (or the platform default); everyone else sees
- * their own school's theme. Reads cookies/session, so call it inside <Suspense>.
+ * The theme and branding the shell should render for this role (see
+ * lib/theme/scope.ts for which school that is). Reads cookies/session, so call
+ * it inside <Suspense>.
  */
 export const getResolvedTheme = cache(async (role: RoleKey): Promise<ThemeConfig> => {
-  if (role === "platform") {
-    const { selected } = await getTenantSelection();
-    return selected ? themes.resolve({ tenantId: selected.id }) : themes.getPlatformDefault();
-  }
-  return themes.resolve(await getTenantContext());
+  const own = await getTenantContext();
+  const { selected } = role === "platform" ? { selected: undefined } : await getTenantSelection();
+  const tenantId = themeTenantFor(role, own.tenantId, selected?.id);
+  return tenantId ? themes.resolve({ tenantId }) : themes.getPlatformDefault();
 });
 
 export type ThemeEditorState = {

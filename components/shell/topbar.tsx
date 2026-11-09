@@ -15,7 +15,7 @@ import { MobileNav } from "./mobilenav";
 import { NotificationsControl } from "./notifications-control";
 import { RoleSwitcher } from "./role-switcher";
 import { SidebarBody } from "./sidebar-body";
-import { SidebarBrand } from "./sidebar-brand";
+import { SidebarBrand, type ShellBrand } from "./sidebar-brand";
 import { ThemeModeSwitch } from "./theme-mode-switch";
 import { TopbarSearch } from "./topbarsearch";
 import { UserMenu } from "./usermenu";
@@ -23,11 +23,13 @@ import { UserMenu } from "./usermenu";
 export function Topbar({
   role,
   userName,
+  brand,
   tenant,
   modePreference,
 }: {
   role: RoleKey;
   userName: string;
+  brand: ShellBrand;
   tenant: TenantContext;
   /** Which colour-mode option to show as selected. */
   modePreference: ModePreference;
@@ -65,7 +67,7 @@ export function Topbar({
   return (
     <header className="flex h-[72px] shrink-0 items-center gap-2 border-b border-line bg-surface px-4 sm:gap-4 sm:px-6 lg:px-8">
       <MobileNav
-        brand={<SidebarBrand role={role} userName={userName} />}
+        brand={<SidebarBrand role={role} userName={userName} brand={brand} />}
         contextSlot={drawerContext}
       >
         <SidebarBody role={role} tenant={tenant} />
