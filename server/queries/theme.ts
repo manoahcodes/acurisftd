@@ -14,7 +14,7 @@ import { getTenantSelection } from "./platform";
  */
 export const getResolvedTheme = cache(async (role: RoleKey): Promise<ThemeConfig> => {
   const own = await getTenantContext();
-  const { selected } = role === "platform" ? { selected: undefined } : await getTenantSelection();
+  const { selected } = await getTenantSelection();
   const tenantId = themeTenantFor(role, own.tenantId, selected?.id);
   return tenantId ? themes.resolve({ tenantId }) : themes.getPlatformDefault();
 });

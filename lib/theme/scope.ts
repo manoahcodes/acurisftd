@@ -11,8 +11,8 @@ export const PREVIEW_SELECTED_SCHOOL = true;
 
 /**
  * Which school's look an area shows. `undefined` means the platform default.
- * Platform Admin screens always use the platform default, so the admin's own
- * app does not change as they move between schools.
+ * The Platform Admin's own screens follow the school they have selected (the
+ * platform default when none is), so changes they save show straight away.
  */
 export function themeTenantFor(
   role: RoleKey,
@@ -20,6 +20,6 @@ export function themeTenantFor(
   selectedTenantId: string | undefined,
   preview: boolean = PREVIEW_SELECTED_SCHOOL,
 ): string | undefined {
-  if (role === "platform") return undefined;
+  if (role === "platform") return selectedTenantId;
   return preview ? (selectedTenantId ?? ownTenantId) : ownTenantId;
 }
