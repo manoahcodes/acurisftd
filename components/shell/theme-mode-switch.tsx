@@ -3,7 +3,8 @@
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { Check, Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/format";
-import { THEME_FADE_CLASS, type ModePreference } from "@/lib/theme/mode";
+import type { ModePreference } from "@/lib/theme/mode";
+import { useThemeFade } from "@/lib/theme/use-theme-fade";
 import { setModePreference } from "@/server/actions/theme-mode";
 
 const OPTIONS: { value: ModePreference; label: string; Icon: LucideIcon }[] = [
@@ -19,22 +20,8 @@ export function ThemeModeSwitch({ selected }: { selected: ModePreference }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelId = useId();
-  const wasPending = useRef(false);
-
-  // Keep the fade on while the new mode is being applied, then switch it off
-  // shortly after the colours have settled so everyday hover effects are untouched.
-  useEffect(() => {
-    const root = document.documentElement;
-    if (pending) {
-      wasPending.current = true;
-      return;
-    }
-    if (!wasPending.current) return;
-    wasPending.current = false;
-    const timer = setTimeout(() => root.classList.remove(THEME_FADE_CLASS), 500);
-    return () => clearTimeout(timer);
-  }, [pending]);
-  useEffect(() => () => document.documentElement.classList.remove(THEME_FADE_CLASS), []);
+  // Keep the fade on while the new mode is being applied (see lib/theme/use-theme-fade.ts).
+  useThemeFade(pending, 500);
 
   useEffect(() => {
     if (!open) return;
@@ -91,7 +78,6 @@ export function ThemeModeSwitch({ selected }: { selected: ModePreference }) {
               disabled={pending}
               onClick={() => {
                 setOpen(false);
-                if (value !== selected) document.documentElement.classList.add(THEME_FADE_CLASS);
                 start(() => setModePreference(value));
               }}
               className={cn(

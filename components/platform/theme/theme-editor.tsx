@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import { Check, Trash2, TriangleAlert } from "lucide-react";
 import { CopyrightYear } from "@/components/shell/copyright-year";
 import { cn } from "@/lib/format";
@@ -8,6 +9,7 @@ import { copyrightHolderFor } from "@/lib/theme/copyright";
 import { hexToHsl, hslToHex, isHex } from "@/lib/theme/color";
 import { previewVars } from "@/lib/theme/css";
 import { auditPalette, colourNotes, paletteFor } from "@/lib/theme/generate";
+import { useThemeFade } from "@/lib/theme/use-theme-fade";
 import {
   BASE_SIZES, DENSITIES, FONTS, HARMONIES, MODES, RADII, SHADOWS, SIDEBAR_STYLES, type FontKey,
 } from "@/lib/theme/options";
@@ -40,6 +42,14 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
   const [saved, save, saving] = useActionState(saveTheme, IDLE);
   const [presetState, savePreset, presetPending] = useActionState(saveThemePreset, IDLE);
   const [resetState, reset, resetting] = useActionState(resetTenantTheme, IDLE);
+  const router = useRouter();
+  const [refreshing, startRefresh] = useTransition();
+  // After a successful save or reset, refresh so the whole app picks up the new look straight away.
+  useEffect(() => {
+    if (saved.ok || resetState.ok) startRefresh(() => router.refresh());
+  }, [saved, resetState, router]);
+  // Ease from the old colours to the new ones instead of jumping.
+  useThemeFade(saving || resetting || refreshing);
   const errors = saved.errors ?? {};
   const set = <K extends keyof ThemeSettings>(k: K, v: ThemeSettings[K]) => setTheme((t) => ({ ...t, [k]: v }));
 
