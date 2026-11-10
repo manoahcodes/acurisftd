@@ -73,3 +73,22 @@ describe("diffConfig and applyOverride", () => {
     expect(copy).not.toBe(base);
   });
 });
+
+describe("settings saved before a field existed", () => {
+  it("fill in defaults instead of returning undefined", async () => {
+    // Shape of branding and theme saved before copyrightHolder, secondary and tertiary were added.
+    const store = (globalThis as unknown as { __acurisTheme: { platform: { theme: object; branding: object } } }).__acurisTheme;
+    const current = await repo.getPlatformDefault();
+    const oldBranding: Record<string, unknown> = { ...current.branding };
+    const oldTheme: Record<string, unknown> = { ...current.theme };
+    delete oldBranding.copyrightHolder;
+    delete oldTheme.secondary;
+    delete oldTheme.tertiary;
+    store.platform = { theme: oldTheme, branding: oldBranding };
+    for (const c of [await repo.getPlatformDefault(), await repo.resolve({ tenantId: "chilenje" })]) {
+      expect(c.branding.copyrightHolder).toBe("");
+      expect(c.theme.secondary).toBe("");
+      expect(c.theme.tertiary).toBe("");
+    }
+  });
+});

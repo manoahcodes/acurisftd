@@ -46,3 +46,11 @@ describe("branding validation", () => {
     expect(parseBranding({ ...base, copyrightHolder: "x".repeat(121) }, "").ok).toBe(false);
   });
 });
+
+describe("missing values", () => {
+  it("do not throw", () => {
+    expect(cleanCopyrightHolder(undefined)).toBe("");
+    expect(copyrightHolderFor({ name: "Zambezi University" })).toBe("Zambezi University");
+    expect(copyrightHolderFor({})).toBe("");
+  });
+});

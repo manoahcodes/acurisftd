@@ -11,8 +11,9 @@ const LEADING = /^(?:©|\(c\)|copyright\b|\b\d{4}\b(?:\s*[-–]\s*\b\d{4}\b)?|[\
  * anything an admin types in front of the name ("© 2024 ...") or a trailing
  * full stop is removed and the format cannot drift.
  */
-export function cleanCopyrightHolder(input: string): string {
-  return input.replace(/\s+/g, " ").trim().replace(LEADING, "").replace(/[\s.]+$/, "").trim();
+export function cleanCopyrightHolder(input: string | undefined): string {
+  // Settings saved before this field existed have no value.
+  return (input ?? "").replace(/\s+/g, " ").trim().replace(LEADING, "").replace(/[\s.]+$/, "").trim();
 }
 
 /**
@@ -20,7 +21,7 @@ export function cleanCopyrightHolder(input: string): string {
  * Returns "" when it would only repeat the software's own name (the platform
  * default is called ACURIS), so the footer then shows just the ACURIS line.
  */
-export function copyrightHolderFor(branding: Pick<Branding, "copyrightHolder" | "name">): string {
+export function copyrightHolderFor(branding: Partial<Pick<Branding, "copyrightHolder" | "name">>): string {
   const holder = cleanCopyrightHolder(branding.copyrightHolder) || cleanCopyrightHolder(branding.name);
   return holder.toLowerCase() === "acuris" ? "" : holder;
 }
