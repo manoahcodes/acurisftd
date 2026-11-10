@@ -2,7 +2,9 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { Check, Trash2, TriangleAlert } from "lucide-react";
+import { CopyrightYear } from "@/components/shell/copyright-year";
 import { cn } from "@/lib/format";
+import { copyrightHolderFor } from "@/lib/theme/copyright";
 import { hexToHsl, hslToHex, isHex } from "@/lib/theme/color";
 import { previewVars } from "@/lib/theme/css";
 import { auditPalette, colourNotes, paletteFor } from "@/lib/theme/generate";
@@ -33,6 +35,7 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
   const [logoPreview, setLogoPreview] = useState<string>(branding.logoUrl);
   const [removeLogo, setRemoveLogo] = useState(false);
   const [name, setName] = useState(branding.name);
+  const [holder, setHolder] = useState(branding.copyrightHolder);
   const [shortName, setShortName] = useState(branding.shortName);
   const [saved, save, saving] = useActionState(saveTheme, IDLE);
   const [presetState, savePreset, presetPending] = useActionState(saveThemePreset, IDLE);
@@ -122,6 +125,22 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
               {field("Institution name", "name", { max: 120, value: name, onChange: setName })}
               {field("Short name", "shortName", { max: 12, value: shortName, onChange: setShortName })}
               <div className="sm:col-span-2">{field("Tagline", "tagline", { max: 140 })}</div>
+              <div className="sm:col-span-2">
+                {field("Copyright holder", "copyrightHolder", { max: 120, value: holder, onChange: setHolder })}
+                <p className="mt-1 text-sm text-muted">
+                  Type the name only: the &copy; symbol and year are added for you. Leave empty to use the institution name.
+                </p>
+                <p className="mt-2 rounded-lg bg-canvas px-3 py-2 text-sm text-ink" aria-label="Footer preview">
+                  {copyrightHolderFor({ copyrightHolder: holder, name }) && (
+                    <span className="block">
+                      &copy; <CopyrightYear /> {copyrightHolderFor({ copyrightHolder: holder, name })}.
+                    </span>
+                  )}
+                  <span className="block">
+                    &copy; <CopyrightYear /> ACURIS by STECIA Digital Technologies.
+                  </span>
+                </p>
+              </div>
               <div className="sm:col-span-2">
                 <span className="mb-1 block text-sm font-medium text-ink">Logo (PNG, JPEG or WebP, up to 3 MB)</span>
                 <input name="logo" type="file" accept="image/png,image/jpeg,image/webp"

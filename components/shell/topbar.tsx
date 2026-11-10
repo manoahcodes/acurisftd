@@ -11,6 +11,7 @@ import type { ModePreference } from "@/lib/theme/mode";
 import type { TenantContext } from "@/types/dashboard";
 import { AcademicYearControl } from "./academic-year-control";
 import { ChildControl } from "./child-control";
+import { copyrightHolderFor } from "@/lib/theme/copyright";
 import { MobileNav } from "./mobilenav";
 import { NotificationsControl } from "./notifications-control";
 import { RoleSwitcher } from "./role-switcher";
@@ -70,7 +71,7 @@ export function Topbar({
         brand={<SidebarBrand role={role} userName={userName} brand={brand} />}
         contextSlot={drawerContext}
       >
-        <SidebarBody role={role} tenant={tenant} />
+        <SidebarBody role={role} tenant={tenant} copyrightHolder={copyrightHolderFor(brand)} />
       </MobileNav>
 
       <TopbarSearch role={role} placeholder={searchPlaceholder} />

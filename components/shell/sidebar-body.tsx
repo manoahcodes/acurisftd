@@ -12,7 +12,16 @@ import { StaticTenantCard } from "./tenant-card";
  * Tenant card, primary nav and footer. Rendered in the desktop sidebar and, as
  * the same element, inside the mobile drawer, so the two can never drift apart.
  */
-export function SidebarBody({ role, tenant }: { role: RoleKey; tenant: TenantContext }) {
+export function SidebarBody({
+  role,
+  tenant,
+  copyrightHolder,
+}: {
+  role: RoleKey;
+  tenant: TenantContext;
+  /** Name for the school's copyright line, or "" for none (see lib/theme/copyright.ts). */
+  copyrightHolder: string;
+}) {
   const config = ROLES[role];
 
   return (
@@ -53,7 +62,7 @@ export function SidebarBody({ role, tenant }: { role: RoleKey; tenant: TenantCon
         <SidebarNavLive role={role} />
       </Suspense>
 
-      <SidebarFooter />
+      <SidebarFooter copyrightHolder={copyrightHolder} />
     </>
   );
 }

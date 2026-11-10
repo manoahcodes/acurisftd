@@ -39,6 +39,7 @@ export const DEFAULT_BRANDING: Branding = {
   shortName: "ACURIS",
   tagline: "Advance Campus Unified Records & Information System",
   logoUrl: "",
+  copyrightHolder: "",
   email: "",
   phone: "",
   address: "",

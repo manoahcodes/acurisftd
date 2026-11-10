@@ -1,4 +1,5 @@
 import { isHex } from "./color";
+import { cleanCopyrightHolder } from "./copyright";
 import {
   BASE_SIZES,
   DENSITIES,
@@ -82,6 +83,7 @@ export function parseBranding(input: Record<string, unknown>, logoUrl: string): 
   const name = text("name", "Institution name", 1, 120);
   const shortName = text("shortName", "Short name", 1, 12);
   const tagline = text("tagline", "Tagline", 0, 140);
+  const copyrightHolder = cleanCopyrightHolder(text("copyrightHolder", "Copyright holder", 0, 120));
   const address = text("address", "Address", 0, 300);
   const welcomeMessage = text("welcomeMessage", "Welcome message", 0, 200);
   const loginBanner = text("loginBanner", "Sign-in banner", 0, 200);
@@ -101,7 +103,7 @@ export function parseBranding(input: Record<string, unknown>, logoUrl: string): 
   return {
     ok: true,
     value: {
-      name, shortName, tagline, logoUrl, email, phone, address, timezone,
+      name, shortName, tagline, logoUrl, copyrightHolder, email, phone, address, timezone,
       welcomeMessage, loginBanner, documentHeader, documentFooter, signatureLine,
     },
   };

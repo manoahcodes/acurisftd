@@ -34,6 +34,8 @@ export type Branding = {
   tagline: string;
   /** A data: URL built on the server from a validated upload, or "" for none. */
   logoUrl: string;
+  /** Name after the © and year in the footer. "" means use the school name. The © and year are added by the app. */
+  copyrightHolder: string;
   email: string;
   phone: string;
   address: string;
