@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { isMultiTenant } from "@/config/deployment";
 import { PLATFORM_DIVISION_COOKIE, PLATFORM_TENANT_COOKIE } from "@/lib/platform-tenant";
 
 /**
@@ -10,6 +11,8 @@ import { PLATFORM_DIVISION_COOKIE, PLATFORM_TENANT_COOKIE } from "@/lib/platform
  * Setting a cookie in a Server Action re-renders the current route.
  */
 export async function setPlatformTenant(tenantId: string) {
+  // Single-school deployments have nothing to switch to.
+  if (!isMultiTenant()) return;
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(tenantId)) return;
 
   const store = await cookies();

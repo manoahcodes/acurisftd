@@ -129,3 +129,15 @@ This is a frontend prototype with mocked data. Not yet implemented:
 ### Development tunnel
 
 `next.config.ts` whitelists a specific dev tunnel host (`*.inc1.devtunnels.ms`) for `allowedDevOrigins` and Server Action origins. If you use a different tunnel, update both entries — otherwise dev scripts and Server Actions will be blocked.
+
+## Deployment modes
+
+Set `NEXT_PUBLIC_ACURIS_DEPLOYMENT` (unset means `cloud`; an unknown value fails fast):
+
+| Mode | Hosted by | Top admin | Schools visible |
+| --- | --- | --- | --- |
+| `cloud` | ACURIS, shared | Platform Admin | All, with a school switcher |
+| `dedicated` | ACURIS, one school | School Admin | Only its own |
+| `self_hosted` | The school | School Admin | Only its own |
+
+Single-school modes hide the tenant list, subscriptions, platform users, support queue and the school switcher, refuse tenant creation, and never search across schools. Every mode has a **Data export & backup** page. The top admin role keeps the route `/platform` in all modes. In single-school modes the session's own school is the deployment's school.

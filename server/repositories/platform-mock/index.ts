@@ -6,6 +6,7 @@ import type { ScreenForms } from "@/types/forms";
 import type { PlatformScreen } from "@/types/platform";
 import { mockRecordStore } from "../records-mock";
 import { buildForDivisions, isDivisionScoped, renumber } from "./divisions";
+import { dataScreens } from "./data";
 import { academicScreens } from "./academics";
 import { examinationScreens } from "./examinations";
 import { financeScreens } from "./finance";
@@ -26,6 +27,7 @@ const SCREENS: Record<string, Builder> = {
   ...academicScreens,
   ...examinationScreens,
   ...hostelScreens,
+  ...dataScreens,
   ...reportScreens,
 };
 

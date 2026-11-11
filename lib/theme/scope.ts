@@ -1,13 +1,14 @@
+import { isMultiTenant } from "@/config/deployment";
 import type { RoleKey } from "@/config/navigation";
 
 /**
  * DEMO ONLY. The mock session puts every non-admin user in one school
  * (Lusaka Hills), so a theme set for any other school would never be seen by
  * them. While this is on, those roles preview the school the Platform Admin has
- * selected. Turn it off (or delete it) once sessions carry each user's real
+ * selected. It is always off in single-school deployments. Turn it off (or delete it) once sessions carry each user's real
  * school: real users must only ever get their own school's look.
  */
-export const PREVIEW_SELECTED_SCHOOL = true;
+export const PREVIEW_SELECTED_SCHOOL = isMultiTenant();
 
 /**
  * Which school's look an area shows. `undefined` means the platform default.

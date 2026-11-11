@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { ROLES, type RoleKey } from "@/config/navigation";
 import type { TenantContext } from "@/types/dashboard";
 import { CampusControl } from "./campus-control";
+import { isMultiTenant } from "@/config/deployment";
 import { PREVIEW_SELECTED_SCHOOL } from "@/lib/theme/scope";
 import { DemoSchoolControl } from "./demo-school-control";
 import { PlatformTenantControl } from "./platform-tenant-control";
@@ -34,7 +35,7 @@ export function SidebarBody({
             <DemoSchoolControl tenant={tenant} />
           </Suspense>
         )}
-        {role === "platform" ? (
+        {role === "platform" && isMultiTenant() ? (
           // A platform admin spans every school, so they pick which school to work in
           // (or stay platform-wide) instead of seeing a single campus.
           <Suspense

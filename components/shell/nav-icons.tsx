@@ -98,6 +98,8 @@ const LABEL_ICONS: Record<string, IconName> = {
   // Administration
   "Access control": "KeyRound",
   "Platform settings": "Settings",
+  "School settings": "Settings",
+  "Data export & backup": "FolderOpen",
 
   // ---- Teacher
   "My dashboard": "LayoutDashboard",

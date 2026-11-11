@@ -2,7 +2,9 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { tenantTermsType, termsFor, type Division, type Terminology } from "@/config/institution";
 import { PLATFORM_DIVISION_COOKIE, PLATFORM_TENANT_COOKIE } from "@/lib/platform-tenant";
-import { tenantDirectory } from "@/server/repositories";
+import { DEPLOYMENT_MODE } from "@/config/deployment";
+import { resolveSelection } from "@/lib/tenant-selection";
+import { session, tenantDirectory } from "@/server/repositories";
 import type { TenantSummary } from "@/types/platform";
 
 export type TenantSelection = {
@@ -22,15 +24,14 @@ export type TenantSelection = {
  * Reads the cookie, so call it inside a <Suspense> boundary.
  */
 export const getTenantSelection = cache(async (): Promise<TenantSelection> => {
-  const tenants = await tenantDirectory.list();
-  const store = await cookies();
-  const selected = tenants.find((t) => t.id === store.get(PLATFORM_TENANT_COOKIE)?.value);
-  const savedDivision = store.get(PLATFORM_DIVISION_COOKIE)?.value;
-  const division =
-    selected && selected.divisions.length > 1
-      ? selected.divisions.find((d) => d.id === savedDivision)
-      : undefined;
-  return { tenants, selected, division };
+  const [all, user, store] = await Promise.all([tenantDirectory.list(), session.getCurrentUser(), cookies()]);
+  return resolveSelection(
+    DEPLOYMENT_MODE,
+    all,
+    user.tenant.tenantId,
+    store.get(PLATFORM_TENANT_COOKIE)?.value,
+    store.get(PLATFORM_DIVISION_COOKIE)?.value,
+  );
 });
 
 /** Term/Semester wording for the selected school (neutral when none is selected). */

@@ -26,7 +26,7 @@ const contexts: Array<[string, PlatformContext]> = [
 
 // Buttons that are not forms (processes) and stay disabled on purpose.
 const PROCESS_ACTIONS = new RegExp(
-  "^(Import CSV|Add room|Change plan|Edit settings|Generate .*|Upload results|Publish results|Open .* registration|Import statement)$",
+  "^(Import CSV|Add room|Change plan|Edit settings|Generate .*|Upload results|Publish results|Open .* registration|Import statement|Run backup now|Export data)$",
 );
 
 describe("form registry matches the screens", () => {

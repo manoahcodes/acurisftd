@@ -1,4 +1,5 @@
 import { GENERIC_TERMS, divisionsLabel, resolveLabel, termsFor } from "@/config/institution";
+import { isMultiTenant } from "@/config/deployment";
 import { ROLES, hrefFor, type RoleKey } from "@/config/navigation";
 import type { AcademicYear, SearchResult } from "@/types/directory";
 import type {
@@ -134,7 +135,8 @@ async function platformEntries(): Promise<Entry[]> {
       }),
     );
 
-  return [...tenantEntries, ...pageEntries];
+  // Single-school deployments never search across schools.
+  return isMultiTenant() ? [...tenantEntries, ...pageEntries] : pageEntries;
 }
 
 function hrefForNavLabel(role: RoleKey, navLabel: string): string {
@@ -154,7 +156,9 @@ export const mockSearchRepository: SearchRepository = {
     if (!q) return [];
 
     const scored: { entry: Entry; score: number }[] = [];
-    const entries = role === "platform" ? [...(await platformEntries()), ...DATA.platform] : DATA[role];
+    const entries = role === "platform"
+      ? [...(await platformEntries()), ...(isMultiTenant() ? DATA.platform : [])]
+      : DATA[role];
     for (const entry of entries) {
       const title = entry.title.toLowerCase();
       const keywords = (entry.keywords ?? "").toLowerCase();

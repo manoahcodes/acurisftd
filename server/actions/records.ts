@@ -1,5 +1,6 @@
 "use server";
 
+import { isMultiTenant } from "@/config/deployment";
 import { revalidatePath } from "next/cache";
 import { INSTITUTIONS, INSTITUTION_TYPES, divisionsShareSystem, type InstitutionType } from "@/config/institution";
 import { ROLES } from "@/config/navigation";
@@ -61,6 +62,7 @@ export async function submitRecord(_prev: FormState, formData: FormData): Promis
 
   // ---- Schools (tenants) ----
   if (spec.target === "tenant") {
+    if (!isMultiTenant()) return fail("This deployment hosts a single school.");
     const name = String(values.name ?? "");
     const clash = tenants.find((t) => normaliseKey(t.name) === normaliseKey(name));
     if (mode === "create") {

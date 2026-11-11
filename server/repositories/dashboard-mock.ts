@@ -1,3 +1,4 @@
+import { DEPLOYMENT_MODE, DEPLOYMENTS, isMultiTenant, type DeploymentMode } from "@/config/deployment";
 import { INSTITUTIONS, systemLabel, termsFor, type InstitutionType } from "@/config/institution";
 import type { RoleKey } from "@/config/navigation";
 import { formatKwacha, kwachaToNgwee } from "@/lib/money";
@@ -117,7 +118,7 @@ const PROFILES: Record<InstitutionType, Profile> = {
   },
 };
 
-function platformOverview(ctx: TenantContext): Dashboard {
+function platformOverview(ctx: TenantContext, mode: DeploymentMode): Dashboard {
   const p = PROFILES[ctx.institutionType];
   const terms = termsFor(ctx.institutionType);
   const info = INSTITUTIONS[ctx.institutionType];
@@ -127,7 +128,9 @@ function platformOverview(ctx: TenantContext): Dashboard {
     kpis: [
       { title: `Total ${p.many}`, caption: ctx.divisionsLabel ?? info.label, value: learners.toLocaleString("en-US"), note: "+8.4% this " + terms.period.toLowerCase() },
       { title: "Campuses", caption: "Linked to this school", value: String(ctx.campusCount ?? 1), note: ctx.campus },
-      { title: "Plan", caption: "Current subscription", value: ctx.plan ?? "Growth", note: ctx.status ?? "Active" },
+      isMultiTenant(mode)
+        ? { title: "Plan", caption: "Current subscription", value: ctx.plan ?? "Growth", note: ctx.status ?? "Active" }
+        : { title: "Last backup", caption: DEPLOYMENTS[mode].label, value: "Today 02:00", note: `Kept by ${DEPLOYMENTS[mode].operator.toLowerCase()}` },
       { title: "Open support", caption: "Awaiting action", value: "3", note: "1 high priority" },
     ],
     sections: [
@@ -148,7 +151,9 @@ function platformOverview(ctx: TenantContext): Dashboard {
         span: "half",
         rows: [
           r("Storage approaching limit", ctx.tenantName, "Review"),
-          r("Subscription renewal due in 5 days", ctx.plan ?? "Growth"),
+          isMultiTenant(mode)
+            ? r("Subscription renewal due in 5 days", ctx.plan ?? "Growth")
+            : r("Next backup", "Tomorrow 02:00"),
           r("Failed nightly sync", "1 campus", "Investigate"),
         ],
       },
@@ -157,8 +162,10 @@ function platformOverview(ctx: TenantContext): Dashboard {
         subtitle: `Audit trail for ${ctx.tenantName}`,
         span: "full",
         rows: [
-          r("08:42", `${terms.educators} imported`, ctx.tenantName, "By Platform Admin"),
-          r("08:20", "Subscription changed", `Plan: ${ctx.plan ?? "Growth"}`),
+          r("08:42", `${terms.educators} imported`, ctx.tenantName, `By ${DEPLOYMENTS[mode].adminLabel}`),
+          isMultiTenant(mode)
+            ? r("08:20", "Subscription changed", `Plan: ${ctx.plan ?? "Growth"}`)
+            : r("02:00", "Backup completed", "Automatic"),
           r("07:55", "Support ticket escalated", "#SUP-1048", "High"),
         ],
       },
@@ -454,8 +461,16 @@ function student(ctx: TenantContext): Dashboard {
 }
 
 /** Build one role's dashboard for a school. `undefined` is the platform-wide view. */
-export function buildDashboard(role: RoleKey, ctx?: TenantContext): Dashboard {
-  if (role === "platform") return ctx ? platformOverview(ctx) : PLATFORM_WIDE;
+export function buildDashboard(
+  role: RoleKey,
+  ctx?: TenantContext,
+  mode: DeploymentMode = DEPLOYMENT_MODE,
+): Dashboard {
+  if (role === "platform") {
+    // Single-school deployments never show the platform-wide view.
+    if (!ctx && !isMultiTenant(mode)) throw new Error("A single-school deployment needs its school.");
+    return ctx ? platformOverview(ctx, mode) : PLATFORM_WIDE;
+  }
   if (!ctx) throw new Error(`The ${role} dashboard needs a school.`);
   switch (role) {
     case "teacher": return teacher(ctx);

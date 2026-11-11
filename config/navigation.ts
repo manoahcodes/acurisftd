@@ -1,3 +1,5 @@
+import { DEPLOYMENT_MODE, DEPLOYMENTS, isMultiTenant, type DeploymentMode } from "./deployment";
+
 export const ROLE_KEYS = [
   "platform",
   "teacher",
@@ -100,7 +102,10 @@ type GroupDef = {
   label: string;
   /** Path prefix for the group's pages, e.g. "finances" gives /platform/finances/... */
   prefix?: string;
-  items: Array<[label: string, scope: NavScope]>;
+  /** `slug` overrides the one derived from the label (keeps URLs stable when a label changes). */
+  items: Array<[label: string, scope: NavScope, slug?: string]>;
+  /** Only in these deployments. Omit for all. */
+  modes?: DeploymentMode[];
 };
 
 /**
@@ -110,6 +115,7 @@ type GroupDef = {
 const PLATFORM_GROUPS: GroupDef[] = [
   {
     label: "Platform",
+    modes: ["cloud"],
     items: [
       ["Tenants & schools", "platform"],
       ["Subscriptions", "platform"],
@@ -206,17 +212,37 @@ const PLATFORM_GROUPS: GroupDef[] = [
     items: [
       ["Access control", "platform"],
       ["Platform settings", "platform"],
+      ["Data export & backup", "tenant"],
     ],
   },
 ];
 
-function buildPlatformNav(): { nav: NavItem[]; navGroups: NavGroup[] } {
+/**
+ * In a single-school deployment the top admin works inside one school: the
+ * cross-school Platform group goes, and "Platform settings" becomes "School
+ * settings" at the same URL.
+ */
+function groupsFor(mode: DeploymentMode): GroupDef[] {
+  return PLATFORM_GROUPS.filter((g) => !g.modes || g.modes.includes(mode)).map((g) =>
+    isMultiTenant(mode)
+      ? g
+      : {
+          ...g,
+          items: g.items.map((it): GroupDef["items"][number] =>
+            it[0] === "Platform settings" ? ["School settings", it[1], "platform-settings"] : it,
+          ),
+        },
+  );
+}
+
+export function buildPlatformNav(mode: DeploymentMode = DEPLOYMENT_MODE): { nav: NavItem[]; navGroups: NavGroup[] } {
   const items: NavItem[] = [{ label: "Overview", slug: "", scope: "platform" }];
   const navGroups: NavGroup[] = [];
 
-  for (const group of PLATFORM_GROUPS) {
-    for (const [label, scope] of group.items) {
-      const slug = group.prefix ? `${group.prefix}/${slugify(label)}` : slugify(label);
+  for (const group of groupsFor(mode)) {
+    for (const [label, scope, fixedSlug] of group.items) {
+      const own = fixedSlug ?? slugify(label);
+      const slug = group.prefix ? `${group.prefix}/${own}` : own;
       items.push({ label, slug, scope });
     }
     navGroups.push({ label: group.label, items: group.items.map(([label]) => label) });
@@ -225,25 +251,37 @@ function buildPlatformNav(): { nav: NavItem[]; navGroups: NavGroup[] } {
   return { nav: items, navGroups };
 }
 
-const PLATFORM_NAV = buildPlatformNav();
+/**
+ * The top-level admin role (key "platform", URL /platform). In the shared cloud
+ * it is the Platform Admin; in a single-school deployment it is that school's
+ * own admin, with no cross-school pages.
+ */
+export function buildAdminRole(mode: DeploymentMode = DEPLOYMENT_MODE): RoleConfig {
+  const built = buildPlatformNav(mode);
+  const multi = isMultiTenant(mode);
+  return {
+    label: DEPLOYMENTS[mode].adminLabel,
+    nav: built.nav,
+    navGroups: built.navGroups,
+    topbar: multi
+      ? {
+          searchPlaceholder: "Search tenants, schools, users, tickets...",
+          // The sidebar card already says "All tenants", so the top bar shows no chip.
+          context: { kind: "none" },
+          quickAction: { label: "Add tenant", navLabel: "Tenants & schools" },
+        }
+      : {
+          searchPlaceholder: "Search students, staff, pages...",
+          context: { kind: "none" },
+        },
+    userMenu: multi
+      ? [link("Platform settings"), link("Audit trail"), link("Support queue")]
+      : [link("School settings"), link("Audit trail"), link("Data export & backup")],
+  };
+}
 
 export const ROLES: Record<RoleKey, RoleConfig> = {
-  platform: {
-    label: "Platform Admin",
-    nav: PLATFORM_NAV.nav,
-    navGroups: PLATFORM_NAV.navGroups,
-    topbar: {
-      searchPlaceholder: "Search tenants, schools, users, tickets...",
-      // The sidebar card already says "All tenants", so the top bar shows no chip.
-      context: { kind: "none" },
-      quickAction: { label: "Add tenant", navLabel: "Tenants & schools" },
-    },
-    userMenu: [
-      link("Platform settings"),
-      link("Audit trail"),
-      link("Support queue"),
-    ],
-  },
+  platform: buildAdminRole(),
   teacher: {
     label: "Teacher",
     nav: nav([
