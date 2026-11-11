@@ -5,7 +5,8 @@ import { DashboardView } from "@/components/dashboard/dashboard-view";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PageSkeleton } from "@/components/dashboard/page-skeleton";
 import { TodayDate } from "@/components/dashboard/today-date";
-import { dashboards, session } from "@/server/repositories";
+import { dashboards } from "@/server/repositories";
+import { getDashboardSchool } from "@/server/queries/dashboard";
 
 type Params = Promise<{ role: string }>;
 
@@ -26,8 +27,13 @@ async function RoleDashboard({ params }: { params: Params }) {
   const { role } = await params;
   if (!isRoleKey(role)) notFound();
 
-  const user = await session.getCurrentUser();
-  const data = await dashboards.getDashboard(role, user.tenant);
+  // The school this role's dashboard describes (own school, or the selected
+  // one for Platform Admin / demo preview); none means the platform-wide view.
+  const school = await getDashboardSchool(role);
+  const data = await dashboards.getDashboard(role, school);
+  const subtitleName = school
+    ? `${school.tenantName}  •  ${school.campus}`
+    : "All schools";
 
   return (
     <>
@@ -39,7 +45,7 @@ async function RoleDashboard({ params }: { params: Params }) {
         title={data.title}
         subtitle={
           <>
-            {user.tenant.tenantName}  •  <TodayDate />
+            {subtitleName}  •  <TodayDate />
           </>
         }
       />

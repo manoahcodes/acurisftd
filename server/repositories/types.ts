@@ -9,7 +9,7 @@ import type { CurrentUser, Dashboard, TenantContext } from "@/types/dashboard";
  * every query to the current school. Do not skip this.
  */
 export interface DashboardRepository {
-  getDashboard(role: RoleKey, ctx: TenantContext): Promise<Dashboard>;
+  getDashboard(role: RoleKey, ctx?: TenantContext): Promise<Dashboard>;
 }
 
 export interface SessionProvider {

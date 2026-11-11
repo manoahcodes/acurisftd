@@ -1,4 +1,5 @@
-import { mockDashboardRepository, mockSessionProvider } from "./mock";
+import { mockSessionProvider } from "./mock";
+import { mockDashboardRepository } from "./dashboard-mock";
 import {
   mockAcademicYearRepository,
   mockSearchRepository,
