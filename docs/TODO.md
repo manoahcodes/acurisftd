@@ -26,9 +26,9 @@ All work on mock data now (CSV files up to 1 MB, 500 rows; every run is written 
 
 ## 3. Missing features
 - [x] Delete / archive / suspend records. Archive any row (restorable); delete only rows made through a form and without history; schools are suspended via status, or deleted when empty
-- [ ] Forms for read-only tables: Subscriptions, Usage and capacity, Institution types, Permission matrix, Division access
-- [ ] Change a school's divisions after it is created
-- [ ] Assign or change a staff member's role and division access after creation
+- [x] Edit forms for the read-only tables: Subscriptions (billing, renewal date), Usage and capacity (learner limit), Institution types (grades), Permission matrix (rights per role; Platform Admin keeps control of access and settings), Division access (edits the Staff record). Plan, learner counts and storage stay derived. The matrix is shown, not yet enforced
+- [x] Change a school's divisions after it is created: divisions can be added (one academic system only); removing one is refused while the school has learners. Staff limited to a removed division show "No division"
+- [x] Change a staff member's role and division access after creation (Staff form or Division access page). Principals stay whole-school and a Head stays on their own division; new, edited and archived staff show on Division access
 - [ ] Reports: export, print and filters
 - [x] Audit trail logs changes made through the forms (create, edit, archive, restore, delete, schools)
 

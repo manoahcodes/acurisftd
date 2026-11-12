@@ -1,8 +1,8 @@
 import { INSTITUTIONS, INSTITUTION_TYPES, LEVEL_LABELS, divisionsLabel, systemLabel, tenantSystem, tenantSystemLabel } from "@/config/institution";
 import { scopeLabel, visibleDivisions } from "@/lib/division-scope";
 import type { PlatformContext } from "../platform-types";
-import { K, table, tableOf, type Builder } from "./shared";
-import { staffFor } from "./staff";
+import { K, tableOf, type Builder } from "./shared";
+import { effectiveStaffFor } from "./staff";
 
 const tenants: Builder = ({ tenants }) => ({
   description: "Every school on ACURIS. The institution type decides whether it runs terms or semesters.",
@@ -42,7 +42,7 @@ const subscriptions: Builder = ({ tenants }) => {
     description: "Plans, renewals and billing status for every school.",
     actions: ["Change plan"],
     tables: [
-      table(
+      tableOf("subscriptions",
         "Subscriptions",
         ["School", "Plan", "Billing", "Renewal date", "Amount", "Status"],
         tenants.map((t, i) => [
@@ -80,7 +80,7 @@ const platformUsers: Builder = () => ({
 const usage: Builder = ({ tenants }) => ({
   description: "Storage and learner capacity per school.",
   tables: [
-    table(
+    tableOf("usage",
       "Usage & capacity",
       ["School", "Learners", "Learner limit", "Storage used", "Status"],
       tenants.map((t, i) => {
@@ -120,7 +120,7 @@ const settings: Builder = () => ({
   description: "Platform-wide defaults. School-specific settings are managed per tenant.",
   actions: ["Edit settings"],
   tables: [
-    table(
+    tableOf("institution-types",
       "Institution types",
       ["Institution type", "Level", "Grades", "Academic system", "Period label"],
       INSTITUTION_TYPES.map((type) => {
@@ -156,8 +156,9 @@ function divisionAccess(ctx: PlatformContext) {
   const tenant = ctx.tenant;
   if (!tenant || tenant.divisions.length < 2) return [];
 
-  const rows = staffFor(ctx).map((m) => [
+  const rows = effectiveStaffFor(ctx).map((m) => [
     m.name,
+    m.no,
     m.role,
     scopeLabel(m.scope, tenant.divisions),
     String(visibleDivisions(m.scope, tenant.divisions).length),
@@ -165,9 +166,9 @@ function divisionAccess(ctx: PlatformContext) {
   ]);
 
   return [
-    table(
+    tableOf("division-access",
       ctx.division ? `Division access · ${tenant.name} · ${ctx.division.name}` : `Division access · ${tenant.name}`,
-      ["Staff", "Role", "Division access", "Divisions visible", "Status"],
+      ["Staff", "Staff no.", "Role", "Division access", "Divisions visible", "Status"],
       rows,
       {
         statusColumn: "Status",
@@ -198,7 +199,7 @@ const access: Builder = (ctx) => ({
         ["Parent", "Guardian", "Linked children", "31,400", "Linked children only"],
       ],
     ),
-    table(
+    tableOf("permissions",
       "Permission matrix",
       ["Module", "Platform Admin", "School Admin", "Head of Division", "Registrar", "Bursar", "Cashier", "Lecturer / Teacher", "Hostel Warden", "Student", "Parent"],
       [

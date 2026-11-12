@@ -24,6 +24,8 @@ export type FormEntry = {
   deriveOnEdit?: boolean;
   /** Extra rule across fields (e.g. closing date after opening). Returns errors by field name. */
   check?: (values: FormValues) => Record<string, string> | null;
+  /** Like `check`, but also sees the row being edited (as column → cell), for rules that depend on it. */
+  checkEdit?: (values: FormValues, row: Record<string, string>) => Record<string, string> | null;
 };
 
 type Maker = (ctx: PlatformContext, f: Flavour) => FormEntry[];
@@ -51,6 +53,32 @@ const val = (v: FormValues, name: string): string => {
   const x = v[name];
   return typeof x === "string" ? x : "";
 };
+
+// ---------- rules shared by forms ----------
+const ALL = "All divisions";
+
+/**
+ * Whole-school roles cover every division; a division's Head covers only that
+ * division. Returns what is wrong, or null.
+ */
+export function accessRule(role: string, access: string, divisions: Division[]): string | null {
+  if (/^(Principal|Vice-Chancellor)$/.test(role) && access !== ALL) return `${role} covers the whole school. Choose "${ALL}".`;
+  const head = divisions.find((d) => role === `Head of ${d.name}`);
+  if (head && access !== head.name) return `${role} covers ${head.name} only. Choose ${head.name}.`;
+  return null;
+}
+
+/** "Grades 1-7", "grades 1 – 7" or "1–7" → "Grades 1–7"; null when it is not a sensible range. */
+export function parseGrades(text: string): string | null {
+  const m = /^(?:grades?\s*)?(\d{1,2})\s*[–-]\s*(\d{1,2})$/i.exec(text.trim());
+  if (!m) return null;
+  const [a, b] = [Number(m[1]), Number(m[2])];
+  return a >= 1 && b <= 12 && a < b ? `Grades ${a}–${b}` : null;
+}
+
+/** Permission matrix: role columns, and the rights a cell can hold. */
+export const PERMISSION_ROLES = ["Platform Admin", "School Admin", "Head of Division", "Registrar", "Bursar", "Cashier", "Lecturer / Teacher", "Hostel Warden", "Student", "Parent"];
+export const RIGHTS = ["V", "C", "E", "D", "A"];
 
 // ---------- shared option lists ----------
 const CAMPUSES = ["Main Campus", "North Campus", "Distance Learning Centre"];
@@ -206,14 +234,18 @@ const MAKERS: Record<string, Maker> = {
         spec: form("staff", "staff", "staff member", ["Staff no."], [
           text("name", "Full name", "Name"),
           auto("no", "Staff no.", "Staff no.", "STF-", 4),
-          select("role", "Role", "Role", ["Principal", "Vice-Chancellor", "Registrar", "Bursar", "Cashier", "Hostel Warden", "Admissions Officer", "Head of Division"]),
+          select("role", "Role", "Role", [
+            "Principal", "Vice-Chancellor", "Registrar", "Bursar", "Cashier", "Hostel Warden", "Admissions Officer",
+            ...(multi ? divisions.map((d) => `Head of ${d.name}`) : ["Head of Division"]),
+          ]),
           select("level", "Level", "Level", ["Level 1 · Executive", "Level 2 · Management", "Level 3 · Operational"]),
           select("department", "Department", "Department", ["Administration", "Registry", "Finance", "Student Affairs"]),
           ...(multi
-            ? [select("access", "Division access", "Division access", ["All divisions", ...divisions.map((d) => d.name)], { defaultValue: "All divisions" })]
+            ? [select("access", "Division access", "Division access", [ALL, ...divisions.map((d) => d.name)], { defaultValue: ALL })]
             : []),
           status(["Active", "Pending"]),
         ]),
+        check: multi ? (v) => { const m = accessRule(val(v, "role"), val(v, "access"), divisions); return m ? { access: m } : null; } : undefined,
       },
     ];
   },
@@ -414,14 +446,34 @@ const MAKERS: Record<string, Maker> = {
       spec: form("tenant", "tenants", "school", ["School"], [
         text("name", "School name", "School"),
         {
-          name: "types", label: "Divisions", type: "multiselect", required: true, createOnly: true,
+          name: "types", label: "Divisions", type: "multiselect", required: true,
+          column: "Institution type", joiner: " + ",
           options: INSTITUTION_TYPES.map((t) => INSTITUTIONS[t].label),
-          help: "Pick one or more. All divisions of a school must use the same academic system, so Primary and High School can be combined, and College and University can be combined, but not school-level with tertiary.",
+          help: "Pick one or more. All divisions of a school must use the same academic system, so Primary and High School can be combined, and College and University can be combined, but not school-level with tertiary. A division of a school that already has learners cannot be removed, only added.",
         },
         select("plan", "Plan", "Plan", ["Starter", "Growth", "Enterprise"], { defaultValue: "Starter" }),
         num("campuses", "Campuses", "Campuses", { min: 1, max: 50, defaultValue: "1" }),
         status(["Active", "Trial", "Suspended"], "Trial"),
       ], { target: "tenant" }),
+    },
+  ],
+
+  subscriptions: () => [
+    {
+      spec: form("subscription", "subscriptions", "subscription", ["School"], [
+        text("school", "School", "School", { lockedOnEdit: true }),
+        select("billing", "Billing", "Billing", ["Monthly", "Termly", "Annually"]),
+        date("renewal", "Renewal date", "Renewal date"),
+      ], { editOnly: true }),
+    },
+  ],
+
+  "usage-and-capacity": () => [
+    {
+      spec: form("capacity", "usage", "capacity", ["School"], [
+        text("school", "School", "School", { lockedOnEdit: true }),
+        num("limit", "Learner limit", "Learner limit", { min: 100, max: 1000000, help: "The most learners (or students) the school may enrol on its plan." }),
+      ], { editOnly: true }),
     },
   ],
 
@@ -452,13 +504,59 @@ const MAKERS: Record<string, Maker> = {
 
   "platform-settings": () => [
     {
+      spec: form("institution-type", "institution-types", "institution type", ["Institution type"], [
+        text("type", "Institution type", "Institution type", { lockedOnEdit: true }),
+        text("grades", "Grades", "Grades", { maxLength: 20, placeholder: "Grades 1–7", help: "Only school-level types have grades. Use a range like Grades 1–7." }),
+      ], { editOnly: true }),
+      deriveOnEdit: true,
+      derive: (v) => ({ Grades: parseGrades(val(v, "grades")) ?? val(v, "grades") }),
+      check: (v) => (parseGrades(val(v, "grades")) ? null : { grades: "Use a range of grades from 1 to 12, like Grades 1–7." }),
+      checkEdit: (_v, row) => (row["Grades"] === "—" ? { grades: "This institution type has no grades." } : null),
+    },
+    {
       spec: form("setting", "settings", "setting", ["Setting"], [
         text("value", "Value", "Value"),
       ], { editOnly: true }),
     },
   ],
 
-  "access-control": () => [
+  "access-control": (ctx) => [
+    {
+      spec: form("permission", "permissions", "permissions", ["Module"], [
+        text("module", "Module", "Module", { lockedOnEdit: true }),
+        ...PERMISSION_ROLES.map((role, i): FieldDef => ({
+          name: `r${i}`, label: role, type: "multiselect", column: role, options: RIGHTS, joiner: " ",
+          help: i === 0 ? "V view · C create · E edit · D delete · A approve" : undefined,
+        })),
+      ], { editOnly: true }),
+      checkEdit: (v, row) => {
+        const errors: Record<string, string> = {};
+        PERMISSION_ROLES.forEach((role, i) => {
+          const picks = (v[`r${i}`] as string[]) ?? [];
+          if (picks.some((p) => p !== "V") && !picks.includes("V")) errors[`r${i}`] = "Needs view to create, edit, delete or approve.";
+          // Platform Admin must keep control of these pages, or nobody could manage them.
+          else if (i === 0 && ["Access control", "Platform settings"].includes(row["Module"]) && !["V", "C", "E"].every((p) => picks.includes(p))) {
+            errors[`r${i}`] = "Platform Admin must keep view, create and edit here.";
+          }
+        });
+        return Object.keys(errors).length ? errors : null;
+      },
+    },
+    ...((ctx.tenant?.divisions.length ?? 0) > 1
+      ? [
+          {
+            spec: form("division-access", "division-access", "division access", ["Staff no."], [
+              text("staff", "Staff", "Staff", { lockedOnEdit: true }),
+              text("role", "Role", "Role", { lockedOnEdit: true }),
+              select("access", "Division access", "Division access", [ALL, ...ctx.tenant!.divisions.map((d) => d.name)]),
+            ], { editOnly: true, writeTo: { slug: "users/staff", tableId: "staff" } }),
+            checkEdit: (v: FormValues, row: Record<string, string>) => {
+              const m = accessRule(row["Role"], val(v, "access"), ctx.tenant!.divisions);
+              return m ? { access: m } : null;
+            },
+          },
+        ]
+      : []),
     {
       action: "Add role",
       spec: form("role", "roles", "role", ["Role"], [

@@ -51,8 +51,17 @@ export const mockTenantDirectory: TenantDirectory = {
   async update(id, changes) {
     const i = TENANTS.findIndex((t) => t.id === id);
     if (i < 0) return undefined;
+    const { types, ...rest } = changes;
+    let divisions = TENANTS[i].divisions;
+    if (types) {
+      // Keep the divisions the school has (same id and code), then add new ones.
+      const kept = divisions.filter((d) => types.includes(d.institutionType));
+      const added = types.filter((t) => !divisions.some((d) => d.institutionType === t)).flatMap(single);
+      divisions = [...kept, ...added];
+      assertSharedSystem(TENANTS[i].name, divisions);
+    }
     // Replace rather than mutate, so cached lists never show half an update.
-    TENANTS[i] = { ...TENANTS[i], ...changes };
+    TENANTS[i] = { ...TENANTS[i], ...rest, divisions };
     return TENANTS[i];
   },
 };

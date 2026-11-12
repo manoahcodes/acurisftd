@@ -37,6 +37,8 @@ export type FieldDef = {
   defaultValue?: string;
   /** Text added after the value in the table, e.g. "%". */
   suffix?: string;
+  /** How a multiselect's picks are joined in the table cell (default ", "). */
+  joiner?: string;
   /** Not shown when editing (for choices that cannot change afterwards). */
   createOnly?: boolean;
   /**
@@ -72,6 +74,8 @@ export type FormSpec = {
    * options such as classes differ between a Primary and a High School division.
    */
   variants?: Record<string, { fields: FieldDef[]; rowDefaults?: Record<string, string> }>;
+  /** Edits go to another page's table (e.g. Division access edits the Staff table). Same key columns. */
+  writeTo?: { slug: string; tableId: string };
   /** Edit-only forms have no "create" button on the screen (e.g. settings values). */
   editOnly?: boolean;
   /** No edit button on rows (receipts, audit-style records). */

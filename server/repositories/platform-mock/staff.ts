@@ -1,4 +1,6 @@
+import type { Division } from "@/config/institution";
 import { ALL_DIVISIONS, inScope, onlyDivisions, type RoleScope } from "@/lib/division-scope";
+import { mockRecordStore } from "../records-mock";
 import type { PlatformContext } from "../platform-types";
 import { flavour } from "./shared";
 
@@ -47,4 +49,42 @@ export function staffFor(ctx: PlatformContext): StaffRow[] {
 
   const all = [...wholeSchool, ...heads];
   return ctx.division ? all.filter((s) => inScope(s.scope, ctx.division!.id)) : all;
+}
+
+/** The scope staff records are saved under (the Staff page is not split by division). */
+const staffScope = (ctx: PlatformContext) => `${ctx.tenant?.id ?? "all"}:-`;
+
+/** "All divisions" or division names (comma separated) back to a scope. Unknown names are dropped. */
+export function parseScope(label: string | undefined, divisions: readonly Division[]): RoleScope {
+  if (!label || label === "—" || label === "All divisions") return ALL_DIVISIONS;
+  const names = label.split(", ").map((n) => n.trim());
+  return onlyDivisions(...divisions.filter((d) => names.includes(d.name)).map((d) => d.id));
+}
+
+/**
+ * Staff as they are now: the starting list plus anyone added, and changes made,
+ * through the Staff form (role, level, department, division access, status).
+ * Archived people are left out. The Division access page reads this, so a
+ * change to someone's access shows there straight away.
+ */
+export function effectiveStaffFor(ctx: PlatformContext): StaffRow[] {
+  const divisions = ctx.tenant?.divisions ?? [];
+  const overlay = mockRecordStore.overlay(staffScope(ctx), "staff");
+  const fromCells = (c: Record<string, string>, base?: StaffRow): StaffRow => ({
+    name: c["Name"] ?? base?.name ?? "",
+    no: c["Staff no."] ?? base?.no ?? "",
+    role: c["Role"] ?? base?.role ?? "",
+    level: c["Level"] ?? base?.level ?? "",
+    department: c["Department"] ?? base?.department ?? "",
+    status: ((c["Status"] ?? base?.status) === "Pending" ? "Pending" : "Active"),
+    scope: "Division access" in c ? parseScope(c["Division access"], divisions) : (base?.scope ?? ALL_DIVISIONS),
+  });
+
+  const everyone = [
+    ...(overlay?.added ?? []).map((c) => fromCells(c)),
+    ...staffFor({ ...ctx, division: null }),
+  ]
+    .map((m) => (overlay?.edits[m.no] ? fromCells(overlay.edits[m.no], m) : m))
+    .filter((m) => !overlay?.archived?.[m.no]);
+  return ctx.division ? everyone.filter((m) => inScope(m.scope, ctx.division!.id)) : everyone;
 }

@@ -22,6 +22,11 @@ async function log(action: string, entity: string, scope: string, school: string
   audit.record({ user: user.name, action, entity, scope, school });
 }
 
+const typesFromLabels = (labels: string[]): InstitutionType[] =>
+  labels
+    .map((label) => INSTITUTION_TYPES.find((t) => INSTITUTIONS[t].label === label))
+    .filter((t): t is InstitutionType => Boolean(t));
+
 const fail = (message: string, extra: Partial<FormState> = {}): FormState => ({ status: "error", message, ...extra });
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -69,9 +74,7 @@ export async function submitRecord(_prev: FormState, formData: FormData): Promis
     const clash = tenants.find((t) => normaliseKey(t.name) === normaliseKey(name));
     if (mode === "create") {
       if (clash) return fail("A school with this name already exists.", { errors: { name: "Already exists." }, values: submitted });
-      const types = (values.types as string[])
-        .map((label) => INSTITUTION_TYPES.find((t) => INSTITUTIONS[t].label === label))
-        .filter((t): t is InstitutionType => Boolean(t));
+      const types = typesFromLabels(values.types as string[]);
       const divisions = types.map((t) => ({ id: t, name: INSTITUTIONS[t].label, code: "", institutionType: t }));
       if (!divisionsShareSystem(divisions)) {
         return fail("A school uses one academic system.", {
@@ -93,12 +96,35 @@ export async function submitRecord(_prev: FormState, formData: FormData): Promis
     const current = tenants.find((t) => normaliseKey(t.name) === normaliseKey(editKey));
     if (!current) return fail("That school no longer exists.");
     if (clash && clash.id !== current.id) return fail("A school with this name already exists.", { errors: { name: "Already exists." }, values: submitted });
+    const picked = typesFromLabels(values.types as string[]);
+    const before = current.divisions.map((d) => d.institutionType);
+    const changed = picked.length !== before.length || picked.some((t) => !before.includes(t));
+    if (changed) {
+      const next = picked.map((t) => ({ id: t, name: INSTITUTIONS[t].label, code: "", institutionType: t }));
+      if (!divisionsShareSystem(next)) {
+        return fail("A school uses one academic system.", {
+          errors: { types: "Terms and semesters cannot be mixed. Combine school-level divisions with each other, or tertiary with tertiary." },
+          values: submitted,
+        });
+      }
+      const removed = before.filter((t) => !picked.includes(t));
+      if (removed.length > 0 && current.learners > 0) {
+        return fail("A division with learners cannot be removed.", {
+          errors: { types: `${removed.map((t) => INSTITUTIONS[t].label).join(", ")} already ${removed.length > 1 ? "have" : "has"} learners at ${current.name}, so ${removed.length > 1 ? "they" : "it"} cannot be removed. You can add divisions.` },
+          values: submitted,
+        });
+      }
+    }
     await tenantDirectory.update(current.id, {
       name,
       plan: values.plan as "Starter" | "Growth" | "Enterprise",
       status: values.status as "Active" | "Trial" | "Suspended",
       campuses: Number(values.campuses),
+      ...(changed ? { types: picked } : {}),
     });
+    if (changed) {
+      await log("Divisions changed", `Tenants & schools: ${name} (${picked.map((t) => INSTITUTIONS[t].label).join(" + ")})`, "platform", "Platform");
+    }
     await log("School edited", `Tenants & schools: ${name}`, "platform", "Platform");
     revalidatePath("/platform", "layout");
     return { status: "success", message: `${name} updated.` };
@@ -128,11 +154,15 @@ export async function submitRecord(_prev: FormState, formData: FormData): Promis
   // Edit: find the row by key, then record only the changed (unlocked) columns.
   const row = rows.find((r) => keyForRow(columns, r, spec.keyColumns) === editKey);
   if (!row) return fail("That record no longer exists. Reload the page.");
+  const rowErrors = entry.checkEdit?.(values, Object.fromEntries(columns.map((c, i) => [c, row[i] ?? ""])));
+  if (rowErrors) return fail("Fix the highlighted fields.", { errors: rowErrors, values: submitted });
   const cells = {
     ...cellsFromValues(askedFields(spec, "edit").filter((f) => !f.lockedOnEdit), values),
     ...(entry.deriveOnEdit ? entry.derive?.(values, flavourOf) ?? {} : {}),
   };
-  records.edit(scope, spec.tableId, editKey, cells);
+  // Some forms change another page's table (Division access edits Staff).
+  const writeScope = spec.writeTo ? recordScope(spec.writeTo.slug, ctx) : scope;
+  records.edit(writeScope, spec.writeTo?.tableId ?? spec.tableId, editKey, cells);
   await log("Record edited", `${table.title}: ${editKey}`, ctx.tenant?.id ?? "platform", ctx.tenant?.name ?? "Platform");
   revalidatePath("/platform", "layout");
   return { status: "success", message: "Saved." };

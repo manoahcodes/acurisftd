@@ -23,10 +23,14 @@ export interface TenantDirectory {
   list(): Promise<TenantSummary[]>;
   /** Adds a school. Throws if its divisions do not share one academic system. */
   create(input: NewTenant): Promise<TenantSummary>;
-  /** Changes a school's details. Its divisions are fixed once created. */
+  /**
+   * Changes a school's details. `types` sets its divisions: ones it already has
+   * keep their id and code, new ones are added, the rest are removed. The caller
+   * decides whether removing is allowed.
+   */
   /** Deletes a school that has no learners yet. Returns false if it has some or does not exist. */
   remove(id: string): Promise<boolean>;
-  update(id: string, changes: Partial<Pick<TenantSummary, "name" | "plan" | "status" | "campuses">>): Promise<TenantSummary | undefined>;
+  update(id: string, changes: Partial<Pick<TenantSummary, "name" | "plan" | "status" | "campuses">> & { types?: InstitutionType[] }): Promise<TenantSummary | undefined>;
 }
 
 export type NewTenant = Pick<TenantSummary, "name" | "plan" | "status" | "campuses"> & {

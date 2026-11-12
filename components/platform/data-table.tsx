@@ -83,7 +83,7 @@ export function DataTable({
     const cells = row.slice(offset);
     const rowKey = keyForRow(recordColumns, cells, editForm.keyColumns);
     if (rowKey === null) return;
-    const values: Record<string, string> = {};
+    const values: Record<string, string | string[]> = {};
     for (const f of editForm.fields) {
       const i = f.column ? recordColumns.indexOf(f.column) : -1;
       if (i >= 0) values[f.name] = cellToValue(f, cells[i] ?? "");

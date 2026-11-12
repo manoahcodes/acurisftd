@@ -32,7 +32,7 @@ const MONTH_NUMBERS: Record<string, string> = {
  * pre-filled: "K 1,500" → "1500", "10 Nov 2026" → "2026-11-10", "30%" → "30".
  * Unreadable cells give "" rather than a wrong value.
  */
-export function cellToValue(field: FieldDef, cell: string): string {
+export function cellToValue(field: FieldDef, cell: string): string | string[] {
   switch (field.type) {
     case "money":
     case "number": {
@@ -47,7 +47,10 @@ export function cellToValue(field: FieldDef, cell: string): string {
       return my && MONTH_NUMBERS[my[1]] ? `${my[2]}-${MONTH_NUMBERS[my[1]]}-01` : "";
     }
     case "multiselect":
-      return "";
+      // Picks that are no longer offered are dropped rather than carried back in.
+      return cell === "—" || cell === ""
+        ? []
+        : cell.split(field.joiner ?? ", ").map((p) => p.trim()).filter((p) => !field.options || field.options.includes(p));
     default:
       return cell === "—" ? "" : cell;
   }

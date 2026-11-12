@@ -4,7 +4,7 @@ import { K } from "../repositories/platform-mock/shared";
 
 /** How a validated value reads in its table cell. */
 export function displayValue(field: FieldDef, raw: string | string[]): string {
-  if (Array.isArray(raw)) return raw.join(", ");
+  if (Array.isArray(raw)) return raw.length === 0 ? "—" : raw.join(field.joiner ?? ", ");
   if (raw === "") return "—";
   switch (field.type) {
     case "money":
