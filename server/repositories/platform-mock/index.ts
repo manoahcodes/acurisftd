@@ -4,6 +4,7 @@ import { entriesFor, offeredEntries } from "@/server/forms/registry";
 import { offeredProcesses } from "@/server/processes/registry";
 import { recordScope } from "@/server/forms/scope";
 import type { ScreenForms } from "@/types/forms";
+import type { Division } from "@/config/institution";
 import type { PlatformScreen } from "@/types/platform";
 import { mockRecordStore } from "../records-mock";
 import { buildForDivisions, isDivisionScoped, renumber } from "./divisions";
@@ -72,7 +73,11 @@ export const mockPlatformScreenRepository: PlatformScreenRepository = {
     const build = withRecords(slug, base);
     const screen = isDivisionScoped(slug) ? buildForDivisions(build, ctx) : build(ctx);
     const withForms = attachForms(screen, slug, ctx);
-    const processes = Object.fromEntries(offeredProcesses(slug, ctx, withForms).map((p) => [p.action, p.spec]));
+    const screenFor = (division: Division) => {
+      const dctx = { ...ctx, division };
+      return attachForms(buildForDivisions(build, dctx), slug, dctx);
+    };
+    const processes = Object.fromEntries(offeredProcesses(slug, ctx, withForms, screenFor).map((p) => [p.action, p.spec]));
     return Object.keys(processes).length > 0 ? { ...withForms, processes } : withForms;
   },
 };

@@ -19,11 +19,13 @@ export function SidebarBody({
   role,
   tenant,
   copyrightHolder,
+  timeZone,
 }: {
   role: RoleKey;
   tenant: TenantContext;
   /** Name for the school's copyright line, or "" for none (see lib/theme/copyright.ts). */
   copyrightHolder: string;
+  timeZone?: string;
 }) {
   const config = ROLES[role];
 
@@ -70,7 +72,7 @@ export function SidebarBody({
         <SidebarNavLive role={role} />
       </Suspense>
 
-      <SidebarFooter copyrightHolder={copyrightHolder} />
+      <SidebarFooter copyrightHolder={copyrightHolder} timeZone={timeZone} />
     </>
   );
 }

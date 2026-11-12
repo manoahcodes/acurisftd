@@ -1,6 +1,6 @@
 import { MONTH_NAMES } from "@/lib/format";
 import { readCsvTable } from "@/lib/csv";
-import { formatStamp, todayLusaka } from "@/lib/format";
+import { formatStamp, todayIn } from "@/lib/format";
 import { nextKey, normaliseKey } from "@/lib/forms/overlay";
 import { askedFields } from "@/lib/forms/spec";
 import { formatDate, validateForm } from "@/lib/forms/validate";
@@ -12,6 +12,7 @@ import { buildNewRow } from "../forms/create";
 import { entryById } from "../forms/registry";
 import { recordScope } from "../forms/scope";
 import { isDivisionScoped } from "../repositories/platform-mock/divisions";
+import type { Division } from "@/config/institution";
 import type { PlatformContext } from "../repositories/platform-types";
 import { COURSE_ROWS, K, LEARNERS, flavour, type Flavour } from "../repositories/platform-mock/shared";
 import { records, tenantDirectory } from "../repositories";
@@ -28,6 +29,8 @@ export type RunInput = {
   values: FormValues;
   csv?: string;
   user: string;
+  /** The school's time zone (Branding), used for every date a process writes. */
+  timeZone: string;
 };
 
 export type Outcome =
@@ -167,7 +170,7 @@ const MAKERS: Record<string, Maker> = {
           fields: [],
           csv: { columns, sample: [[LEARNERS[0].no, courses[0][1], "72"]] },
         },
-        async run({ csv, user, screen: s, ctx: c, slug }) {
+        async run({ csv, user, screen: s, ctx: c, slug, timeZone: zone }) {
           const tbl = table(s, "upload-batches");
           if (!tbl || !csv) return fail("Choose a CSV file.");
           const read = readCsvTable(csv, columns);
@@ -187,7 +190,7 @@ const MAKERS: Record<string, Maker> = {
           if (problems.length > 0) return problemsOutcome("the file", problems);
           const scope = recordScope(slug, c);
           const keys = tbl.rows.map((row) => row[0]);
-          const today = todayLusaka().display;
+          const today = todayIn(zone).display;
           let failed = 0;
           const notes: string[] = [];
           for (const [course, g] of byCourse) {
@@ -400,9 +403,6 @@ const MAKERS: Record<string, Maker> = {
           tbl.rows.forEach((r, i) => {
             const v = str(values, `s${i}`).trim();
             if (v === "") { errors[`s${i}`] = `${r[0]} is required.`; return; }
-            if (r[0] === "Time zone") {
-              try { new Intl.DateTimeFormat("en", { timeZone: v }); } catch { errors[`s${i}`] = "Use a time zone name such as Africa/Lusaka."; return; }
-            }
             if (r[0] === "Academic year start" && !MONTH_NAMES_FULL.includes(v)) { errors[`s${i}`] = "Use a month name such as January."; return; }
             if (r[0] === "Session timeout") {
               const m = /^(\d{1,3}) minutes?$/.exec(v);
@@ -428,12 +428,12 @@ const MAKERS: Record<string, Maker> = {
       entries.push({
         action: "Run backup now",
         spec: { id: "run-backup", title: "Run backup now", submitLabel: "Run backup", intro: `Takes a manual backup. ${DEPLOYMENTS[DEPLOYMENT_MODE].backups}.`, fields: [] },
-        async run({ screen: s, slug, ctx: c }) {
+        async run({ screen: s, slug, ctx: c, timeZone: zone }) {
           const tbl = table(s, "backups");
           if (!tbl) return fail("That table is not available.");
           const id = nextKey(tbl.rows.map((r) => r[0]), "BK-", 4);
           records.add(recordScope(slug, c), "backups", {
-            Backup: id, Date: formatStamp(new Date().toISOString()), Type: "Manual", Size: "1.8 GB",
+            Backup: id, Date: formatStamp(new Date().toISOString(), zone), Type: "Manual", Size: "1.8 GB",
             "Kept by": DEPLOYMENTS[DEPLOYMENT_MODE].operator, Status: "Completed",
           });
           return { ok: true, entity: `Backups: ${id}`, message: `Backup ${id} completed.` };
@@ -450,11 +450,11 @@ const MAKERS: Record<string, Maker> = {
           intro: "Downloads the dataset as a CSV file. The school owns its data and can export it at any time.",
           fields: [{ name: "dataset", label: "Dataset", type: "select", required: true, options: exports.rows.map((r) => r[0]) }],
         },
-        async run({ values, screen: s, slug, ctx: c, f: fl }) {
+        async run({ values, screen: s, slug, ctx: c, f: fl, timeZone: zone }) {
           const tbl = table(s, "exports");
           const dataset = str(values, "dataset");
           if (!tbl?.rows.some((r) => r[0] === dataset)) return fail("Choose a dataset.", { errors: { dataset: "Choose a dataset." } });
-          records.edit(recordScope(slug, c), "exports", dataset, { "Last export": todayLusaka().display, Status: "Ready" });
+          records.edit(recordScope(slug, c), "exports", dataset, { "Last export": todayIn(zone).display, Status: "Ready" });
           return {
             ok: true, entity: `Data exports: ${dataset}`, message: `Exported ${dataset}.`,
             download: csvFile(`${tidy(fl.tenantName)}-${tidy(dataset)}.csv`, exportCsv(dataset, fl)),
@@ -481,11 +481,11 @@ function reportEntries(screen: PlatformScreen, tableId: string, kind: "academic"
         intro: "Builds the report, marks it ready and downloads it as a CSV file.",
         fields: [{ name: "report", label: "Report", type: "select", required: true, options: t.rows.map((r) => r[0]) }],
       },
-      async run({ values, screen: s, slug, ctx: c, f }) {
+      async run({ values, screen: s, slug, ctx: c, f, timeZone: zone }) {
         const tbl = table(s, tableId);
         const name = str(values, "report");
         if (!tbl?.rows.some((r) => r[0] === name)) return fail("Choose a report.", { errors: { report: "Choose a report." } });
-        records.edit(recordScope(slug, c), tableId, name, { Status: "Ready", Generated: todayLusaka().display });
+        records.edit(recordScope(slug, c), tableId, name, { Status: "Ready", Generated: todayIn(zone).display });
         return { ok: true, entity: `${tbl.title}: ${name}`, message: `${name} is ready.`, download: csvFile(`${tidy(name)}.csv`, reportCsv(kind, name, f)) };
       },
     },
@@ -506,11 +506,34 @@ export function processesFor(slug: string, ctx: PlatformContext, screen: Platfor
 
 /**
  * Entries as the screen offers them. In an all-divisions view the choices
- * depend on one division's data, so each button asks to pick a division first.
+ * depend on one division's data, so each button carries one spec per division
+ * and its dialog asks which division to use. `screenFor` builds that
+ * division's own screen.
  */
-export function offeredProcesses(slug: string, ctx: PlatformContext, screen: PlatformScreen): ProcessEntry[] {
-  if (!needsDivision(slug, ctx)) return processesFor(slug, ctx, screen);
-  return (screen.actions ?? [])
-    .filter((a) => ["Import CSV", "Upload results", "Generate transcript", "Publish results", "Generate dockets", "Generate report", "Import statement"].includes(a))
-    .map((a) => blocked(a, `blocked-${tidy(a)}`, a, "This school has several divisions, and each keeps its own records. Pick a division in the sidebar, then try again."));
+export function offeredProcesses(
+  slug: string,
+  ctx: PlatformContext,
+  screen: PlatformScreen,
+  screenFor?: (division: Division) => PlatformScreen,
+): ProcessEntry[] {
+  if (!needsDivision(slug, ctx) || !screenFor) return processesFor(slug, ctx, screen);
+  const byAction = new Map<string, Array<{ division: Division; entry: ProcessEntry }>>();
+  for (const division of ctx.tenant?.divisions ?? []) {
+    for (const entry of processesFor(slug, { ...ctx, division }, screenFor(division))) {
+      byAction.set(entry.action, [...(byAction.get(entry.action) ?? []), { division, entry }]);
+    }
+  }
+  return [...byAction].map(([action, list]) => {
+    const first = list[0].entry;
+    return {
+      action,
+      spec: {
+        ...first.spec,
+        fields: [],
+        csv: undefined,
+        divisions: list.map(({ division, entry }) => ({ id: division.id, name: division.name, spec: entry.spec })),
+      },
+      run: first.run,
+    };
+  });
 }

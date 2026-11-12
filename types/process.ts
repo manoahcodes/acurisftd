@@ -18,6 +18,12 @@ export type ProcessSpec = {
   csv?: { columns: string[]; sample: string[][] };
   /** Cannot run now; `intro` says why (e.g. pick a division first). */
   blocked?: boolean;
+  /**
+   * In a school with several divisions viewed as a whole, each division has its
+   * own questions and CSV columns. The dialog asks for the division first and
+   * then shows that division's spec.
+   */
+  divisions?: Array<{ id: string; name: string; spec: ProcessSpec }>;
 };
 
 /** A file the browser should save. */

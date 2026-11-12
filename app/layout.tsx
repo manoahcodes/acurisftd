@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Lato, Poppins, Source_Sans_3 } from "next/font/google";
 import { Suspense } from "react";
 import { SIDEBAR_PREPAINT_SCRIPT } from "@/lib/sidebar-width";
+import { THEME_PREPAINT_SCRIPT } from "@/lib/theme/prepaint";
 import "./globals.css";
 
 // Self-hosted by Next at build time; exposed as a CSS variable for the theme.
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* Sets --sidebar-w before first paint so the loading shell matches the saved sidebar. */}
         <script dangerouslySetInnerHTML={{ __html: SIDEBAR_PREPAINT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_PREPAINT_SCRIPT }} />
       </head>
       <body>
         {/* Route params and per-request data are read below this boundary. */}

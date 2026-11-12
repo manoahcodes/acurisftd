@@ -28,7 +28,7 @@ export function Sidebar({
       initialCollapsed={collapsed}
       header={<SidebarBrand role={role} userName={userName} brand={brand} />}
     >
-      <SidebarBody role={role} tenant={tenant} copyrightHolder={copyrightHolderFor(brand)} />
+      <SidebarBody role={role} tenant={tenant} copyrightHolder={copyrightHolderFor(brand)} timeZone={brand.timezone} />
     </ResizableSidebar>
   );
 }

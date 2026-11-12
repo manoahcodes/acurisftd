@@ -7,6 +7,7 @@ import { PageSkeleton } from "@/components/dashboard/page-skeleton";
 import { TodayDate } from "@/components/dashboard/today-date";
 import { dashboards } from "@/server/repositories";
 import { getDashboardSchool } from "@/server/queries/dashboard";
+import { getResolvedTheme } from "@/server/queries/theme";
 
 type Params = Promise<{ role: string }>;
 
@@ -31,6 +32,7 @@ async function RoleDashboard({ params }: { params: Params }) {
   // one for Platform Admin / demo preview); none means the platform-wide view.
   const school = await getDashboardSchool(role);
   const data = await dashboards.getDashboard(role, school);
+  const { branding } = await getResolvedTheme(role);
   const subtitleName = school
     ? `${school.tenantName}  •  ${school.campus}`
     : "All schools";
@@ -45,7 +47,7 @@ async function RoleDashboard({ params }: { params: Params }) {
         title={data.title}
         subtitle={
           <>
-            {subtitleName}  •  <TodayDate />
+            {subtitleName}  •  <TodayDate timeZone={branding.timezone} />
           </>
         }
       />

@@ -129,16 +129,16 @@ describe("Change plan and Edit settings", () => {
   it("saves valid settings and explains invalid ones", async () => {
     const spec = (await screen("platform-settings", null)).processes!["Edit settings"];
     const values = Object.fromEntries(spec.fields.map((f) => [f.name, f.defaultValue ?? ""]));
-    const tz = spec.fields.find((f) => f.label === "Time zone")!;
+    const tz = spec.fields.find((f) => f.label === "Academic year start")!;
     const timeout = spec.fields.find((f) => f.label === "Session timeout")!;
-    const bad = await run("platform-settings", "edit-settings", { ...values, [tz.name]: "Mars/Olympus", [timeout.name]: "9000 minutes" });
+    const bad = await run("platform-settings", "edit-settings", { ...values, [tz.name]: "Smarch", [timeout.name]: "9000 minutes" });
     expect(bad.status).toBe("error");
     expect(Object.keys(bad.errors!).sort()).toEqual([timeout.name, tz.name].sort());
     expect((await run("platform-settings", "edit-settings", values)).message).toBe("No settings were changed.");
-    const ok = await run("platform-settings", "edit-settings", { ...values, [tz.name]: "Africa/Harare", [timeout.name]: "45 minutes" });
+    const ok = await run("platform-settings", "edit-settings", { ...values, [tz.name]: "February", [timeout.name]: "45 minutes" });
     expect(ok.status, ok.message).toBe("success");
     const rows = await rowsOf("platform-settings", "settings", null);
-    expect(rows.find((r) => r[0] === "Time zone")![1]).toBe("Africa/Harare");
+    expect(rows.find((r) => r[0] === "Academic year start")![1]).toBe("February");
     expect(rows.find((r) => r[0] === "Session timeout")![1]).toBe("45 minutes");
   });
 });
@@ -217,12 +217,21 @@ describe("guards", () => {
     expect((await run("data-export-and-backup", "nope")).status).toBe("error");
     expect((await run("data-export-and-backup", "bad id!")).status).toBe("error");
   });
-  it("asks for a division on a combined school, and does not run", async () => {
+  it("combined school: the button carries one spec per division and the dialog asks which", async () => {
     jar.set("stecia_platform_tenant", "lusaka-hills");
     const s = await screen("users/students", "lusaka-hills");
-    expect(s.processes!["Import CSV"].blocked).toBe(true);
-    const r = await run("users/students", "import-students", {}, "a\nb\n");
-    expect(r.status).toBe("error");
+    const spec = s.processes!["Import CSV"];
+    expect(spec.blocked).toBeUndefined();
+    expect(spec.divisions!.map((d) => d.name)).toEqual(["Primary School", "High School"]);
+    expect(spec.divisions!.every((d) => d.spec.csv)).toBe(true);
+  });
+  it("combined school: refuses to run without a division, then imports into the chosen one", async () => {
+    jar.set("stecia_platform_tenant", "lusaka-hills");
+    const none = await run("users/students", "import-students", {}, "a\nb\n");
+    expect(none.status).toBe("error");
+    expect(none.errors?.division).toBeTruthy();
+    const bad = await run("users/students", "import-students", { division: "nope!" }, "a\nb\n");
+    expect(bad.status).toBe("error");
   });
   it("logs every successful run to the audit trail", async () => {
     await run("data-export-and-backup", "run-backup");

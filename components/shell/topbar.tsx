@@ -71,7 +71,7 @@ export function Topbar({
         brand={<SidebarBrand role={role} userName={userName} brand={brand} />}
         contextSlot={drawerContext}
       >
-        <SidebarBody role={role} tenant={tenant} copyrightHolder={copyrightHolderFor(brand)} />
+        <SidebarBody role={role} tenant={tenant} copyrightHolder={copyrightHolderFor(brand)} timeZone={brand.timezone} />
       </MobileNav>
 
       <TopbarSearch role={role} placeholder={searchPlaceholder} />

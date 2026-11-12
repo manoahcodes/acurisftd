@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { Download as DownloadIcon, X } from "lucide-react";
 import { toCsv } from "@/lib/csv";
 import { runProcess } from "@/server/actions/process";
@@ -22,9 +22,13 @@ function save({ filename, mime, content }: Download) {
 }
 
 /** Modal for a job button: asks its questions, takes a CSV if it needs one, shows what happened. */
-export function ProcessDialog({ slug, spec, onClose }: { slug: string; spec: ProcessSpec; onClose: () => void }) {
+export function ProcessDialog({ slug, spec: base, onClose }: { slug: string; spec: ProcessSpec; onClose: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [state, action, pending] = useActionState(runProcess, IDLE);
+  // A school with several divisions: ask which one first, then show its own questions.
+  const [divisionId, setDivisionId] = useState("");
+  const spec = base.divisions ? (base.divisions.find((d) => d.id === divisionId)?.spec ?? base) : base;
+  const waitingForDivision = Boolean(base.divisions) && !base.divisions!.some((d) => d.id === divisionId);
   const formId = `pd-${spec.id}`;
   const done = state.status === "success";
 
@@ -52,7 +56,7 @@ export function ProcessDialog({ slug, spec, onClose }: { slug: string; spec: Pro
     >
       <form action={action} id={formId} className="flex max-h-[85dvh] flex-col">
         <input type="hidden" name="slug" value={slug} />
-        <input type="hidden" name="processId" value={spec.id} />
+        <input type="hidden" name="processId" value={base.id} />
 
         <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
           <h2 id={`${formId}-title`} className="text-lg font-semibold text-ink">
@@ -94,7 +98,36 @@ export function ProcessDialog({ slug, spec, onClose }: { slug: string; spec: Pro
             <>
               {spec.intro && <p className="text-[15px] text-muted">{spec.intro}</p>}
 
-              {spec.csv && (
+              {base.divisions && (
+                <div>
+                  <label htmlFor={`${formId}-division`} className="mb-1 block text-sm font-medium text-ink">
+                    Division <span aria-hidden className="text-danger">*</span>
+                  </label>
+                  <select
+                    id={`${formId}-division`}
+                    name="division"
+                    value={divisionId}
+                    onChange={(e) => setDivisionId(e.target.value)}
+                    aria-invalid={Boolean(errors.division)}
+                    aria-describedby={errors.division ? `${formId}-division-error` : `${formId}-division-help`}
+                    className={inputClass}
+                  >
+                    <option value="">Choose a division...</option>
+                    {base.divisions.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.division ? (
+                    <p id={`${formId}-division-error`} className="mt-1 text-sm text-danger">{errors.division}</p>
+                  ) : (
+                    <p id={`${formId}-division-help`} className="mt-1 text-sm text-muted">Each division keeps its own records, so this applies to one division at a time.</p>
+                  )}
+                </div>
+              )}
+
+              {!waitingForDivision && spec.csv && (
                 <div>
                   <label htmlFor={`${formId}-file`} className="mb-1 block text-sm font-medium text-ink">
                     CSV file <span aria-hidden className="text-danger">*</span>
@@ -111,8 +144,8 @@ export function ProcessDialog({ slug, spec, onClose }: { slug: string; spec: Pro
                 </div>
               )}
 
-              {spec.fields.map((f) => (
-                <Field key={f.name} formId={formId} field={f} value={state.values?.[f.name] ?? f.defaultValue ?? ""} error={errors[f.name]} />
+              {!waitingForDivision && spec.fields.map((f) => (
+                <Field key={`${divisionId}-${f.name}`} formId={formId} field={f} value={state.values?.[f.name] ?? f.defaultValue ?? ""} error={errors[f.name]} />
               ))}
             </>
           )}
@@ -129,7 +162,7 @@ export function ProcessDialog({ slug, spec, onClose }: { slug: string; spec: Pro
           {!done && !spec.blocked && (
             <button
               type="submit"
-              disabled={pending}
+              disabled={pending || waitingForDivision}
               className="rounded-lg bg-brand px-4 py-2 text-[15px] font-semibold text-on-brand hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60"
             >
               {pending ? "Working..." : spec.submitLabel}

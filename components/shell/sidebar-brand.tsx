@@ -4,7 +4,7 @@ import type { Branding } from "@/types/theme";
 import { RailTooltip } from "./rail-tooltip";
 
 /** The parts of a school's branding the shell shows. */
-export type ShellBrand = Pick<Branding, "name" | "shortName" | "logoUrl" | "copyrightHolder">;
+export type ShellBrand = Pick<Branding, "name" | "shortName" | "logoUrl" | "copyrightHolder" | "timezone">;
 
 /** School name and logo, and the signed-in user. Links to the role's overview page. */
 export function SidebarBrand({ role, userName, brand }: { role: RoleKey; userName: string; brand: ShellBrand }) {

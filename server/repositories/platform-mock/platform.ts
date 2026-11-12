@@ -137,7 +137,6 @@ const settings: Builder = () => ({
     ),
     tableOf("settings","General", ["Setting", "Value", "Scope"], [
       ["Default currency", "Zambian Kwacha (ZMW)", "Platform"],
-      ["Time zone", "Africa/Lusaka", "Platform"],
       ["Academic year start", "January", "Platform"],
       ["Session timeout", "30 minutes", "Platform"],
       ["Audit trail retention", "7 years", "Platform"],

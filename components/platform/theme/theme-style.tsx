@@ -1,3 +1,4 @@
+import { ThemeRemember } from "./theme-remember";
 import { themeToCss } from "@/lib/theme/css";
 import { DEFAULT_THEME } from "@/server/repositories/theme-types";
 import type { ThemeSettings } from "@/types/theme";
@@ -15,5 +16,10 @@ export function ThemeStyle({ theme }: { theme: ThemeSettings }) {
   } catch {
     css = themeToCss(DEFAULT_THEME);
   }
-  return <style dangerouslySetInnerHTML={{ __html: css }} />;
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
+      <ThemeRemember css={css} />
+    </>
+  );
 }

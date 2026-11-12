@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { safeZone } from "@/lib/format";
 import { readFormData, validateForm } from "@/lib/forms/validate";
 import type { FormSpec } from "@/types/forms";
 import type { ProcessState } from "@/types/process";
@@ -9,6 +10,7 @@ import { requirePlatformAdmin } from "../forms/guard";
 import { processesFor } from "../processes/registry";
 import { flavour } from "../repositories/platform-mock/shared";
 import { audit, platformScreens, session } from "../repositories";
+import { getResolvedTheme } from "../queries/theme";
 
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 const MAX_FILE_BYTES = 1_000_000;
@@ -27,8 +29,9 @@ export async function runProcess(_prev: ProcessState, formData: FormData): Promi
   const processId = String(formData.get("processId") ?? "");
   if (!ID.test(processId)) return fail("That action is not available.");
 
-  const resolved = await resolveContext(slug, "");
-  if (!resolved.ok) return fail(resolved.message);
+  const divisionId = String(formData.get("division") ?? "");
+  const resolved = await resolveContext(slug, divisionId);
+  if (!resolved.ok) return fail(resolved.message, resolved.field ? { errors: { [resolved.field]: resolved.message } } : {});
   const { ctx } = resolved;
 
   const screen = await platformScreens.getScreen(ctx, slug);
@@ -51,7 +54,7 @@ export async function runProcess(_prev: ProcessState, formData: FormData): Promi
   }
 
   const user = await session.getCurrentUser();
-  const outcome = await entry.run({ slug, ctx, screen, f: flavour(ctx), values: checked.values, csv, user: user.name });
+  const outcome = await entry.run({ slug, ctx, screen, f: flavour(ctx), values: checked.values, csv, user: user.name, timeZone: safeZone((await getResolvedTheme("platform")).branding.timezone) });
   if (!outcome.ok) return fail(outcome.message, { problems: outcome.problems, errors: outcome.errors, values: submitted });
 
   audit.record({
