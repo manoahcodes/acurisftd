@@ -58,7 +58,8 @@ describe("cellToValue", () => {
     expect(cellToValue(f("text"), "—")).toBe("");
   });
   it("gives empty rather than a wrong value", () => {
-    expect(cellToValue(f("date"), "Jan 2026")).toBe("");
+    expect(cellToValue(f("date"), "Jan 2026")).toBe("2026-01-01"); // month only: opens on the 1st
+    expect(cellToValue(f("date"), "Smarch 2026")).toBe("");
     expect(cellToValue(f("money"), "n/a")).toBe("");
   });
 });

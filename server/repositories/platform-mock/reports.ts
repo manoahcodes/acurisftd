@@ -1,3 +1,5 @@
+import { formatStamp } from "@/lib/format";
+import { mockAuditLog } from "../audit-mock";
 import { tenantSystem } from "@/config/institution";
 import { K, LEARNERS, flavour, groupNames, table, type Builder } from "./shared";
 
@@ -262,6 +264,11 @@ const auditTrail: Builder = (ctx) => {
     ["07:05", "Mr. Joseph Phiri", "Fee structure edited", "Tuition fees"],
     ["06:48", "Ms. Esther Kunda", "Payment recorded", "RC-02641"],
   ];
+  // Changes made through the forms come first, newest first. A school's page shows its own.
+  const logged = mockAuditLog
+    .list()
+    .filter((e) => !ctx.tenant || e.scope === ctx.tenant.id)
+    .map((e) => [formatStamp(e.at), e.user, e.action, e.entity, e.school, "Success"]);
   return {
     description: ctx.tenant
       ? `Recent activity at ${ctx.tenant.name}.`
@@ -270,14 +277,14 @@ const auditTrail: Builder = (ctx) => {
       table(
         "Audit trail",
         ["Time", "User", "Action", "Entity", "School", "Result"],
-        events.map(([time, user, action, entity], i) => [
+        [...logged, ...events.map(([time, user, action, entity], i) => [
           `05 Nov 2026 ${time}`,
           user,
           action,
           entity,
           ctx.tenant ? ctx.tenant.name : (ctx.tenants[i % ctx.tenants.length]?.name ?? ""),
           i === 2 ? "Review" : "Success",
-        ]),
+        ])],
         { statusColumn: "Result" },
       ),
     ],

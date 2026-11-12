@@ -76,6 +76,8 @@ export type FormSpec = {
   editOnly?: boolean;
   /** No edit button on rows (receipts, audit-style records). */
   createOnly?: boolean;
+  /** Records here carry history (payments, results): they can be archived but never deleted. */
+  keep?: boolean;
 };
 
 /** The forms a screen offers, keyed so the UI can match them to buttons and tables. */
@@ -84,6 +86,8 @@ export type ScreenForms = {
   actions: Record<string, FormSpec>;
   /** TableSection.id → form used to edit that table's rows. */
   edits: Record<string, FormSpec>;
+  /** TableSection.id → the form that owns its rows, for archive and delete (also for tables without an edit form). */
+  rows: Record<string, FormSpec>;
 };
 
 export type FormValues = Record<string, string | string[]>;

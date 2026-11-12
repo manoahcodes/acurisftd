@@ -25,6 +25,17 @@ export type TableSection = {
   statusColumn?: string;
   /** Short legend shown under the table. */
   note?: string;
+  /** Per-row state, in the same order as `rows`. Rows without an entry are active and archivable. */
+  rowMeta?: RowMeta[];
+};
+
+export type RowMeta = {
+  /** Hidden unless "Show archived" is ticked. */
+  archived?: boolean;
+  /** Can be deleted for good (created through a form and with no history). */
+  deletable?: boolean;
+  /** False for rows that are suspended instead of archived (schools). Default true. */
+  archivable?: boolean;
 };
 
 /** Everything a list screen needs. Rendered by PlatformScreenView. */

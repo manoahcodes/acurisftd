@@ -41,7 +41,10 @@ export function cellToValue(field: FieldDef, cell: string): string {
     }
     case "date": {
       const m = /^(\d{1,2}) ([A-Z][a-z]{2}) (\d{4})$/.exec(cell);
-      return m && MONTH_NUMBERS[m[2]] ? `${m[3]}-${MONTH_NUMBERS[m[2]]}-${m[1].padStart(2, "0")}` : "";
+      if (m && MONTH_NUMBERS[m[2]]) return `${m[3]}-${MONTH_NUMBERS[m[2]]}-${m[1].padStart(2, "0")}`;
+      // "Jan 2026" (a month only) opens on the 1st of that month.
+      const my = /^([A-Z][a-z]{2}) (\d{4})$/.exec(cell);
+      return my && MONTH_NUMBERS[my[1]] ? `${my[2]}-${MONTH_NUMBERS[my[1]]}-01` : "";
     }
     case "multiselect":
       return "";

@@ -28,6 +28,7 @@ export function PlatformScreenView({ screen, slug }: { screen: PlatformScreen; s
           section={section}
           slug={slug}
           editForm={section.id ? screen.forms?.edits[section.id] : undefined}
+          rowForm={section.id ? screen.forms?.rows[section.id] : undefined}
         />
       ))}
     </div>

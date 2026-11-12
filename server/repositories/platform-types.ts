@@ -24,6 +24,8 @@ export interface TenantDirectory {
   /** Adds a school. Throws if its divisions do not share one academic system. */
   create(input: NewTenant): Promise<TenantSummary>;
   /** Changes a school's details. Its divisions are fixed once created. */
+  /** Deletes a school that has no learners yet. Returns false if it has some or does not exist. */
+  remove(id: string): Promise<boolean>;
   update(id: string, changes: Partial<Pick<TenantSummary, "name" | "plan" | "status" | "campuses">>): Promise<TenantSummary | undefined>;
 }
 

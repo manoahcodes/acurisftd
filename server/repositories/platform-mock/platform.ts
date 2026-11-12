@@ -27,7 +27,11 @@ const tenants: Builder = ({ tenants }) => ({
         t.plan,
         t.status,
       ]),
-      { statusColumn: "Status" },
+      {
+        statusColumn: "Status",
+        // Schools are suspended (edit the status), not archived. One with no learners yet can be deleted.
+        rowMeta: tenants.map((t) => ({ archivable: false, deletable: t.learners === 0 })),
+      },
     ),
   ],
 });

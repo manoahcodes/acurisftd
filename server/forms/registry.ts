@@ -81,6 +81,9 @@ const form = (
   extra: Partial<FormSpec> = {},
 ): FormSpec => ({ id, tableId, title, submitLabel: "Save", target: "row", keyColumns, fields, ...extra });
 
+/** A form for records with history: archived, never deleted. */
+const keepForm = (...args: Parameters<typeof form>): FormSpec => ({ ...form(...args), keep: true });
+
 // ---------- makers by page slug ----------
 const MAKERS: Record<string, Maker> = {
   "institution/campuses": () => [
@@ -168,7 +171,7 @@ const MAKERS: Record<string, Maker> = {
   "finances/student-payments": (ctx) => [
     {
       action: "Record payment",
-      spec: form("payment", "payments", "payment", ["Receipt"], [
+      spec: keepForm("payment", "payments", "payment", ["Receipt"], [
         auto("receipt", "Receipt no.", "Receipt", "RC-", 5),
         select("student", "Student", "Student", learnerOptions(ctx), { lockedOnEdit: true }),
         select("method", "Method", "Method", METHODS),
@@ -230,7 +233,7 @@ const MAKERS: Record<string, Maker> = {
   "registrations/course-registration": (ctx, f) => [
     {
       action: `Register ${f.terms.course.toLowerCase()}`,
-      spec: form("course-registration", "course-registration", "course registration", ["Student", f.terms.course, f.terms.period], [
+      spec: keepForm("course-registration", "course-registration", "course registration", ["Student", f.terms.course, f.terms.period], [
         select("student", "Student", "Student", learnerOptions(ctx), { lockedOnEdit: true }),
         select("course", f.terms.course, f.terms.course, courseTitles(f), { lockedOnEdit: true }),
         select("period", f.terms.period, f.terms.period, periods(f), { lockedOnEdit: true, defaultValue: periods(f)[periods(f).length - 1] }),
@@ -245,7 +248,7 @@ const MAKERS: Record<string, Maker> = {
   "registrations/exam-registration": (ctx, f) => [
     {
       action: "Register for exams",
-      spec: form("exam-registration", "exam-registration", "exam registration", ["Student", f.terms.course, "Exam session"], [
+      spec: keepForm("exam-registration", "exam-registration", "exam registration", ["Student", f.terms.course, "Exam session"], [
         select("student", "Student", "Student", learnerOptions(ctx), { lockedOnEdit: true }),
         select("course", f.terms.course, f.terms.course, courseTitles(f), { lockedOnEdit: true }),
         select("session", "Exam session", "Exam session", periods(f).map((p) => `${p} exams`), { lockedOnEdit: true }),
@@ -258,7 +261,7 @@ const MAKERS: Record<string, Maker> = {
   "registrations/exam-receipts": (ctx) => [
     {
       action: "Issue receipt",
-      spec: form("exam-receipt", "exam-receipts", "exam receipt", ["Receipt"], [
+      spec: keepForm("exam-receipt", "exam-receipts", "exam receipt", ["Receipt"], [
         auto("receipt", "Receipt no.", "Receipt", "EX-", 5),
         select("student", "Student", "Student", learnerOptions(ctx), { lockedOnEdit: true }),
         money("fee", "Exam fee (kwacha)", "Exam fee", { min: 1, defaultValue: "450" }),
@@ -315,7 +318,7 @@ const MAKERS: Record<string, Maker> = {
   "academics/exemptions": (ctx, f) => [
     {
       action: "Grant exemption",
-      spec: form("exemption", "exemptions", "exemption", ["Student", f.terms.course], [
+      spec: keepForm("exemption", "exemptions", "exemption", ["Student", f.terms.course], [
         select("student", "Student", "Student", learnerOptions(ctx), { lockedOnEdit: true }),
         select("course", f.terms.course, f.terms.course, courseTitles(f), { lockedOnEdit: true }),
         text("reason", "Reason", "Reason"),
@@ -342,7 +345,7 @@ const MAKERS: Record<string, Maker> = {
   "examinations/exam-register": (_c, f) => [
     {
       action: "Add session",
-      spec: form("exam-session", "exam-sessions", "exam session", ["Date", f.terms.course], [
+      spec: keepForm("exam-session", "exam-sessions", "exam session", ["Date", f.terms.course], [
         date("date", "Date", "Date"),
         select("course", f.terms.course, f.terms.course, courseTitles(f), { lockedOnEdit: true }),
         select("venue", "Venue", "Venue", VENUES),

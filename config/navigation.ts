@@ -35,7 +35,12 @@ export type TopbarContext =
   | { kind: "none" }; // nothing shown
 
 /** Config form: points at an existing nav item by its label. */
-export type QuickAction = { label: string; navLabel: string };
+export type QuickAction = {
+  label: string;
+  navLabel: string;
+  /** Label of the page's action button to open straight away (e.g. "Add tenant"). */
+  opens?: string;
+};
 
 /** Resolved form: safe to pass to components. */
 export type ResolvedQuickAction = { label: string; href: string };
@@ -268,7 +273,7 @@ export function buildAdminRole(mode: DeploymentMode = DEPLOYMENT_MODE): RoleConf
           searchPlaceholder: "Search tenants, schools, users, tickets...",
           // The sidebar card already says "All tenants", so the top bar shows no chip.
           context: { kind: "none" },
-          quickAction: { label: "Add tenant", navLabel: "Tenants & schools" },
+          quickAction: { label: "Add tenant", navLabel: "Tenants & schools", opens: "Add tenant" },
         }
       : {
           searchPlaceholder: "Search students, staff, pages...",
@@ -400,6 +405,9 @@ export const ROLES: Record<RoleKey, RoleConfig> = {
   },
 };
 
+/** Query parameter that opens a page's action form on arrival. */
+export const OPEN_PARAM = "new";
+
 export const isRoleKey = (value: string): value is RoleKey =>
   (ROLE_KEYS as readonly string[]).includes(value);
 
@@ -440,8 +448,10 @@ export function resolveUserMenu(role: RoleKey): ResolvedUserMenuEntry[] {
 export function resolveQuickAction(role: RoleKey): ResolvedQuickAction | undefined {
   const action = ROLES[role].topbar.quickAction;
   if (!action) return undefined;
+  const href = hrefForNavLabel(role, action.navLabel, "quickAction");
   return {
     label: action.label,
-    href: hrefForNavLabel(role, action.navLabel, "quickAction"),
+    // The page opens that action's form on arrival (see ScreenActions).
+    href: action.opens ? `${href}?${OPEN_PARAM}=${encodeURIComponent(action.opens)}` : href,
   };
 }

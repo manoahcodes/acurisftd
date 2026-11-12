@@ -23,17 +23,17 @@ Last updated: 2026-11-08. Covered so far: all list screens, create/edit forms on
 - [ ] Import statement
 
 ## 3. Missing features
-- [ ] Delete / archive / suspend records (nothing can be removed today)
+- [x] Delete / archive / suspend records. Archive any row (restorable); delete only rows made through a form and without history; schools are suspended via status, or deleted when empty
 - [ ] Forms for read-only tables: Subscriptions, Usage and capacity, Institution types, Permission matrix, Division access
 - [ ] Change a school's divisions after it is created
 - [ ] Assign or change a staff member's role and division access after creation
 - [ ] Reports: export, print and filters
-- [ ] Audit trail should log changes made through the forms
+- [x] Audit trail logs changes made through the forms (create, edit, archive, restore, delete, schools)
 
 ## 4. Rough edges
-- [ ] Summary cards (KPIs) and counts do not update after adding a record
-- [ ] Editing a row whose date reads "Jan 2026" opens with an empty date (cannot be parsed back)
-- [ ] Check whether the top-bar "Add tenant" button opens the new form or only goes to the page
+- [x] Summary cards that are plain row counts follow added and archived rows (other cards, e.g. totals or percentages, still do not)
+- [x] A "Jan 2026" date opens on the 1st of that month (saving shows it as "01 Jan 2026")
+- [x] Top-bar "Add tenant" opens the new-school form
 
 ## 5. Verification still owed
 - [ ] Firefox: scrollbar theme and sidebar styling (sandbox could not download browsers)

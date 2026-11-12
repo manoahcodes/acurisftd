@@ -13,4 +13,12 @@ export interface RecordStore {
   add(scope: string, tableId: string, row: Record<string, string>): void;
   /** `key` is the row's original first-column value. Merges into earlier edits. */
   edit(scope: string, tableId: string, key: string, values: Record<string, string>): void;
+  /** Hides a row (any row) until it is restored. `key` is the row's original key. */
+  archive(scope: string, tableId: string, key: string): void;
+  restore(scope: string, tableId: string, key: string): void;
+  /**
+   * Deletes a row that was created through a form: `index` is its place among
+   * the added rows (newest first). Also forgets its edits and archive mark.
+   */
+  removeAdded(scope: string, tableId: string, index: number, key: string): void;
 }

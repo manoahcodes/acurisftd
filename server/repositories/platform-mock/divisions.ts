@@ -58,6 +58,7 @@ function merge(parts: Array<[Division, PlatformScreen]>): PlatformScreen {
       rows: parts.flatMap(([division, screen]) =>
         screen.tables[i].rows.map((row) => [division.name, ...row.map((c) => numbered(c, division))]),
       ),
+      rowMeta: parts.flatMap(([, screen]) => screen.tables[i].rowMeta ?? screen.tables[i].rows.map(() => ({}))),
     };
   });
 

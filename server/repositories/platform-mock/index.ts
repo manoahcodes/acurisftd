@@ -1,5 +1,5 @@
 import type { PlatformScreenRepository } from "../platform-types";
-import { applyOverlay } from "@/lib/forms/overlay";
+import { applyOverlay, syncCountKpis } from "@/lib/forms/overlay";
 import { entriesFor, offeredEntries } from "@/server/forms/registry";
 import { recordScope } from "@/server/forms/scope";
 import type { ScreenForms } from "@/types/forms";
@@ -44,24 +44,24 @@ const withRecords =
 
     const scope = recordScope(slug, ctx);
     const entries = entriesFor(slug, ctx);
-    return {
-      ...screen,
-      tables: screen.tables.map((t) => {
-        if (!t.id) return t;
-        const keyColumns = entries.find((e) => e.spec.tableId === t.id)?.spec.keyColumns;
-        return applyOverlay(t, mockRecordStore.overlay(scope, t.id), keyColumns);
-      }),
-    };
+    const tables = screen.tables.map((t) => {
+      if (!t.id) return t;
+      const spec = entries.find((e) => e.spec.tableId === t.id)?.spec;
+      return applyOverlay(t, mockRecordStore.overlay(scope, t.id), spec?.keyColumns, spec?.keep);
+    });
+    // Count cards follow rows that were added or archived.
+    return { ...screen, tables, kpis: syncCountKpis(screen.tables, tables, screen.kpis) };
   };
 
 function attachForms(screen: PlatformScreen, slug: string, ctx: Parameters<Builder>[0]): PlatformScreen {
-  const forms: ScreenForms = { actions: {}, edits: {} };
+  const forms: ScreenForms = { actions: {}, edits: {}, rows: {} };
   const tableIds = new Set(screen.tables.map((t) => t.id));
   for (const { action, spec } of offeredEntries(slug, ctx)) {
     if (action && screen.actions?.includes(action)) forms.actions[action] = spec;
     if (!spec.createOnly && tableIds.has(spec.tableId)) forms.edits[spec.tableId] = spec;
+    if (tableIds.has(spec.tableId) && !spec.editOnly) forms.rows[spec.tableId] = spec;
   }
-  return Object.keys(forms.actions).length + Object.keys(forms.edits).length > 0 ? { ...screen, forms } : screen;
+  return Object.keys(forms.actions).length + Object.keys(forms.edits).length + Object.keys(forms.rows).length > 0 ? { ...screen, forms } : screen;
 }
 
 export const mockPlatformScreenRepository: PlatformScreenRepository = {

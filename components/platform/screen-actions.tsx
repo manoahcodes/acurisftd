@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { OPEN_PARAM } from "@/config/navigation";
 import type { FormSpec } from "@/types/forms";
 import { RecordForm } from "./record-form";
 
@@ -14,7 +16,16 @@ export function ScreenActions({
   actions: string[];
   forms: Record<string, FormSpec>;
 }) {
-  const [open, setOpen] = useState<string | null>(null);
+  const params = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+  const wanted = params.get(OPEN_PARAM);
+  // Arriving from a quick action (?new=Add tenant) opens that form once.
+  const [open, setOpen] = useState<string | null>(wanted && forms[wanted] ? wanted : null);
+
+  useEffect(() => {
+    if (wanted) router.replace(pathname, { scroll: false });
+  }, [wanted, pathname, router]);
   const spec = open ? forms[open] : undefined;
 
   return (

@@ -41,6 +41,13 @@ export const mockTenantDirectory: TenantDirectory = {
     TENANTS.push(tenant);
     return tenant;
   },
+  async remove(id) {
+    const i = TENANTS.findIndex((t) => t.id === id);
+    // A school with learners has history: suspend it instead.
+    if (i < 0 || TENANTS[i].learners > 0) return false;
+    TENANTS.splice(i, 1);
+    return true;
+  },
   async update(id, changes) {
     const i = TENANTS.findIndex((t) => t.id === id);
     if (i < 0) return undefined;
