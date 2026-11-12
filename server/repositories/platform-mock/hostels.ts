@@ -22,6 +22,17 @@ const hostels: Builder = (ctx) => {
         ],
         { statusColumn: "Status" },
       ),
+      tableOf("rooms",
+        "Rooms",
+        ["Room", "Hostel", "Beds", "Status"],
+        [
+          ["A-101", "Kafue House", "4", "Active"],
+          ["A-102", "Kafue House", "4", "Active"],
+          ["B-201", "Zambezi House", "4", "Active"],
+          ["D-001", "Kariba House", "4", "Maintenance"],
+        ],
+        { statusColumn: "Status", note: "Add a room with the Add room button. Rooms are listed here; hostel totals above are set when a hostel is edited." },
+      ),
     ],
   };
 };

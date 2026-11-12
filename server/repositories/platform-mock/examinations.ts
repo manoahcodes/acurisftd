@@ -1,4 +1,4 @@
-import { COURSE_ROWS, LEARNERS, flavour, groupNames, table, tableOf, type Builder } from "./shared";
+import { COURSE_ROWS, LEARNERS, flavour, groupNames, tableOf, type Builder } from "./shared";
 
 const uploadResults: Builder = (ctx) => {
   const f = flavour(ctx);
@@ -7,7 +7,7 @@ const uploadResults: Builder = (ctx) => {
     description: "Marks uploaded by teaching staff or imported from spreadsheets.",
     actions: ["Upload results"],
     tables: [
-      table(
+      tableOf("upload-batches",
         "Upload exam results",
         ["Batch", f.terms.course, "Uploaded by", "Records", "Uploaded on", "Status"],
         [
@@ -30,7 +30,7 @@ const transcripts: Builder = (ctx) => {
     description: "Result transcripts per learner and period.",
     actions: ["Generate transcript"],
     tables: [
-      table(
+      tableOf("transcripts",
         "Result transcripts",
         ["Student", f.tertiary ? "Programme" : "Class", f.terms.period, f.tertiary ? "GPA" : "Average", "Status"],
         LEARNERS.slice(0, 6).map((l, i) => [
@@ -56,7 +56,7 @@ const finalResults: Builder = (ctx) => {
     description: "Final results after moderation and approval.",
     actions: ["Publish results"],
     tables: [
-      table(
+      tableOf("final-results",
         "Final results",
         ["Student", f.tertiary ? "Programme" : "Class", "Overall", f.tertiary ? "Classification" : "Division", "Status"],
         LEARNERS.slice(0, 6).map((l, i) => [

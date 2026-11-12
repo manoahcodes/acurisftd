@@ -1,7 +1,7 @@
 import { formatStamp } from "@/lib/format";
 import { mockAuditLog } from "../audit-mock";
 import { tenantSystem } from "@/config/institution";
-import { K, LEARNERS, flavour, groupNames, table, type Builder } from "./shared";
+import { K, LEARNERS, flavour, groupNames, table, tableOf, type Builder } from "./shared";
 
 const pct = (a: number, b: number) => `${Math.round((a / b) * 100)}%`;
 
@@ -11,7 +11,7 @@ const academicReports: Builder = (ctx) => {
     description: "Academic performance reports ready to generate or download.",
     actions: ["Generate report"],
     tables: [
-      table(
+      tableOf("academic-reports",
         "Academic reports",
         ["Report", "Scope", f.terms.period, "Generated", "Status"],
         [
@@ -116,7 +116,7 @@ const financeReports: Builder = (ctx) => {
     description: "Financial reports for the bursar and management.",
     actions: ["Generate report"],
     tables: [
-      table(
+      tableOf("finance-reports",
         "Finance reports",
         ["Report", f.terms.period, "Generated", "Total", "Status"],
         [
@@ -134,7 +134,7 @@ const bank: Builder = () => ({
   description: "Bank statement lines and whether they are matched to receipts.",
   actions: ["Import statement"],
   tables: [
-    table(
+    tableOf("bank-transactions",
       "Bank transactions",
       ["Date", "Reference", "Bank", "Description", "Amount", "Status"],
       [

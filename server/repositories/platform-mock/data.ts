@@ -1,5 +1,5 @@
 import { DEPLOYMENT_MODE, DEPLOYMENTS } from "@/config/deployment";
-import { table, type Builder } from "./shared";
+import { tableOf, type Builder } from "./shared";
 
 /**
  * Data export & backup. The school owns its data in every deployment mode, so
@@ -19,25 +19,25 @@ const dataExport: Builder = ({ tenant }) => {
       { title: "Data location", caption: "Where backups are kept", value: selfHosted ? "School storage" : "ACURIS cloud", note: selfHosted ? "Copy offsite regularly" : "Zambian region" },
     ],
     tables: [
-      table(
+      tableOf("backups",
         "Backups",
-        ["Date", "Type", "Size", "Kept by", "Status"],
+        ["Backup", "Date", "Type", "Size", "Kept by", "Status"],
         [
-          ["11 Nov 2026 02:00", "Automatic", "1.8 GB", info.operator, "Completed"],
-          ["10 Nov 2026 02:00", "Automatic", "1.8 GB", info.operator, "Completed"],
-          ["09 Nov 2026 14:12", "Manual", "1.8 GB", info.operator, "Completed"],
-          ["09 Nov 2026 02:00", "Automatic", "1.7 GB", info.operator, "Completed"],
+          ["BK-1004", "11 Nov 2026 02:00", "Automatic", "1.8 GB", info.operator, "Completed"],
+          ["BK-1003", "10 Nov 2026 02:00", "Automatic", "1.8 GB", info.operator, "Completed"],
+          ["BK-1002", "09 Nov 2026 14:12", "Manual", "1.8 GB", info.operator, "Completed"],
+          ["BK-1001", "09 Nov 2026 02:00", "Automatic", "1.7 GB", info.operator, "Completed"],
         ],
         { statusColumn: "Status" },
       ),
-      table(
+      tableOf("exports",
         "Data exports",
         ["Dataset", "Format", "Last export", "Status"],
         [
           ["Students and guardians", "CSV", "01 Nov 2026", "Ready"],
           ["Fee accounts and payments", "CSV", "01 Nov 2026", "Ready"],
           ["Results and transcripts", "CSV", "28 Oct 2026", "Ready"],
-          ["Full school archive", "ZIP", "Never", "Not run"],
+          ["Full school archive", "CSV", "Never", "Not run"],
         ],
         { statusColumn: "Status" },
       ),

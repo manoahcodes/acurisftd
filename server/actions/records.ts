@@ -3,19 +3,18 @@
 import { isMultiTenant } from "@/config/deployment";
 import { revalidatePath } from "next/cache";
 import { INSTITUTIONS, INSTITUTION_TYPES, divisionsShareSystem, type InstitutionType } from "@/config/institution";
-import { ROLES } from "@/config/navigation";
 import { askedFields, keyForRow } from "@/lib/forms/spec";
-import { nextKey, normaliseKey } from "@/lib/forms/overlay";
+import { normaliseKey } from "@/lib/forms/overlay";
 import { readFormData, validateForm } from "@/lib/forms/validate";
 import type { FormState } from "@/types/forms";
 import { cellsFromValues } from "../forms/cells";
+import { buildNewRow } from "../forms/create";
 import { requirePlatformAdmin } from "../forms/guard";
 import { FORM_SLUGS, entryById } from "../forms/registry";
 import { recordScope } from "../forms/scope";
 import { flavour } from "../repositories/platform-mock/shared";
-import { isDivisionScoped } from "../repositories/platform-mock/divisions";
 import { audit, platformScreens, records, session, tenantDirectory } from "../repositories";
-import { getTenantSelection } from "../queries/platform";
+import { resolveContext } from "../forms/context";
 
 /** Writes one line to the audit trail as the signed-in user. */
 async function log(action: string, entity: string, scope: string, school: string) {
@@ -43,17 +42,12 @@ export async function submitRecord(_prev: FormState, formData: FormData): Promis
   const divisionId = String(formData.get("division") ?? "");
 
   if (!FORM_SLUGS.includes(slug) || !ID.test(formId)) return fail("That form is not available.");
-  if (divisionId && !ID.test(divisionId)) return fail("That division is not valid.");
-
-  const { tenants, selected, division } = await getTenantSelection();
-  const item = ROLES.platform.nav.find((n) => n.slug === slug);
-  if (item?.scope === "tenant" && !selected) return fail("Select a school first.");
-
-  // Which division the record belongs to.
-  const multi = (selected?.divisions.length ?? 0) > 1 && isDivisionScoped(slug);
-  const target = multi ? (division ?? selected?.divisions.find((d) => d.id === divisionId)) : division;
-  if (multi && !target) return fail("Choose a division.", { errors: { division: "Choose a division." } });
-  const ctx = { tenant: selected ?? null, division: target ?? null, tenants };
+  const resolved = await resolveContext(slug, divisionId);
+  if (!resolved.ok) {
+    return fail(resolved.message, resolved.field ? { errors: { [resolved.field]: resolved.message } } : {});
+  }
+  const { ctx, target } = resolved;
+  const { tenants } = ctx;
 
   const entry = entryById(slug, formId, ctx, target?.id);
   if (!entry) return fail("That form is not available.");
@@ -65,6 +59,8 @@ export async function submitRecord(_prev: FormState, formData: FormData): Promis
   const checked = validateForm(spec, submitted, mode);
   if (!checked.ok) return fail("Fix the highlighted fields.", { errors: checked.errors, values: submitted });
   const values = checked.values;
+  const crossErrors = entry.check?.(values);
+  if (crossErrors) return fail("Fix the highlighted fields.", { errors: crossErrors, values: submitted });
 
   // ---- Schools (tenants) ----
   if (spec.target === "tenant") {
@@ -120,24 +116,9 @@ export async function submitRecord(_prev: FormState, formData: FormData): Promis
   const flavourOf = flavour(ctx);
 
   if (mode === "create") {
-    // System-generated numbers.
-    const generated: Record<string, string> = {};
-    for (const f of spec.fields) {
-      if (!f.auto || !f.column) continue;
-      const i = columns.indexOf(f.column);
-      generated[f.column] = nextKey(rows.map((r) => r[i] ?? ""), f.auto.prefix, f.auto.digits);
-    }
-    const cells = {
-      ...(spec.rowDefaults ?? {}),
-      ...generated,
-      ...cellsFromValues(askedFields(spec, "create"), values),
-      ...(entry.derive?.(values, flavourOf) ?? {}),
-    };
-    const key = keyForRow(columns, columns.map((c) => cells[c] ?? "—"), spec.keyColumns);
-    if (key === null) return fail("This form does not match its table.");
-    if (rows.some((r) => normaliseKey(keyForRow(columns, r, spec.keyColumns) ?? "") === normaliseKey(key))) {
-      return fail("This record already exists.", { values: submitted });
-    }
+    const built = buildNewRow(entry, values, columns, rows, flavourOf);
+    if (!built.ok) return fail(built.message, { values: submitted });
+    const { cells, key } = built;
     records.add(scope, spec.tableId, cells);
     await log("Record created", `${table.title}: ${key}`, ctx.tenant?.id ?? "platform", ctx.tenant?.name ?? "Platform");
     revalidatePath("/platform", "layout");
@@ -181,16 +162,10 @@ export async function removeRecord(input: {
 
   if (!FORM_SLUGS.includes(slug) || !ID.test(formId)) return bad("That action is not available.");
   if (!["archive", "restore", "delete"].includes(op)) return bad("That action is not available.");
-  if (divisionId && !ID.test(divisionId)) return bad("That division is not valid.");
-
-  const { tenants, selected, division } = await getTenantSelection();
-  const item = ROLES.platform.nav.find((n) => n.slug === slug);
-  if (item?.scope === "tenant" && !selected) return bad("Select a school first.");
-
-  const multi = (selected?.divisions.length ?? 0) > 1 && isDivisionScoped(slug);
-  const target = multi ? (division ?? selected?.divisions.find((d) => d.id === divisionId)) : division;
-  if (multi && !target) return bad("Choose a division.");
-  const ctx = { tenant: selected ?? null, division: target ?? null, tenants };
+  const resolved = await resolveContext(slug, divisionId);
+  if (!resolved.ok) return bad(resolved.message);
+  const { ctx, target } = resolved;
+  const { tenants } = ctx;
 
   const entry = entryById(slug, formId, ctx, target?.id);
   if (!entry) return bad("That action is not available.");

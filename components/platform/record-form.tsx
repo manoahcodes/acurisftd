@@ -16,7 +16,7 @@ export type RecordTarget = {
   divisionId?: string;
 };
 
-const inputClass =
+export const inputClass =
   "h-11 w-full rounded-lg border border-line bg-surface px-3 text-[15px] text-ink placeholder:text-muted focus-visible:outline-2 focus-visible:outline-brand disabled:bg-canvas disabled:text-muted aria-[invalid=true]:border-danger";
 
 const IDLE: FormState = { status: "idle" };
@@ -183,7 +183,7 @@ export function RecordForm({
   );
 }
 
-function Field({
+export function Field({
   formId,
   field,
   value,

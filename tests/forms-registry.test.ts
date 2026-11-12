@@ -24,11 +24,6 @@ const contexts: Array<[string, PlatformContext]> = [
   ["platform", { tenant: null, division: null, tenants: TENANTS }],
 ];
 
-// Buttons that are not forms (processes) and stay disabled on purpose.
-const PROCESS_ACTIONS = new RegExp(
-  "^(Import CSV|Add room|Change plan|Edit settings|Generate .*|Upload results|Publish results|Open .* registration|Import statement|Run backup now|Export data)$",
-);
-
 describe("form registry matches the screens", () => {
   it("only names real pages", () => {
     const slugs = new Set(ROLES.platform.nav.map((n) => n.slug));
@@ -88,14 +83,14 @@ describe("form registry matches the screens", () => {
     }
   }
 
-  it("every action button either opens a form or is a known process", async () => {
+  it("every action button opens a form or a job dialog", async () => {
     for (const [label, ctx] of contexts) {
       for (const item of ROLES.platform.nav) {
         if (!item.slug || (item.scope === "tenant" && !ctx.tenant)) continue;
         const screen = await mockPlatformScreenRepository.getScreen(ctx, item.slug);
         for (const action of screen?.actions ?? []) {
-          const hasForm = Boolean(screen?.forms?.actions[action]);
-          expect(hasForm || PROCESS_ACTIONS.test(action), `${label} ${item.slug}: "${action}" has no form`).toBe(true);
+          const works = Boolean(screen?.forms?.actions[action] || screen?.processes?.[action]);
+          expect(works, `${label} ${item.slug}: "${action}" does nothing`).toBe(true);
         }
       }
     }

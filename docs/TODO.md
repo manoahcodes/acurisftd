@@ -9,18 +9,20 @@ Last updated: 2026-11-08. Covered so far: all list screens, create/edit forms on
 - [ ] Enforce role scopes (which divisions a role can see). Today they are only displayed
 - [ ] Swap `RecordStore` and `TenantDirectory` mocks for real implementations that check role and tenant on every call
 
-## 2. Disabled process buttons
-- [ ] Import CSV (students)
-- [ ] Add room (hostels)
-- [ ] Change plan (subscriptions)
-- [ ] Edit settings (institution types and general settings, in bulk)
-- [ ] Generate transcript
-- [ ] Generate dockets
-- [ ] Generate report (Reports pages)
-- [ ] Upload results
-- [ ] Publish results
-- [ ] Open registration (term or semester)
-- [ ] Import statement
+## 2. Process buttons
+All work on mock data now (CSV files up to 1 MB, 500 rows; every run is written to the audit trail).
+- [x] Import CSV (students): every row checked like the Add student form; nothing imported if any row is bad
+- [x] Add room (hostels): form with a new Rooms table
+- [x] Change plan (subscriptions)
+- [x] Edit settings: general settings in bulk (time zone, academic year start and session timeout are validated). Institution types stay fixed by the system
+- [x] Generate transcript, dockets and reports: mark rows issued/ready and download a CSV (sample marks and figures, as the mock has no stored results)
+- [x] Upload results: one batch per course; a batch with an unregistered student is marked Failed
+- [x] Publish results: marks pending results published
+- [x] Open registration (term or semester): form with a Registration windows table
+- [x] Import statement: lines naming a known student number are matched, the rest unmatched
+- [x] Run backup now and Export data
+- [ ] In a school with several divisions these buttons ask you to pick a division in the sidebar first
+- [ ] Downloads are CSV only (no PDF or printable transcript)
 
 ## 3. Missing features
 - [x] Delete / archive / suspend records. Archive any row (restorable); delete only rows made through a form and without history; schools are suspended via status, or deleted when empty

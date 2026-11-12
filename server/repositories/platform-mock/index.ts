@@ -1,6 +1,7 @@
 import type { PlatformScreenRepository } from "../platform-types";
 import { applyOverlay, syncCountKpis } from "@/lib/forms/overlay";
 import { entriesFor, offeredEntries } from "@/server/forms/registry";
+import { offeredProcesses } from "@/server/processes/registry";
 import { recordScope } from "@/server/forms/scope";
 import type { ScreenForms } from "@/types/forms";
 import type { PlatformScreen } from "@/types/platform";
@@ -70,6 +71,8 @@ export const mockPlatformScreenRepository: PlatformScreenRepository = {
     if (!base) return undefined;
     const build = withRecords(slug, base);
     const screen = isDivisionScoped(slug) ? buildForDivisions(build, ctx) : build(ctx);
-    return attachForms(screen, slug, ctx);
+    const withForms = attachForms(screen, slug, ctx);
+    const processes = Object.fromEntries(offeredProcesses(slug, ctx, withForms).map((p) => [p.action, p.spec]));
+    return Object.keys(processes).length > 0 ? { ...withForms, processes } : withForms;
   },
 };

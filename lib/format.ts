@@ -26,3 +26,15 @@ export function formatStamp(iso: string): string {
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
   return `${get("day")} ${get("month")} ${get("year")} ${get("hour")}:${get("minute")}`;
 }
+
+/** Today as "12 Nov 2026" and as "2026-11-12", in Lusaka time. Reads the clock: call in actions, not while rendering. */
+export function todayLusaka(now: Date = new Date()): { display: string; iso: string } {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit", month: "short", year: "numeric", timeZone: "Africa/Lusaka",
+  }).formatToParts(now);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  const iso = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Lusaka" }).format(now);
+  return { display: `${get("day")} ${get("month")} ${get("year")}`, iso };
+}
+
+export const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

@@ -1,5 +1,6 @@
 import type { Division } from "@/config/institution";
 import type { Kpi } from "./dashboard";
+import type { ProcessSpec } from "./process";
 import type { ScreenForms } from "./forms";
 
 /** A school (tenant) as the Platform Admin sees it. */
@@ -47,4 +48,6 @@ export type PlatformScreen = {
   actions?: string[];
   /** Create / edit forms for this screen, added on the way out of the repository. */
   forms?: ScreenForms;
+  /** Job buttons (import, generate, publish...) by action label, added on the way out of the repository. */
+  processes?: Record<string, ProcessSpec>;
 };

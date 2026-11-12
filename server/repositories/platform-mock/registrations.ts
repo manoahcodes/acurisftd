@@ -25,6 +25,12 @@ const periodRegistration: Builder = (ctx) => {
         ]),
         { statusColumn: "Status" },
       ),
+      tableOf("registration-windows",
+        "Registration windows",
+        ["Period", "Opens", "Closes", "Status"],
+        [[f.periodName(1), "12 Jan 2026", "30 Jan 2026", "Closed"]],
+        { statusColumn: "Status", note: `Open a window with the Open ${f.terms.period.toLowerCase()} registration button. Learners with unpaid fees stay blocked.` },
+      ),
     ],
   };
 };
@@ -100,7 +106,7 @@ const examDocket: Builder = (ctx) => {
     description: "Exam dockets are issued once registration and exam fees are cleared.",
     actions: ["Generate dockets"],
     tables: [
-      table(
+      tableOf("exam-dockets",
         "Exam docket",
         ["Docket", "Student", `${f.terms.courses} on docket`, "Venue", "Status"],
         LEARNERS.slice(0, 6).map((l, i) => [

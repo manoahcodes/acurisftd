@@ -10,7 +10,7 @@ export function PlatformScreenView({ screen, slug }: { screen: PlatformScreen; s
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-3xl text-[16px] text-muted">{screen.description}</p>
         {screen.actions && screen.actions.length > 0 && (
-          <ScreenActions slug={slug} actions={screen.actions} forms={screen.forms?.actions ?? {}} />
+          <ScreenActions slug={slug} actions={screen.actions} forms={screen.forms?.actions ?? {}} processes={screen.processes} />
         )}
       </div>
 

@@ -22,6 +22,8 @@ export type FormEntry = {
   derive?: (values: FormValues, f: Flavour) => Record<string, string>;
   /** Recompute `derive` on edit too (only when every value it reads can be edited). */
   deriveOnEdit?: boolean;
+  /** Extra rule across fields (e.g. closing date after opening). Returns errors by field name. */
+  check?: (values: FormValues) => Record<string, string> | null;
 };
 
 type Maker = (ctx: PlatformContext, f: Flavour) => FormEntry[];
@@ -230,6 +232,19 @@ const MAKERS: Record<string, Maker> = {
     },
   ],
 
+  "registrations/period-registration": (_ctx, f) => [
+    {
+      action: `Open ${f.terms.period.toLowerCase()} registration`,
+      spec: form("registration-window", "registration-windows", "registration window", ["Period"], [
+        select("period", f.terms.period, "Period", periods(f), { lockedOnEdit: true, defaultValue: periods(f)[periods(f).length - 1] }),
+        date("opens", "Opens", "Opens"),
+        date("closes", "Closes", "Closes"),
+        select("status", "Status", "Status", ["Open", "Scheduled", "Closed"], { defaultValue: "Open" }),
+      ]),
+      check: (v) => (val(v, "opens") && val(v, "closes") && val(v, "closes") < val(v, "opens") ? { closes: "Closing date must be after the opening date." } : null),
+    },
+  ],
+
   "registrations/course-registration": (ctx, f) => [
     {
       action: `Register ${f.terms.course.toLowerCase()}`,
@@ -367,6 +382,15 @@ const MAKERS: Record<string, Maker> = {
         num("capacity", "Capacity (beds)", "Capacity", { min: 1 }),
         status(["Active", "Maintenance"]),
       ], { rowDefaults: { Occupied: "0" } }),
+    },
+    {
+      action: "Add room",
+      spec: form("room", "rooms", "room", ["Hostel", "Room"], [
+        select("hostel", "Hostel", "Hostel", HOUSES, { lockedOnEdit: true }),
+        text("room", "Room", "Room", { lockedOnEdit: true, maxLength: 12, placeholder: "A-103" }),
+        num("beds", "Beds", "Beds", { min: 1, max: 12, defaultValue: "4" }),
+        status(["Active", "Maintenance"]),
+      ]),
     },
   ],
 

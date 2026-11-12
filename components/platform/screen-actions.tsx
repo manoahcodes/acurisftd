@@ -4,17 +4,21 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { OPEN_PARAM } from "@/config/navigation";
 import type { FormSpec } from "@/types/forms";
+import type { ProcessSpec } from "@/types/process";
+import { ProcessDialog } from "./process-dialog";
 import { RecordForm } from "./record-form";
 
-/** The screen's action buttons. Those with a form open it; the rest are not built yet. */
+/** The screen's action buttons. A form button opens its form, a job button (import, generate, publish) opens its dialog; any other is not built yet. */
 export function ScreenActions({
   slug,
   actions,
   forms,
+  processes = {},
 }: {
   slug: string;
   actions: string[];
   forms: Record<string, FormSpec>;
+  processes?: Record<string, ProcessSpec>;
 }) {
   const params = useSearchParams();
   const pathname = usePathname();
@@ -27,12 +31,13 @@ export function ScreenActions({
     if (wanted) router.replace(pathname, { scroll: false });
   }, [wanted, pathname, router]);
   const spec = open ? forms[open] : undefined;
+  const processSpec = open && !spec ? processes[open] : undefined;
 
   return (
     <>
       <div className="flex flex-wrap gap-2">
         {actions.map((label) =>
-          forms[label] ? (
+          forms[label] || processes[label] ? (
             <button
               key={label}
               type="button"
@@ -54,6 +59,7 @@ export function ScreenActions({
           ),
         )}
       </div>
+      {processSpec && <ProcessDialog key={processSpec.id} slug={slug} spec={processSpec} onClose={() => setOpen(null)} />}
       {spec && <RecordForm slug={slug} spec={spec} target={{ mode: "create" }} onClose={() => setOpen(null)} />}
     </>
   );
