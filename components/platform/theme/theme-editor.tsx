@@ -114,7 +114,7 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
   const h = "text-lg font-semibold text-ink";
 
   return (
-    <form action={save} className="mt-10 space-y-6">
+    <form action={save} className="mt-6 space-y-6">
       <div>
         <h2 className="text-xl font-semibold text-ink">Branding and theme</h2>
         <p className="mt-1 max-w-3xl text-[15px] text-muted">
