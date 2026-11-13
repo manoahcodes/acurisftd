@@ -7,7 +7,7 @@ import { ScreenActions } from "./screen-actions";
 /** Renders a Platform Admin list screen: description, actions, KPIs and tables. */
 export function PlatformScreenView({ screen, slug, branding }: { screen: PlatformScreen; slug: string; branding: PrintBranding }) {
   return (
-    <div className="mt-8 space-y-6">
+    <div className="mt-2 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-3xl text-[16px] text-muted">{screen.description}</p>
         {screen.actions && screen.actions.length > 0 && (
