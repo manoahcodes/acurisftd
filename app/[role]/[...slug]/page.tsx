@@ -10,6 +10,8 @@ import {
 import { divisionsLabel, resolveLabel, tenantSystemLabel, tenantTermsType, termsFor } from "@/config/institution";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PageSkeleton } from "@/components/dashboard/page-skeleton";
+import { printBrandingOf } from "@/lib/print";
+import { getResolvedTheme } from "@/server/queries/theme";
 import { PlatformScreenView } from "@/components/platform/platform-screen-view";
 import { ThemeSection } from "@/components/platform/theme/theme-section";
 import { SelectSchoolPrompt } from "@/components/platform/select-school-prompt";
@@ -98,7 +100,7 @@ async function PlatformSection({ item }: { item: NavItem }) {
       {needsSchool ? (
         <SelectSchoolPrompt title={title} tenants={tenants} />
       ) : screen ? (
-        <PlatformScreenView screen={screen} slug={item.slug} />
+        <PlatformScreenView screen={screen} slug={item.slug} branding={printBrandingOf((await getResolvedTheme("platform")).branding)} />
       ) : null}
       {item.slug === "platform-settings" && <ThemeSection />}
     </>

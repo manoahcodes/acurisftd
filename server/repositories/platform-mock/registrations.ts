@@ -95,7 +95,7 @@ const examReceipts: Builder = () => ({
         `0${(i % 5) + 1} Nov 2026`,
         i === 4 ? "Pending" : "Issued",
       ]),
-      { statusColumn: "Status" },
+      { statusColumn: "Status", printAs: "Receipt" },
     ),
   ],
 });
@@ -116,7 +116,7 @@ const examDocket: Builder = (ctx) => {
           i % 2 === 0 ? "Main Hall" : "Block B Hall",
           i === 4 ? "Blocked" : "Issued",
         ]),
-        { statusColumn: "Status", note: "Blocked dockets have an outstanding balance or missing exam registration." },
+        { statusColumn: "Status", printAs: "Exam docket", note: "Blocked dockets have an outstanding balance or missing exam registration." },
       ),
     ],
   };

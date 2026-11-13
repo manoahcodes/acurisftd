@@ -1,12 +1,15 @@
 "use client";
 
 import { useId, useState, useTransition } from "react";
-import { Archive, ArchiveRestore, Pencil, Search, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, FileDown, Pencil, Printer, Search, Trash2 } from "lucide-react";
 import { removeRecord, type RemovalOp } from "@/server/actions/records";
 import { cellToValue, keyForRow } from "@/lib/forms/spec";
 import type { FormSpec } from "@/types/forms";
 import { RecordForm, type RecordTarget } from "./record-form";
-import { cn } from "@/lib/format";
+import { cn, todayIn } from "@/lib/format";
+import { rowDetails, type PrintBranding } from "@/lib/print";
+import { applyFilters, csvFilename, filterableColumns, tableToCsv } from "@/lib/table-tools";
+import { DetailsList, PrintSheet, PrintTable } from "./print-sheet";
 import type { TableSection } from "@/types/platform";
 
 const GOOD = new Set([
@@ -39,6 +42,8 @@ export function DataTable({
   slug,
   editForm,
   rowForm,
+  branding,
+  reportTools = false,
 }: {
   section: TableSection;
   slug?: string;
@@ -46,6 +51,10 @@ export function DataTable({
   editForm?: FormSpec;
   /** When set, rows can be archived, restored and (if allowed) deleted. */
   rowForm?: FormSpec;
+  /** The school's document header, footer and signature, for printing. */
+  branding?: PrintBranding;
+  /** Adds drop-down filters, Export CSV and Print for reports. */
+  reportTools?: boolean;
 }) {
   const { title, subtitle, columns, rows, statusColumn, note, rowMeta } = section;
   const headingId = useId();
@@ -54,6 +63,8 @@ export function DataTable({
   const [showArchived, setShowArchived] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [chosen, setChosen] = useState<Record<number, string>>({});
+  const [printing, setPrinting] = useState<"table" | { row: string[] } | null>(null);
   const [pending, startTransition] = useTransition();
 
   // An all-divisions table has a Division column in front that is not part of the record.
@@ -61,7 +72,7 @@ export function DataTable({
   const recordColumns = columns.slice(offset);
   const canEdit = Boolean(editForm && slug);
   const canRemove = Boolean(rowForm && slug);
-  const hasActions = canEdit || canRemove;
+  const hasActions = canEdit || canRemove || (Boolean(section.printAs) && Boolean(branding));
   const archivedCount = rowMeta?.filter((m) => m.archived).length ?? 0;
 
   const keyOf = (row: string[], form: FormSpec) => keyForRow(recordColumns, row.slice(offset), form.keyColumns);
@@ -95,11 +106,22 @@ export function DataTable({
   };
 
   const q = query.trim().toLowerCase();
+  const filters = reportTools ? filterableColumns(columns, rows, statusColumn) : [];
   const entries = rows.map((row, i) => ({ row, meta: rowMeta?.[i] ?? {} }));
-  const visible = entries.filter(
-    ({ row, meta }) =>
-      (showArchived || !meta.archived) && (!q || row.some((cell) => cell.toLowerCase().includes(q))),
-  );
+  const matching = new Set(applyFilters(rows, chosen, query));
+  const visible = entries.filter(({ row, meta }) => (showArchived || !meta.archived) && matching.has(row));
+  const filtersOn = Object.values(chosen).some(Boolean);
+  const canPrintRows = Boolean(section.printAs && branding);
+  const exportCsv = () => {
+    const url = URL.createObjectURL(new Blob([tableToCsv(columns, visible.map((v) => v.row))], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = csvFilename(title, todayIn(branding?.timezone).iso);
+    document.body.append(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
   const statusIndex = statusColumn ? columns.indexOf(statusColumn) : -1;
 
   return (
@@ -138,8 +160,45 @@ export function DataTable({
             className="h-10 w-56 rounded-lg border border-line bg-surface pl-9 pr-3 text-[15px] text-ink placeholder:text-muted focus-visible:outline-2 focus-visible:outline-brand"
           />
         </label>
+        {reportTools && (
+          <>
+            <button type="button" onClick={exportCsv} className="inline-flex h-10 items-center gap-2 rounded-lg border border-line px-3 text-[15px] font-medium text-ink hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand">
+              <FileDown size={15} aria-hidden /> Export CSV
+            </button>
+            {branding && (
+              <button type="button" onClick={() => setPrinting("table")} className="inline-flex h-10 items-center gap-2 rounded-lg border border-line px-3 text-[15px] font-medium text-ink hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand">
+                <Printer size={15} aria-hidden /> Print
+              </button>
+            )}
+          </>
+        )}
         </div>
       </div>
+
+      {filters.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          {filters.map((f) => (
+            <label key={f.column} className="text-sm text-muted">
+              <span className="mb-1 block">{f.column}</span>
+              <select
+                value={chosen[f.index] ?? ""}
+                onChange={(e) => setChosen((c) => ({ ...c, [f.index]: e.target.value }))}
+                className="h-10 rounded-lg border border-line bg-surface px-3 text-[15px] text-ink focus-visible:outline-2 focus-visible:outline-brand"
+              >
+                <option value="">All</option>
+                {f.choices.map((v) => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </label>
+          ))}
+          {filtersOn && (
+            <button type="button" onClick={() => setChosen({})} className="h-10 text-sm font-medium text-brand underline">
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
 
       <div
         role="region"
@@ -192,6 +251,17 @@ export function DataTable({
                 ))}
                 {hasActions && (
                   <td className="whitespace-nowrap px-3 py-2 text-right">
+                    {canPrintRows && (
+                      <button
+                        type="button"
+                        onClick={() => setPrinting({ row })}
+                        aria-label={`Print ${section.printAs!.toLowerCase()} ${row[offset]}`}
+                        title={`Print ${section.printAs!.toLowerCase()}`}
+                        className={iconButton}
+                      >
+                        <Printer size={16} aria-hidden />
+                      </button>
+                    )}
                     {canEdit && (
                       <button
                         type="button"
@@ -267,12 +337,32 @@ export function DataTable({
       </div>
 
       {visible.length === 0 && (
-        <p className="py-6 text-center text-sm text-muted">{q ? <>No rows match &ldquo;{query.trim()}&rdquo;.</> : "No rows to show."}</p>
+        <p className="py-6 text-center text-sm text-muted">{q || filtersOn ? "No rows match the filters." : "No rows to show."}</p>
       )}
       <p className="sr-only" role="status" aria-live="polite">
-        {message || (q ? `${visible.length} of ${rows.length} rows shown` : "")}
+        {message || (q || filtersOn ? `${visible.length} of ${rows.length} rows shown` : "")}
       </p>
       {note && <p className="mt-4 text-sm text-muted">{note}</p>}
+      {printing && branding && printing === "table" && (
+        <PrintSheet
+          branding={branding}
+          title={title}
+          lines={[
+            ...(subtitle ? [subtitle] : []),
+            ...filters.filter((f) => chosen[f.index]).map((f) => `${f.column}: ${chosen[f.index]}`),
+            ...(q ? [`Search: ${query.trim()}`] : []),
+            `${visible.length} ${visible.length === 1 ? "row" : "rows"}`,
+          ]}
+          onClose={() => setPrinting(null)}
+        >
+          <PrintTable columns={columns} rows={visible.map((v) => v.row)} />
+        </PrintSheet>
+      )}
+      {printing && branding && typeof printing === "object" && (
+        <PrintSheet branding={branding} title={section.printAs ?? title} lines={[title]} signature onClose={() => setPrinting(null)}>
+          <DetailsList details={rowDetails(columns, printing.row)} />
+        </PrintSheet>
+      )}
       {editing && editForm && slug && (
         <RecordForm slug={slug} spec={editForm} target={editing} onClose={() => setEditing(null)} />
       )}

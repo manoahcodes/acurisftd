@@ -7,6 +7,9 @@ export default function Home() {
     <main className="mx-auto max-w-md px-6 py-20">
       <h1 className="text-3xl font-bold">ACURIS</h1>
       <p className="mt-2 text-muted">Pick a role to preview its dashboard.</p>
+      <p className="mt-2 text-sm">
+        <Link href="/sign-in" className="font-medium text-brand underline">Open the branded sign-in page</Link>
+      </p>
       <ul className="mt-8 space-y-2">
         {ROLE_KEYS.map((key) => (
           <li key={key}>

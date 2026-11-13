@@ -24,6 +24,8 @@ export type TableSection = {
   rows: string[][];
   /** Column header whose values render as coloured status chips. */
   statusColumn?: string;
+  /** Rows of this table can be printed one by one as this document (e.g. "Transcript"). */
+  printAs?: string;
   /** Short legend shown under the table. */
   note?: string;
   /** Per-row state, in the same order as `rows`. Rows without an entry are active and archivable. */

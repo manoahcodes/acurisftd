@@ -129,3 +129,34 @@ body {
       outline-color 0.3s ease !important;
   }
 }
+
+/* Printing: only the open print sheet is printed (see components/platform/print-sheet.tsx). */
+@media print {
+  body.printing-sheet > *:not(.print-portal) {
+    display: none !important;
+  }
+  .print-portal {
+    position: static !important;
+    inset: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+    padding: 0 !important;
+  }
+  .print-portal .print-hide {
+    display: none !important;
+  }
+  .print-portal .print-paper {
+    box-shadow: none !important;
+    border: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #111 !important;
+    background: #fff !important;
+  }
+  @page {
+    margin: 16mm;
+  }
+}

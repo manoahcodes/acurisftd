@@ -1,10 +1,11 @@
 import type { PlatformScreen } from "@/types/platform";
 import { KpiCard } from "@/components/dashboard/kpi-card";
+import type { PrintBranding } from "@/lib/print";
 import { DataTable } from "./data-table";
 import { ScreenActions } from "./screen-actions";
 
 /** Renders a Platform Admin list screen: description, actions, KPIs and tables. */
-export function PlatformScreenView({ screen, slug }: { screen: PlatformScreen; slug: string }) {
+export function PlatformScreenView({ screen, slug, branding }: { screen: PlatformScreen; slug: string; branding: PrintBranding }) {
   return (
     <div className="mt-8 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -29,6 +30,8 @@ export function PlatformScreenView({ screen, slug }: { screen: PlatformScreen; s
           slug={slug}
           editForm={section.id ? screen.forms?.edits[section.id] : undefined}
           rowForm={section.id ? screen.forms?.rows[section.id] : undefined}
+          branding={branding}
+          reportTools={slug.startsWith("reports/")}
         />
       ))}
     </div>

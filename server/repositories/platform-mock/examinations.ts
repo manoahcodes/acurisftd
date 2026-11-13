@@ -40,7 +40,7 @@ const transcripts: Builder = (ctx) => {
           scores[i],
           i === 3 ? "Pending" : "Issued",
         ]),
-        { statusColumn: "Status" },
+        { statusColumn: "Status", printAs: "Transcript" },
       ),
     ],
   };

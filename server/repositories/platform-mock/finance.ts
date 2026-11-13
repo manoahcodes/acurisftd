@@ -107,7 +107,7 @@ const payments: Builder = (ctx) => {
           `0${(i % 5) + 1} Nov 2026`,
           status[i],
         ]),
-        { statusColumn: "Status" },
+        { statusColumn: "Status", printAs: "Receipt" },
       ),
     ],
   };
