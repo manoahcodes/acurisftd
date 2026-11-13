@@ -8,6 +8,8 @@ import { cn } from "@/lib/format";
 import { copyrightHolderFor } from "@/lib/theme/copyright";
 import { hexToHsl, hslToHex, isHex } from "@/lib/theme/color";
 import { previewVars } from "@/lib/theme/css";
+import { logoColours } from "@/lib/theme/logo-image";
+import { suggestPalettes, usablePrimary, type PaletteSuggestion } from "@/lib/theme/logo-colours";
 import { auditPalette, colourNotes, paletteFor } from "@/lib/theme/generate";
 import { useThemeFade } from "@/lib/theme/use-theme-fade";
 import {
@@ -39,6 +41,7 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
   const [name, setName] = useState(branding.name);
   const [holder, setHolder] = useState(branding.copyrightHolder);
   const [shortName, setShortName] = useState(branding.shortName);
+  const [fromLogo, setFromLogo] = useState<string[]>([]);
   const [saved, save, saving] = useActionState(saveTheme, IDLE);
   const [presetState, savePreset, presetPending] = useActionState(saveThemePreset, IDLE);
   const [resetState, reset, resetting] = useActionState(resetTenantTheme, IDLE);
@@ -48,6 +51,12 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
   useEffect(() => {
     if (saved.ok || resetState.ok) startRefresh(() => router.refresh());
   }, [saved, resetState, router]);
+  // Read the logo's colours whenever the logo changes (a new file, or the one already saved).
+  useEffect(() => {
+    let live = true;
+    Promise.resolve(logoPreview ? logoColours(logoPreview) : []).then((c) => live && setFromLogo(c));
+    return () => { live = false; };
+  }, [logoPreview]);
   // Ease from the old colours to the new ones instead of jumping.
   useThemeFade(saving || resetting || refreshing);
   const errors = saved.errors ?? {};
@@ -109,6 +118,11 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
       {err(key) && <span className="mt-1 block text-sm text-danger">{err(key)}</span>}
     </fieldset>
   );
+
+  const suggestions = useMemo(() => suggestPalettes(fromLogo), [fromLogo]);
+  const applySuggestion = (x: PaletteSuggestion) => {
+    setTheme((t) => ({ ...t, primary: usablePrimary(x.primary), secondary: x.secondary, harmony: x.harmony }));
+  };
 
   const section = "rounded-2xl border border-line bg-surface p-6 shadow-card";
   const h = "text-lg font-semibold text-ink";
@@ -190,6 +204,29 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
           <section className={section}>
             <h3 className={h}>Colours</h3>
             <p className="mt-1 text-sm text-muted">Pick one colour. The whole palette is generated from it and adjusted to stay readable.</p>
+            {suggestions.length > 0 && (
+              <div className="mt-4 rounded-xl border border-line bg-canvas p-4" role="group" aria-label="Colours suggested from your logo">
+                <p className="text-sm font-medium text-ink">Suggested from your logo</p>
+                <p className="mt-0.5 text-xs text-muted">Colours found in the logo. Choose one to try it in the preview; nothing is saved until you press Save.</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  {suggestions.map((x) => {
+                    const on = theme.primary.toLowerCase() === usablePrimary(x.primary) && theme.secondary.toLowerCase() === x.secondary;
+                    return (
+                      <button key={`${x.primary}-${x.secondary}-${x.harmony}`} type="button" onClick={() => applySuggestion(x)} aria-pressed={on}
+                        className={cn("rounded-lg border bg-surface p-3 text-left focus-visible:outline-2 focus-visible:outline-brand", on ? "border-brand" : "border-line hover:border-brand")}>
+                        <span className="flex items-center gap-2">
+                          <span aria-hidden style={{ background: usablePrimary(x.primary) }} className="size-7 rounded-full ring-1 ring-line" />
+                          <span aria-hidden style={x.secondary ? { background: x.secondary } : undefined}
+                            className={cn("size-7 rounded-full ring-1 ring-line", !x.secondary && "border border-dashed border-muted")} />
+                        </span>
+                        <span className="mt-2 block text-sm font-medium text-ink">{x.label}</span>
+                        <span className="block text-xs text-muted">{x.primary}{x.secondary ? ` + ${x.secondary}` : `, ${x.harmony} accent`}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <input type="color" aria-label="Primary colour" value={isHex(theme.primary) ? theme.primary : "#0b66f5"}
                 onChange={(e) => set("primary", e.target.value.toLowerCase())} className="h-11 w-14 cursor-pointer rounded-lg border border-line bg-surface p-1" />
