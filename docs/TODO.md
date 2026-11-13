@@ -3,7 +3,8 @@
 Last updated: 2026-11-13. Covered so far: all list screens, create/edit forms on mock data, sidebar features, search, tests (207 passing, Chromium only).
 
 ## 1. Real data and sign-in
-- [ ] Replace in-memory mock repositories with a real API or database (data currently resets on server restart)
+- [x] Stop data resetting on server restart: theme and branding, schools, records (edits, archives, staff), and the audit trail are saved in a SQLite file (`data/acuris.db`, git-ignored; `server/persistence/store.ts`). Needs a persistent disk; falls back to memory on read-only or serverless hosting. Off in tests; `ACURIS_PERSIST=on|off`, `ACURIS_DATA_DIR`
+- [ ] Replace the mock repositories (and this SQLite stand-in) with a real API or database
 - [ ] Real sign-in and session with roles
 - [ ] Replace the placeholder permission check in `server/forms/guard.ts` (must verify Platform Admin and fail closed)
 - [ ] Enforce role scopes (which divisions a role can see). Today they are only displayed

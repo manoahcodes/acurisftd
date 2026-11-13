@@ -1,5 +1,6 @@
 import type { TenantSummary } from "@/types/platform";
 import { assertSharedSystem, INSTITUTIONS, type Division, type InstitutionType } from "@/config/institution";
+import { loadSnapshot, saveSnapshot } from "../persistence/store";
 import type { TenantDirectory } from "./platform-types";
 
 const CODES: Record<InstitutionType, string> = { primary: "PRI", high_school: "HS", college: "COL", university: "UNI" };
@@ -24,6 +25,12 @@ export const TENANTS: TenantSummary[] = [
 // Data sanity: every tenant keeps one academic system across its divisions.
 TENANTS.forEach((t) => assertSharedSystem(t.name, t.divisions));
 
+// Schools added, changed or removed since the first run come back after a restart.
+const KEY = "tenants";
+const savedTenants = loadSnapshot<TenantSummary[]>(KEY);
+if (savedTenants) TENANTS.splice(0, TENANTS.length, ...savedTenants);
+const save = () => saveSnapshot(KEY, TENANTS);
+
 const slugify = (name: string) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "school";
 
@@ -39,6 +46,7 @@ export const mockTenantDirectory: TenantDirectory = {
     for (let n = 2; TENANTS.some((t) => t.id === id); n++) id = `${slugify(name)}-${n}`;
     const tenant: TenantSummary = { id, name, divisions, campuses, learners: 0, plan, status };
     TENANTS.push(tenant);
+    save();
     return tenant;
   },
   async remove(id) {
@@ -46,6 +54,7 @@ export const mockTenantDirectory: TenantDirectory = {
     // A school with learners has history: suspend it instead.
     if (i < 0 || TENANTS[i].learners > 0) return false;
     TENANTS.splice(i, 1);
+    save();
     return true;
   },
   async update(id, changes) {
@@ -62,6 +71,7 @@ export const mockTenantDirectory: TenantDirectory = {
     }
     // Replace rather than mutate, so cached lists never show half an update.
     TENANTS[i] = { ...TENANTS[i], ...rest, divisions };
+    save();
     return TENANTS[i];
   },
 };
