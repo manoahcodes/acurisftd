@@ -47,7 +47,7 @@ describe("data survives a restart", () => {
     const { mockRecordStore } = await import("@/server/repositories/records-mock");
     const { mockAuditLog } = await import("@/server/repositories/audit-mock");
     const { mockTenantDirectory } = await import("@/server/repositories/tenants-mock");
-    mockRecordStore.add("s", "t", ["A", "B"]);
+    mockRecordStore.add("s", "t", { Key: "A", Val: "B" });
     mockRecordStore.edit("s", "t", "A", { Name: "x" });
     mockRecordStore.archive("s", "t", "A");
     mockAuditLog.record({ user: "Admin", action: "Edit", entity: "Row A", school: "All" } as never);
@@ -56,9 +56,9 @@ describe("data survives a restart", () => {
     await restart();
     const records = (await import("@/server/repositories/records-mock")).mockRecordStore;
     const o = records.overlay("s", "t")!;
-    expect(o.added[0]).toEqual(["A", "B"]);
+    expect(o.added[0]).toEqual({ Key: "A", Val: "B" });
     expect(o.edits.A).toEqual({ Name: "x" });
-    expect(o.archived.A).toBe(true);
+    expect(o.archived?.A).toBe(true);
     expect((await import("@/server/repositories/audit-mock")).mockAuditLog.list()[0].action).toBe("Edit");
     const tenants = await (await import("@/server/repositories/tenants-mock")).mockTenantDirectory.list();
     expect(tenants.find((t) => t.id === school.id)?.name).toBe("Persist High");

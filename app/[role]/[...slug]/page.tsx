@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import {
@@ -27,6 +28,17 @@ export function generateStaticParams() {
       .filter((item) => item.slug)
       .map((item) => ({ role, slug: item.slug.split("/") })),
   );
+}
+
+/** Tab title: this page's name, worded for the selected school (Term or Semester). */
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const { role, slug } = await params;
+  if (!isRoleKey(role)) return {};
+  const item = ROLES[role].nav.find((n) => n.slug === slug.join("/"));
+  if (!item) return {};
+  if (role !== "platform") return { title: item.label };
+  const { selected } = await getTenantSelection();
+  return { title: resolveLabel(item.label, termsFor(selected && tenantTermsType(selected.divisions))) };
 }
 
 // Skip instant-navigation validation: these pages read the selected school from a cookie.

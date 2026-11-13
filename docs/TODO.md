@@ -49,6 +49,7 @@ All work on mock data now (CSV files up to 1 MB, 500 rows; every run is written 
 - Teacher, Bursar, Cashier, Parent and Student pages are still "hasn't been built yet" placeholders
 
 ## 6. Branding and theme (added with the theme editor)
+- [x] Browser tab titles follow the page: "Result transcripts · School name" (worded for the selected school, Term or Semester), "Sign in · School name"; the overview keeps "School name - tagline"
 - [ ] Swap `ThemeRepository` mock for a real one that checks role and tenant on every write (`server/repositories/theme-types.ts`)
 - [x] Saved time zone applied to the dashboard date, copyright year and dates written by process buttons (audit-trail times in the Reports screen still use Lusaka)
 - [x] Branded demo sign-in page at `/sign-in` (logo, welcome message, banner). Nothing is checked; it only continues into the chosen role. Real sign-in is still open (section 1)

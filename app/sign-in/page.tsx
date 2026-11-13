@@ -5,7 +5,11 @@ import { ThemeStyle } from "@/components/platform/theme/theme-style";
 import { SignInForm } from "@/components/auth/sign-in-form";
 import { themes } from "@/server/repositories";
 
-export const metadata: Metadata = { title: "Sign in" };
+export async function generateMetadata(): Promise<Metadata> {
+  await connection();
+  const { branding } = await themes.getPlatformDefault();
+  return { title: `Sign in · ${branding.name}` };
+}
 
 // Reads the saved branding on every visit, so changes show without a rebuild.
 export default function SignInPage() {

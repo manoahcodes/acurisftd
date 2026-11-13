@@ -19,12 +19,21 @@ import { session } from "@/server/repositories";
 
 type Params = Promise<{ role: string }>;
 
-/** Browser tab title: the school's name and tagline (the platform's for the Platform Admin). */
+/**
+ * Browser tab title. The overview shows the school's name and tagline (the
+ * platform's for the Platform Admin); every other page sets its own title and
+ * gets "Page · School name" through the template.
+ */
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { role } = await params;
   if (!isRoleKey(role)) return {};
   const { branding } = await getResolvedTheme(role);
-  return { title: branding.tagline ? `${branding.name} - ${branding.tagline}` : branding.name };
+  return {
+    title: {
+      default: branding.tagline ? `${branding.name} - ${branding.tagline}` : branding.name,
+      template: `%s · ${branding.name}`,
+    },
+  };
 }
 
 // The set of roles is fixed, so Next can prerender every role's shell.
