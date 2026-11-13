@@ -58,4 +58,5 @@ All work on mock data now (CSV files up to 1 MB, 500 rows; every run is written 
 - [ ] Move the logo from a data URL to file storage when a real backend exists
 - [x] Theme colour flash: the browser remembers the last theme and applies it before first paint (first visit in a browser can still show defaults once)
 - [x] Dark mode checked on every screen of every role (automated contrast scan, light and dark; add new pages to that check)
-- [ ] Verify Poppins, Lato and Source Sans 3 load in a networked build (sandbox could not reach Google Fonts)
+- [x] Ten theme fonts: Inter, Poppins, Lato, Source Sans 3, Roboto, Open Sans, Nunito Sans, Montserrat, Merriweather (serif) and Atkinson Hyperlegible, with a live sample in the picker
+- [ ] Verify the nine brand fonts (all except Inter) download in a networked build (sandbox could not reach Google Fonts)

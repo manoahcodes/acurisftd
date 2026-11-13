@@ -17,10 +17,16 @@ export const BASE_SIZES = [15, 16, 17] as const;
  * app/layout.tsx under the same CSS variable name (see THEME_INTEGRATION.md).
  */
 export const FONTS = {
-  inter: { label: "Inter", variable: "--font-inter" },
-  poppins: { label: "Poppins", variable: "--font-poppins" },
-  lato: { label: "Lato", variable: "--font-lato" },
-  "source-sans-3": { label: "Source Sans 3", variable: "--font-source-sans-3" },
+  inter: { label: "Inter", hint: "Clean, default", variable: "--font-inter" },
+  poppins: { label: "Poppins", hint: "Rounded, geometric", variable: "--font-poppins" },
+  lato: { label: "Lato", hint: "Warm, professional", variable: "--font-lato" },
+  "source-sans-3": { label: "Source Sans 3", hint: "Compact, readable", variable: "--font-source-sans-3" },
+  roboto: { label: "Roboto", hint: "Neutral, familiar", variable: "--font-roboto" },
+  "open-sans": { label: "Open Sans", hint: "Friendly, very readable", variable: "--font-open-sans" },
+  "nunito-sans": { label: "Nunito Sans", hint: "Soft, approachable", variable: "--font-nunito-sans" },
+  montserrat: { label: "Montserrat", hint: "Modern, wide", variable: "--font-montserrat" },
+  merriweather: { label: "Merriweather", hint: "Serif, traditional", variable: "--font-merriweather" },
+  "atkinson-hyperlegible": { label: "Atkinson Hyperlegible", hint: "Accessibility-focused", variable: "--font-atkinson" },
 } as const;
 
 export type Harmony = (typeof HARMONIES)[number];

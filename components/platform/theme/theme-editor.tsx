@@ -13,7 +13,7 @@ import { suggestPalettes, usablePrimary, type PaletteSuggestion } from "@/lib/th
 import { auditPalette, colourNotes, paletteFor } from "@/lib/theme/generate";
 import { useThemeFade } from "@/lib/theme/use-theme-fade";
 import {
-  BASE_SIZES, DENSITIES, FONTS, HARMONIES, MODES, RADII, SHADOWS, SIDEBAR_STYLES, type FontKey,
+  BASE_SIZES, DENSITIES, FALLBACK_FONT_STACK, FONTS, HARMONIES, MODES, RADII, SHADOWS, SIDEBAR_STYLES, type FontKey,
 } from "@/lib/theme/options";
 import { BUILT_IN_PRESETS, QUICK_COLOURS } from "@/lib/theme/presets";
 import { deleteThemePreset, resetTenantTheme, saveTheme, saveThemePreset } from "@/server/actions/theme";
@@ -280,8 +280,12 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
               <fieldset>
                 <legend className="mb-1 text-sm font-medium text-ink">Font</legend>
                 <select name="font" value={theme.font} onChange={(e) => set("font", e.target.value as FontKey)} className={input}>
-                  {Object.entries(FONTS).map(([k, f]) => <option key={k} value={k}>{f.label}</option>)}
+                  {Object.entries(FONTS).map(([k, f]) => <option key={k} value={k}>{f.label} · {f.hint}</option>)}
                 </select>
+                <p className="mt-2 rounded-lg bg-canvas px-3 py-2 text-[15px] text-ink" aria-label="Font sample"
+                  style={{ fontFamily: `var(${FONTS[theme.font].variable}), ${FALLBACK_FONT_STACK}` }}>
+                  The quick brown fox jumps over the lazy dog. 0123456789
+                </p>
               </fieldset>
             </div>
           </section>
