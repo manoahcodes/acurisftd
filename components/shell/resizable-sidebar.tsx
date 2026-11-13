@@ -181,15 +181,15 @@ export function ResizableSidebar({
 
         {/* The resize handle only exists while the sidebar is expanded. */}
         {!collapsed && (
+          <RailTooltip label="Drag to resize" detail="Double-click to fit the text" always suppressed={dragging}>
           <div
             role="separator"
             aria-orientation="vertical"
-            aria-label="Resize sidebar"
+            aria-label="Resize sidebar. Drag, use the arrow keys, or double-click to fit the text."
             aria-valuenow={width}
             aria-valuemin={SIDEBAR_MIN}
             aria-valuemax={SIDEBAR_MAX}
             tabIndex={0}
-            title="Drag to resize. Double-click to fit the text."
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={endDrag}
@@ -217,6 +217,7 @@ export function ResizableSidebar({
               <GripVertical size={12} />
             </span>
           </div>
+          </RailTooltip>
         )}
       </div>
     </SidebarStateContext.Provider>

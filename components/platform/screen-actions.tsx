@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { OPEN_PARAM } from "@/config/navigation";
 import type { FormSpec } from "@/types/forms";
 import type { ProcessSpec } from "@/types/process";
+import { Tooltip } from "@/components/ui/tooltip";
 import { ProcessDialog } from "./process-dialog";
 import { RecordForm } from "./record-form";
 
@@ -47,15 +48,15 @@ export function ScreenActions({
               {label}
             </button>
           ) : (
-            <button
-              key={label}
-              type="button"
-              disabled
-              title="Not built yet"
-              className="rounded-lg bg-brand px-4 py-2 text-[15px] font-semibold text-on-brand opacity-50"
-            >
-              {label}
-            </button>
+            <Tooltip key={label} label="Not built yet">
+              <button
+                type="button"
+                disabled
+                className="rounded-lg bg-brand px-4 py-2 text-[15px] font-semibold text-on-brand opacity-50"
+              >
+                {label}
+              </button>
+            </Tooltip>
           ),
         )}
       </div>

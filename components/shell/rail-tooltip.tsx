@@ -88,11 +88,11 @@ export function RailTooltip({
         <div
           aria-hidden
           style={{ top: pos.top, left: pos.left }}
-          className="pointer-events-none fixed z-[70] -translate-y-1/2 whitespace-nowrap rounded-lg bg-ink px-3 py-1.5 text-sm font-medium text-white shadow-lg ring-1 ring-white/15"
+          className="pointer-events-none fixed z-[70] -translate-y-1/2 whitespace-nowrap rounded-lg bg-navy px-3 py-1.5 text-sm font-medium text-white shadow-lg ring-1 ring-navy-line"
         >
           <span
             aria-hidden
-            className="absolute -left-1 top-1/2 size-2 -translate-y-1/2 rotate-45 bg-ink ring-1 ring-white/15 [clip-path:polygon(0_0,0_100%,100%_100%)]"
+            className="absolute -left-1 top-1/2 size-2 -translate-y-1/2 rotate-45 bg-navy ring-1 ring-navy-line [clip-path:polygon(0_0,0_100%,100%_100%)]"
           />
           <span className="relative">{label}</span>
           {detail && <span className="relative block text-xs font-normal text-slate-300">{detail}</span>}

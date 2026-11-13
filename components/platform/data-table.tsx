@@ -9,6 +9,7 @@ import { RecordForm, type RecordTarget } from "./record-form";
 import { cn, todayIn } from "@/lib/format";
 import { rowDetails, type PrintBranding } from "@/lib/print";
 import { applyFilters, csvFilename, filterableColumns, tableToCsv } from "@/lib/table-tools";
+import { Tooltip } from "@/components/ui/tooltip";
 import { DetailsList, PrintSheet, PrintTable } from "./print-sheet";
 import type { TableSection } from "@/types/platform";
 
@@ -252,62 +253,67 @@ export function DataTable({
                 {hasActions && (
                   <td className="whitespace-nowrap px-3 py-2 text-right">
                     {canPrintRows && (
-                      <button
-                        type="button"
-                        onClick={() => setPrinting({ row })}
-                        aria-label={`Print ${section.printAs!.toLowerCase()} ${row[offset]}`}
-                        title={`Print ${section.printAs!.toLowerCase()}`}
-                        className={iconButton}
-                      >
-                        <Printer size={16} aria-hidden />
-                      </button>
+                      <Tooltip label={`Print ${section.printAs!.toLowerCase()}`}>
+                        <button
+                          type="button"
+                          onClick={() => setPrinting({ row })}
+                          aria-label={`Print ${section.printAs!.toLowerCase()} ${row[offset]}`}
+                          className={iconButton}
+                        >
+                          <Printer size={16} aria-hidden />
+                        </button>
+                      </Tooltip>
                     )}
                     {canEdit && (
-                      <button
-                        type="button"
-                        onClick={() => openEdit(row)}
-                        aria-label={`Edit ${row[offset]}`}
-                        title="Edit"
-                        className={iconButton}
-                      >
-                        <Pencil size={16} aria-hidden />
-                      </button>
+                      <Tooltip label="Edit">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(row)}
+                          aria-label={`Edit ${row[offset]}`}
+                          className={iconButton}
+                        >
+                          <Pencil size={16} aria-hidden />
+                        </button>
+                      </Tooltip>
                     )}
                     {canRemove && meta.archived && (
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={() => remove(row, "restore")}
-                        aria-label={`Restore ${row[offset]}`}
-                        title="Restore"
-                        className={iconButton}
-                      >
-                        <ArchiveRestore size={16} aria-hidden />
-                      </button>
+                      <Tooltip label="Restore">
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() => remove(row, "restore")}
+                          aria-label={`Restore ${row[offset]}`}
+                          className={iconButton}
+                        >
+                          <ArchiveRestore size={16} aria-hidden />
+                        </button>
+                      </Tooltip>
                     )}
                     {canRemove && !meta.archived && meta.archivable !== false && (
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={() => remove(row, "archive")}
-                        aria-label={`Archive ${row[offset]}`}
-                        title="Archive"
-                        className={iconButton}
-                      >
-                        <Archive size={16} aria-hidden />
-                      </button>
+                      <Tooltip label="Archive">
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() => remove(row, "archive")}
+                          aria-label={`Archive ${row[offset]}`}
+                          className={iconButton}
+                        >
+                          <Archive size={16} aria-hidden />
+                        </button>
+                      </Tooltip>
                     )}
                     {canRemove && meta.deletable && confirming !== String(r) && (
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={() => setConfirming(String(r))}
-                        aria-label={`Delete ${row[offset]}`}
-                        title="Delete"
-                        className={cn(iconButton, "hover:text-danger")}
-                      >
-                        <Trash2 size={16} aria-hidden />
-                      </button>
+                      <Tooltip label="Delete">
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() => setConfirming(String(r))}
+                          aria-label={`Delete ${row[offset]}`}
+                          className={cn(iconButton, "hover:text-danger")}
+                        >
+                          <Trash2 size={16} aria-hidden />
+                        </button>
+                      </Tooltip>
                     )}
                     {canRemove && meta.deletable && confirming === String(r) && (
                       <span className="ml-1 inline-flex items-center gap-1 text-sm">
