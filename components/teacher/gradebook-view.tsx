@@ -74,7 +74,7 @@ export function GradebookView({ books, tertiary, terms, branding }: { books: Gra
           >
             <div>
               <label htmlFor="gb-cw" className="mb-1 block text-sm font-medium text-ink">Coursework counts for (%)</label>
-              <input id="gb-cw" inputMode="numeric" value={weightValue} onChange={(e) => setWeight({ classId: book.classId, value: e.target.value })} className={`${inputClass} w-28`} />
+              <input id="gb-cw" inputMode="numeric" value={weightValue} onChange={(e) => setWeight({ classId: book.classId, value: e.target.value })} className={`${inputClass} w-28!`} />
             </div>
             <button type="submit" disabled={pending || weightValue === String(book.courseworkWeight)} className={buttonClass}>Save</button>
           </form>
@@ -112,7 +112,7 @@ export function GradebookView({ books, tertiary, terms, branding }: { books: Gra
               <Search size={16} aria-hidden className="pointer-events-none absolute left-3 top-3 text-muted" />
               <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`Search ${terms.members.toLowerCase()}`} aria-label={`Search ${terms.members.toLowerCase()}`} className={`${inputClass} pl-9`} />
             </div>
-            <select aria-label="Sort by" value={sort} onChange={(e) => setSort(e.target.value as "name" | "rank")} className={`${inputClass} w-auto`}>
+            <select aria-label="Sort by" value={sort} onChange={(e) => setSort(e.target.value as "name" | "rank")} className={`${inputClass} w-auto!`}>
               <option value="name">Sort by name</option>
               <option value="rank">Sort by rank</option>
             </select>

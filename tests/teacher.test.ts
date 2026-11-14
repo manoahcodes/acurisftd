@@ -309,3 +309,86 @@ describe("assessments and gradebook in the repository", () => {
     expect(book.bands[0]).toMatchObject({ grade: "A", points: 4 });
   });
 });
+
+describe("lesson and resource validation", () => {
+  const lesson = { classId: "c1", title: "Fractions", date: "2026-11-16", startTime: "08:00", objectives: "o", activities: "a", homework: "", notes: "", links: [] };
+  it("accepts a good plan and reports bad fields", async () => {
+    const { checkLesson, checkReflection } = await import("@/lib/teacher/validate");
+    expect(checkLesson(lesson, ["c1"]).ok).toBe(true);
+    expect(checkLesson({ ...lesson, startTime: "" }, ["c1"]).ok).toBe(true);
+    const bad = checkLesson({ ...lesson, classId: "x", title: " ", date: "2026-13-01", startTime: "25:00", links: [{ label: "a", url: "javascript:1" }] }, ["c1"]);
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) expect(Object.keys(bad.fields ?? {}).sort()).toEqual(["classId", "date", "links", "startTime", "title"]);
+    expect(checkReflection("x".repeat(1001)).ok).toBe(false);
+  });
+  it("needs a web link or a note, only allows web links, and keeps classes the teacher's own", async () => {
+    const { checkResource } = await import("@/lib/teacher/validate");
+    const base = { classId: "", title: "Notes", kind: "Notes", url: "", body: "Revise chapter 2", topic: "", shared: false };
+    expect(checkResource(base, ["c1"]).ok).toBe(true);
+    expect(checkResource({ ...base, body: "" }, ["c1"]).ok).toBe(false);
+    expect(checkResource({ ...base, kind: "Video", body: "note" }, ["c1"]).ok).toBe(false);
+    expect(checkResource({ ...base, url: "ftp://x.org" }, ["c1"]).ok).toBe(false);
+    expect(checkResource({ ...base, url: "https://example.org/a", kind: "Link", body: "" }, ["c1"])).toMatchObject({ ok: true, value: { url: "https://example.org/a" } });
+    expect(checkResource({ ...base, classId: "other" }, ["c1"]).ok).toBe(false);
+    expect(checkResource({ ...base, shared: true }, ["c1"])).toMatchObject({ ok: true, value: { shared: true } });
+  });
+});
+
+describe("lesson planner and resources in the repository", () => {
+  beforeEach(() => resetMockTeaching());
+  const NOW = "2026-11-14T08:00:00.000Z";
+
+  it("starts with plans in every state and some shared resources", async () => {
+    const lessons = await repo.listLessons(ctx);
+    expect(new Set(lessons.map((l) => l.status))).toEqual(new Set(["draft", "ready", "taught"]));
+    expect(lessons.map((l) => l.date)).toEqual([...lessons.map((l) => l.date)].sort());
+    const res = await repo.listResources(ctx);
+    expect(res.some((r) => r.shared)).toBe(true);
+    expect(res.some((r) => r.classId === "")).toBe(true);
+  });
+
+  it("plans, readies, teaches, copies and deletes a lesson", async () => {
+    const [c] = await repo.listClasses(ctx);
+    const made = await repo.saveLesson(ctx, undefined, { classId: c.id, title: "New", date: "2026-11-20", startTime: "", objectives: "", activities: "", homework: "", links: [{ label: "L", url: "https://a.org/" }], notes: "" }, NOW);
+    const id = made.ok ? made.id! : "";
+    expect((await repo.setLessonStatus(ctx, id, "ready", undefined, NOW)).ok).toBe(false); // no objectives yet
+    await repo.saveLesson(ctx, id, { classId: c.id, title: "New", date: "2026-11-20", startTime: "", objectives: "o", activities: "a", homework: "", links: [], notes: "" }, NOW);
+    expect((await repo.setLessonStatus(ctx, id, "ready", undefined, NOW)).ok).toBe(true);
+    expect((await repo.setLessonStatus(ctx, id, "taught", "Went well", NOW)).ok).toBe(true);
+    const copy = await repo.duplicateLesson(ctx, id, "2026-11-27", NOW);
+    const copied = (await repo.listLessons(ctx)).find((l) => l.id === (copy.ok ? copy.id : ""))!;
+    expect(copied).toMatchObject({ status: "draft", date: "2026-11-27", reflection: "", title: "New" });
+    expect((await repo.deleteLesson(ctx, id)).ok).toBe(true);
+    expect((await repo.listLessons(ctx)).some((l) => l.id === id)).toBe(false);
+  });
+
+  it("refuses to touch other classes' or other teachers' plans and resources", async () => {
+    expect((await repo.saveLesson(ctx, undefined, { classId: "cls-nope", title: "x", date: "2026-11-20", startTime: "", objectives: "", activities: "", homework: "", links: [], notes: "" }, NOW)).ok).toBe(false);
+    expect((await repo.saveResource(ctx, undefined, { classId: "cls-nope", title: "x", kind: "Notes", url: "", body: "b", topic: "", shared: false }, NOW)).ok).toBe(false);
+    const other = { ...ctx, teacherId: "u2" };
+    const mine = (await repo.listLessons(ctx))[0];
+    await repo.deleteLesson(other, mine.id); // not theirs: their own seeded copy has a different id space
+    expect((await repo.listLessons(ctx)).some((l) => l.id === mine.id)).toBe(true);
+  });
+
+  it("adds, shares, edits and deletes a resource", async () => {
+    const made = await repo.saveResource(ctx, undefined, { classId: "", title: "Link", kind: "Link", url: "https://example.org/", body: "", topic: "t", shared: false }, NOW);
+    const id = made.ok ? made.id! : "";
+    expect((await repo.setResourceShared(ctx, id, true, NOW)).ok).toBe(true);
+    expect((await repo.listResources(ctx)).find((r) => r.id === id)!.shared).toBe(true);
+    expect((await repo.saveResource(ctx, id, { classId: "", title: "Renamed", kind: "Link", url: "https://example.org/", body: "", topic: "t", shared: true }, NOW)).ok).toBe(true);
+    expect((await repo.listResources(ctx)).find((r) => r.id === id)!.title).toBe("Renamed");
+    expect((await repo.deleteResource(ctx, id)).ok).toBe(true);
+    expect((await repo.deleteResource(ctx, id)).ok).toBe(false);
+  });
+
+  it("uses lecturer wording for a university", async () => {
+    const { teacherTermsFor } = await import("@/lib/teacher/terms");
+    const w = teacherTermsFor("university");
+    expect([w.sitting, w.pages.resources]).toEqual(["Session", "Course materials"]);
+    expect(resolveLabel("Learning resources", termsFor("college"))).toBe("Course materials");
+    expect(resolveLabel("Learning resources", termsFor("high_school"))).toBe("Learning resources");
+    const uni: TeacherContext = { tenantId: "u", teacherId: "l1", institutionType: "university" };
+    expect((await repo.listLessons(uni))[0].objectives).toContain("students");
+  });
+});

@@ -32,3 +32,9 @@ export const shortDate = (iso: string): string => {
   const d = parse(iso);
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
 };
+
+/** The Monday of the week that contains `iso`. */
+export const weekStart = (iso: string): string => {
+  const d = parse(iso).getUTCDay();
+  return addDays(iso, d === 0 ? -6 : 1 - d);
+};

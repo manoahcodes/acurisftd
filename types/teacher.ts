@@ -181,3 +181,47 @@ export type Gradebook = {
   bands: GradeBand[];
   passMark: number;
 };
+
+// ---- Lesson planner (Course outline) and learning resources (Course materials)
+
+export type LessonStatus = "draft" | "ready" | "taught";
+
+export type LessonPlan = {
+  id: string;
+  classId: string;
+  title: string;
+  date: string;
+  /** "HH:MM", or empty. */
+  startTime: string;
+  objectives: string;
+  activities: string;
+  homework: string;
+  links: ResourceLink[];
+  notes: string;
+  status: LessonStatus;
+  /** What went well and what to change; written after teaching. */
+  reflection: string;
+  createdAt: string;
+  updatedAt: string;
+};
+export type LessonRow = LessonPlan & { className: string; subject: string };
+
+export const RESOURCE_KINDS = ["Link", "Reading", "Video", "Worksheet", "Notes"] as const;
+export type ResourceKind = (typeof RESOURCE_KINDS)[number];
+
+/** A link or a note. Files are not uploaded. */
+export type LearningResource = {
+  id: string;
+  /** Empty means it is for all of this teacher's classes. */
+  classId: string;
+  title: string;
+  kind: ResourceKind;
+  url: string;
+  body: string;
+  topic: string;
+  /** Learners can see it. */
+  shared: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+export type ResourceRow = LearningResource & { className: string };

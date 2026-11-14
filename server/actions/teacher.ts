@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { todayIn } from "@/lib/format";
-import { checkAssessment, checkAssignment, checkCourseworkWeight, checkMarks, checkRegister, checkRemark, checkResults, type Checked } from "@/lib/teacher/validate";
-import type { AssessmentStatus, AssignmentStatus, Outcome } from "@/types/teacher";
+import { isIsoDate } from "@/lib/teacher/validate";
+import { checkLesson, checkReflection, checkResource, checkAssessment, checkAssignment, checkCourseworkWeight, checkMarks, checkRegister, checkRemark, checkResults, type Checked } from "@/lib/teacher/validate";
+import type { LessonStatus, AssessmentStatus, AssignmentStatus, Outcome } from "@/types/teacher";
 import { teaching } from "../repositories";
 import { getTeacherSession } from "../teacher-context";
 
@@ -156,6 +157,84 @@ export async function saveGradebookRemark(classId: string, learnerId: string, re
   const checked = checkRemark(remark);
   if (!checked.ok) return fromChecked(checked);
   const r = await teaching.setGradebookRemark(ctx, classId, learnerId, checked.value);
+  if (r.ok) refresh();
+  return r;
+}
+
+// ---- Lesson planner and learning resources
+
+export async function saveLesson(id: string | null, raw: Record<string, unknown>): Promise<ActionResult> {
+  const { ctx } = await getTeacherSession();
+  if (id !== null && !ID.test(id)) return bad("That plan is not available.");
+  const classes = await teaching.listClasses(ctx);
+  const checked = checkLesson(raw ?? {}, classes.map((c) => c.id));
+  if (!checked.ok) return fromChecked(checked);
+  const r = await teaching.saveLesson(ctx, id ?? undefined, checked.value, new Date().toISOString());
+  if (r.ok) refresh();
+  return r;
+}
+
+const LESSON_STATUSES: LessonStatus[] = ["draft", "ready", "taught"];
+
+export async function changeLessonStatus(id: string, status: LessonStatus, reflection?: string): Promise<ActionResult> {
+  const { ctx, timezone } = await getTeacherSession();
+  if (!ID.test(id) || !LESSON_STATUSES.includes(status)) return bad("That change is not available.");
+  const now = new Date();
+  let note: string | undefined;
+  if (status === "taught") {
+    // A lesson can only be marked taught once its day has come.
+    const plan = (await teaching.listLessons(ctx)).find((l) => l.id === id);
+    if (!plan) return bad("That plan no longer exists.");
+    if (plan.date > todayIn(timezone, now).iso) return bad("This lesson is in the future, so it cannot be marked as taught yet.");
+    const checked = checkReflection(reflection ?? plan.reflection);
+    if (!checked.ok) return fromChecked(checked);
+    note = checked.value;
+  }
+  const r = await teaching.setLessonStatus(ctx, id, status, note, now.toISOString());
+  if (r.ok) refresh();
+  return r;
+}
+
+export async function copyLesson(id: string, date: string): Promise<ActionResult> {
+  const { ctx } = await getTeacherSession();
+  if (!ID.test(id)) return bad("That plan is not available.");
+  if (!isIsoDate(date)) return bad("Choose a valid date.");
+  const r = await teaching.duplicateLesson(ctx, id, date, new Date().toISOString());
+  if (r.ok) refresh();
+  return r;
+}
+
+export async function removeLesson(id: string): Promise<ActionResult> {
+  const { ctx } = await getTeacherSession();
+  if (!ID.test(id)) return bad("That plan is not available.");
+  const r = await teaching.deleteLesson(ctx, id);
+  if (r.ok) refresh();
+  return r;
+}
+
+export async function saveResource(id: string | null, raw: Record<string, unknown>): Promise<ActionResult> {
+  const { ctx } = await getTeacherSession();
+  if (id !== null && !ID.test(id)) return bad("That resource is not available.");
+  const classes = await teaching.listClasses(ctx);
+  const checked = checkResource(raw ?? {}, classes.map((c) => c.id));
+  if (!checked.ok) return fromChecked(checked);
+  const r = await teaching.saveResource(ctx, id ?? undefined, checked.value, new Date().toISOString());
+  if (r.ok) refresh();
+  return r;
+}
+
+export async function shareResource(id: string, shared: boolean): Promise<ActionResult> {
+  const { ctx } = await getTeacherSession();
+  if (!ID.test(id) || typeof shared !== "boolean") return bad("That change is not available.");
+  const r = await teaching.setResourceShared(ctx, id, shared, new Date().toISOString());
+  if (r.ok) refresh();
+  return r;
+}
+
+export async function removeResource(id: string): Promise<ActionResult> {
+  const { ctx } = await getTeacherSession();
+  if (!ID.test(id)) return bad("That resource is not available.");
+  const r = await teaching.deleteResource(ctx, id);
   if (r.ok) refresh();
   return r;
 }

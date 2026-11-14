@@ -2,6 +2,8 @@ import { classesFor, learnersOf } from "@/lib/teacher/seed";
 import { bandsFor, finalPercent, gradeOf, PASS_MARK, percent, rankOf, round1 } from "@/lib/teacher/grading";
 import { tally } from "@/lib/teacher/validate";
 import type {
+  LearningResource,
+  LessonPlan,
   Assessment,
   AssessmentDetail,
   AssessmentResult,
@@ -46,6 +48,8 @@ type State = {
   cwWeight: Record<string, number>;
   /** Gradebook remarks by learner id. */
   remarks: Record<string, string>;
+  lessons: LessonPlan[];
+  resources: LearningResource[];
 };
 
 const g = globalThis as unknown as { __acurisTeaching?: Map<string, State> };
@@ -67,7 +71,7 @@ const SEED_NOW = "2026-11-12T16:00:00.000Z";
 
 function seed(ctx: TeacherContext): State {
   const classes = classesFor(ctx.institutionType);
-  const s: State = { registers: {}, assignments: [], submissions: {}, notes: {}, flags: {}, seq: 1, assessments: [], results: {}, cwWeight: {}, remarks: {} };
+  const s: State = { registers: {}, assignments: [], submissions: {}, notes: {}, flags: {}, seq: 1, assessments: [], results: {}, cwWeight: {}, remarks: {}, lessons: [], resources: [] };
 
   classes.forEach((cls) => {
     const roster = learnersOf(ctx.institutionType, cls.id);
@@ -142,7 +146,46 @@ function seed(ctx: TeacherContext): State {
     }
   }
   seedAssessments(ctx, s);
+  seedPlanning(ctx, s);
   return s;
+}
+
+function seedPlanning(ctx: TeacherContext, s: State) {
+  const classes = classesFor(ctx.institutionType);
+  const tertiary = ctx.institutionType === "college" || ctx.institutionType === "university";
+  const plans: Array<[number, string, string, string, LessonPlan["status"]]> = [
+    [0, "Introduction to the topic", "2026-11-09", "08:00", "taught"],
+    [0, "Worked examples and practice", "2026-11-13", "08:00", "ready"],
+    [0, "Revision and quick check", "2026-11-16", "08:00", "draft"],
+    [1, "Core concepts", "2026-11-10", "09:10", "taught"],
+    [1, "Applying the concepts", "2026-11-17", "09:10", "ready"],
+    [2, "Problem-solving workshop", "2026-11-11", "10:30", "taught"],
+    [2, "Test preparation", "2026-11-18", "10:30", "draft"],
+    [3, "Foundations recap", "2026-11-12", "12:00", "taught"],
+  ];
+  for (const [ci, title, date, startTime, status] of plans) {
+    const cls = classes[ci];
+    if (!cls) continue;
+    s.lessons.push({
+      id: `les-${s.seq++}`, classId: cls.id, title, date, startTime,
+      objectives: tertiary ? "By the end of the session students can explain the key ideas and apply them to a short problem." : "By the end of the lesson learners can explain the key ideas and solve similar problems.",
+      activities: "Starter question, teacher explanation, guided practice, independent work, recap.",
+      homework: status === "draft" ? "" : "Complete the practice questions.",
+      links: [], notes: "", status,
+      reflection: status === "taught" ? "Most of the class followed well; revisit the second example next time." : "",
+      createdAt: "2026-11-02T08:00:00.000Z", updatedAt: SEED_NOW,
+    });
+  }
+  const res: Array<[number | null, string, LearningResource["kind"], string, string, string, boolean]> = [
+    [0, "Khan Academy: core practice", "Link", "https://www.khanacademy.org/", "", "Practice", true],
+    [null, "Study skills checklist", "Notes", "", "Plan your week, revise a little every day, and ask for help early.", "Study skills", true],
+    [1, "Revision video playlist", "Video", "https://www.youtube.com/", "Watch in order before the test.", "Revision", false],
+    [2, "Reading: chapter summary", "Reading", "https://www.gutenberg.org/", "", "Reading", true],
+  ];
+  for (const [ci, title, kind, url, body, topic, shared] of res) {
+    if (ci !== null && !classes[ci]) continue;
+    s.resources.push({ id: `res-${s.seq++}`, classId: ci === null ? "" : classes[ci].id, title, kind, url, body, topic, shared, createdAt: "2026-11-02T08:00:00.000Z", updatedAt: SEED_NOW });
+  }
 }
 
 function seedAssessments(ctx: TeacherContext, s: State) {
@@ -180,6 +223,15 @@ function stateOf(ctx: TeacherContext): State {
     // Saved before assessments existed: add them and keep everything else.
     Object.assign(s, { assessments: [], results: {}, cwWeight: {}, remarks: {} });
     seedAssessments(ctx, s);
+    s.lessons = [];
+    s.resources = [];
+    seedPlanning(ctx, s);
+    save();
+  } else if (!s.lessons) {
+    // Saved before lesson plans and resources existed.
+    s.lessons = [];
+    s.resources = [];
+    seedPlanning(ctx, s);
     save();
   }
   return s;
@@ -544,6 +596,102 @@ export const mockTeachingRepository: TeachingRepository = {
     const s = stateOf(ctx);
     if (remark) s.remarks[learnerId] = remark;
     else delete s.remarks[learnerId];
+    save();
+    return { ok: true };
+  },
+  async listLessons(ctx) {
+    const s = stateOf(ctx);
+    return s.lessons.flatMap((l) => {
+      const cls = classOf(ctx, l.classId);
+      return cls ? [{ ...l, className: cls.name, subject: cls.subject }] : [];
+    }).sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime) || a.className.localeCompare(b.className, "en", { numeric: true }));
+  },
+
+  async saveLesson(ctx, id, input, now) {
+    if (!classOf(ctx, input.classId)) return fail("That class is not one of yours.");
+    const s = stateOf(ctx);
+    if (!id) {
+      const l: LessonPlan = { ...input, id: `les-${s.seq++}`, status: "draft", reflection: "", createdAt: now, updatedAt: now };
+      s.lessons.push(l);
+      save();
+      return { ok: true, id: l.id };
+    }
+    const i = s.lessons.findIndex((x) => x.id === id);
+    if (i < 0) return fail("That plan no longer exists.");
+    s.lessons[i] = { ...s.lessons[i], ...input, updatedAt: now };
+    save();
+    return { ok: true, id };
+  },
+
+  async setLessonStatus(ctx, id, status, reflection, now) {
+    const s = stateOf(ctx);
+    const l = s.lessons.find((x) => x.id === id);
+    if (!l || !classOf(ctx, l.classId)) return fail("That plan no longer exists.");
+    if (status === "ready" && (!l.objectives || !l.activities)) return fail("Add objectives and activities before marking a plan ready.");
+    l.status = status;
+    if (reflection !== undefined) l.reflection = reflection;
+    l.updatedAt = now;
+    save();
+    return { ok: true };
+  },
+
+  async duplicateLesson(ctx, id, date, now) {
+    const s = stateOf(ctx);
+    const l = s.lessons.find((x) => x.id === id);
+    if (!l || !classOf(ctx, l.classId)) return fail("That plan no longer exists.");
+    const copy: LessonPlan = { ...l, links: l.links.map((k) => ({ ...k })), id: `les-${s.seq++}`, date, status: "draft", reflection: "", createdAt: now, updatedAt: now };
+    s.lessons.push(copy);
+    save();
+    return { ok: true, id: copy.id };
+  },
+
+  async deleteLesson(ctx, id) {
+    const s = stateOf(ctx);
+    const l = s.lessons.find((x) => x.id === id);
+    if (!l || !classOf(ctx, l.classId)) return fail("That plan no longer exists.");
+    s.lessons = s.lessons.filter((x) => x.id !== id);
+    save();
+    return { ok: true };
+  },
+
+  async listResources(ctx) {
+    const s = stateOf(ctx);
+    return s.resources.flatMap((r) => {
+      if (r.classId && !classOf(ctx, r.classId)) return [];
+      return [{ ...r, className: r.classId ? (classOf(ctx, r.classId)?.name ?? "") : "" }];
+    }).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.title.localeCompare(b.title));
+  },
+
+  async saveResource(ctx, id, input, now) {
+    if (input.classId && !classOf(ctx, input.classId)) return fail("That class is not one of yours.");
+    const s = stateOf(ctx);
+    if (!id) {
+      const r: LearningResource = { ...input, id: `res-${s.seq++}`, createdAt: now, updatedAt: now };
+      s.resources.push(r);
+      save();
+      return { ok: true, id: r.id };
+    }
+    const i = s.resources.findIndex((x) => x.id === id);
+    if (i < 0) return fail("That resource no longer exists.");
+    s.resources[i] = { ...s.resources[i], ...input, updatedAt: now };
+    save();
+    return { ok: true, id };
+  },
+
+  async setResourceShared(ctx, id, shared, now) {
+    const r = stateOf(ctx).resources.find((x) => x.id === id);
+    if (!r || (r.classId && !classOf(ctx, r.classId))) return fail("That resource no longer exists.");
+    r.shared = shared;
+    r.updatedAt = now;
+    save();
+    return { ok: true };
+  },
+
+  async deleteResource(ctx, id) {
+    const s = stateOf(ctx);
+    const r = s.resources.find((x) => x.id === id);
+    if (!r || (r.classId && !classOf(ctx, r.classId))) return fail("That resource no longer exists.");
+    s.resources = s.resources.filter((x) => x.id !== id);
     save();
     return { ok: true };
   },

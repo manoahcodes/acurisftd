@@ -1,6 +1,9 @@
 import type { InstitutionType } from "@/config/institution";
-import type { AssessmentInput, AssignmentInput, MarkEntry, RegisterInput, ResultEntry } from "@/lib/teacher/validate";
+import type { LessonInput, ResourceInput, AssessmentInput, AssignmentInput, MarkEntry, RegisterInput, ResultEntry } from "@/lib/teacher/validate";
 import type {
+  LessonRow,
+  LessonStatus,
+  ResourceRow,
   AssessmentDetail,
   AssessmentRow,
   AssessmentStatus,
@@ -72,4 +75,20 @@ export interface TeachingRepository {
   /** Percent (0-50) of the final grade that comes from assignments. */
   setCourseworkWeight(ctx: TeacherContext, classId: string, weight: number): Promise<Outcome>;
   setGradebookRemark(ctx: TeacherContext, classId: string, learnerId: string, remark: string): Promise<Outcome>;
+
+  // Lesson planner (Course outline)
+  listLessons(ctx: TeacherContext): Promise<LessonRow[]>;
+  /** `id` undefined creates a draft; otherwise edits that plan. */
+  saveLesson(ctx: TeacherContext, id: string | undefined, input: LessonInput, now: string): Promise<Outcome>;
+  /** `reflection` is kept when moving to "taught"; undefined leaves it as it was. */
+  setLessonStatus(ctx: TeacherContext, id: string, status: LessonStatus, reflection: string | undefined, now: string): Promise<Outcome>;
+  /** Copies a plan to another date as a new draft. */
+  duplicateLesson(ctx: TeacherContext, id: string, date: string, now: string): Promise<Outcome>;
+  deleteLesson(ctx: TeacherContext, id: string): Promise<Outcome>;
+
+  // Learning resources (Course materials): links and notes only
+  listResources(ctx: TeacherContext): Promise<ResourceRow[]>;
+  saveResource(ctx: TeacherContext, id: string | undefined, input: ResourceInput, now: string): Promise<Outcome>;
+  setResourceShared(ctx: TeacherContext, id: string, shared: boolean, now: string): Promise<Outcome>;
+  deleteResource(ctx: TeacherContext, id: string): Promise<Outcome>;
 }

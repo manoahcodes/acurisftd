@@ -61,11 +61,11 @@ export function AssignmentsView({ rows, details, classes, terms, branding }: { r
               <Search size={16} aria-hidden className="pointer-events-none absolute left-3 top-3 text-muted" />
               <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search assignments" aria-label="Search assignments" className={`${inputClass} pl-9`} />
             </div>
-            <select aria-label={`Filter by ${terms.group.toLowerCase()}`} value={fClass} onChange={(e) => setFClass(e.target.value)} className={`${inputClass} w-auto`}>
+            <select aria-label={`Filter by ${terms.group.toLowerCase()}`} value={fClass} onChange={(e) => setFClass(e.target.value)} className={`${inputClass} w-auto!`}>
               <option value="">All {terms.groups.toLowerCase()}</option>
               {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <select aria-label="Filter by status" value={fStatus} onChange={(e) => setFStatus(e.target.value)} className={`${inputClass} w-auto`}>
+            <select aria-label="Filter by status" value={fStatus} onChange={(e) => setFStatus(e.target.value)} className={`${inputClass} w-auto!`}>
               <option value="">Any status</option>
               {(Object.keys(STATUS_LABEL) as AssignmentStatus[]).map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
             </select>
@@ -279,12 +279,12 @@ function MarksDialog({ detail, terms, branding, today, onClose }: { detail: Assi
                   <tr key={e.learner.id} className="border-t border-line align-top">
                     <td className="px-3 py-2"><p className="font-medium text-ink">{e.learner.name}</p><p className="text-sm text-muted">{e.learner.number}</p></td>
                     <td className="px-3 py-2">
-                      <select aria-label={`Status for ${e.learner.name}`} value={r.status} onChange={(ev) => set(e.learner.id, { status: ev.target.value as SubmissionStatus })} className={`${inputClass} w-auto`}>
+                      <select aria-label={`Status for ${e.learner.name}`} value={r.status} onChange={(ev) => set(e.learner.id, { status: ev.target.value as SubmissionStatus })} className={`${inputClass} w-auto!`}>
                         {(Object.keys(SUB_LABEL) as SubmissionStatus[]).map((s) => <option key={s} value={s}>{SUB_LABEL[s]}</option>)}
                       </select>
                     </td>
                     <td className="px-3 py-2">
-                      <input aria-label={`Mark for ${e.learner.name}`} aria-invalid={Boolean(err)} inputMode="decimal" value={r.mark} onChange={(ev) => set(e.learner.id, { mark: ev.target.value.trim() })} className={cn(inputClass, "w-24", err && "border-danger")} />
+                      <input aria-label={`Mark for ${e.learner.name}`} aria-invalid={Boolean(err)} inputMode="decimal" value={r.mark} onChange={(ev) => set(e.learner.id, { mark: ev.target.value.trim() })} className={cn(inputClass, "w-24!", err && "border-danger")} />
                       {err && <p className="mt-1 text-sm text-danger">{err}</p>}
                     </td>
                     <td className="px-3 py-2"><input aria-label={`Feedback for ${e.learner.name}`} maxLength={500} value={r.feedback} onChange={(ev) => set(e.learner.id, { feedback: ev.target.value })} className={inputClass} /></td>

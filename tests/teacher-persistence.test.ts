@@ -88,3 +88,37 @@ describe("assessments survive a restart, and older saved data gains them", () =>
     expect((await again.listAssessments(ctx)).length).toBeGreaterThan(0);
   });
 });
+
+describe("lesson plans and resources survive a restart, and Phase 2 data gains them", () => {
+  const ctx = { tenantId: "t1", teacherId: "u1", institutionType: "high_school" as const };
+
+  it("keeps plans and resources", async () => {
+    await restart();
+    const first = (await import("@/server/repositories/teacher-mock")).mockTeachingRepository;
+    const [c] = await first.listClasses(ctx);
+    const l = await first.saveLesson(ctx, undefined, { classId: c.id, title: "Kept plan", date: "2026-11-20", startTime: "09:00", objectives: "o", activities: "a", homework: "", links: [], notes: "" }, "2026-11-14T08:00:00.000Z");
+    const r = await first.saveResource(ctx, undefined, { classId: c.id, title: "Kept link", kind: "Link", url: "https://example.org/", body: "", topic: "", shared: true }, "2026-11-14T08:00:00.000Z");
+
+    await restart();
+    const again = (await import("@/server/repositories/teacher-mock")).mockTeachingRepository;
+    expect((await again.listLessons(ctx)).find((x) => x.id === (l.ok ? l.id : ""))).toMatchObject({ title: "Kept plan", startTime: "09:00" });
+    expect((await again.listResources(ctx)).find((x) => x.id === (r.ok ? r.id : ""))).toMatchObject({ title: "Kept link", shared: true });
+  });
+
+  it("adds plans and resources to data saved by Phase 2 without losing anything", async () => {
+    await restart();
+    const { saveSnapshot } = await import("@/server/persistence/store");
+    const first = (await import("@/server/repositories/teacher-mock")).mockTeachingRepository;
+    const [c] = await first.listClasses(ctx);
+    await first.setCourseworkWeight(ctx, c.id, 33);
+    const g = globalThis as unknown as { __acurisTeaching: Map<string, Record<string, unknown>> };
+    const NEW = new Set(["lessons", "resources"]);
+    saveSnapshot("teaching", [...g.__acurisTeaching].map(([k, v]) => [k, Object.fromEntries(Object.entries(v).filter(([f]) => !NEW.has(f)))] as const));
+
+    await restart();
+    const again = (await import("@/server/repositories/teacher-mock")).mockTeachingRepository;
+    expect((await again.getGradebook(ctx, c.id))!.courseworkWeight).toBe(33);
+    expect((await again.listLessons(ctx)).length).toBeGreaterThan(0);
+    expect((await again.listResources(ctx)).length).toBeGreaterThan(0);
+  });
+});

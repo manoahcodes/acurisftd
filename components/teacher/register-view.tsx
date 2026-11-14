@@ -193,11 +193,11 @@ export function RegisterView({
           <ExportBar onCsv={() => downloadCsv(csvFilename("register history", today || "export"), [columns, ...table])} onPrint={() => setPrinting(true)} disabled={rows.length === 0} />
         </div>
         <div className="mt-4 flex flex-wrap gap-3">
-          <select aria-label={`Filter by ${terms.group.toLowerCase()}`} value={hClass} onChange={(e) => setHClass(e.target.value)} className={`${inputClass} w-auto`}>
+          <select aria-label={`Filter by ${terms.group.toLowerCase()}`} value={hClass} onChange={(e) => setHClass(e.target.value)} className={`${inputClass} w-auto!`}>
             <option value="">All {terms.groups.toLowerCase()}</option>
             {classes.map((c) => <option key={c.class.id} value={c.class.id}>{c.class.name}</option>)}
           </select>
-          <select aria-label="Filter by status" value={hStatus} onChange={(e) => setHStatus(e.target.value)} className={`${inputClass} w-auto`}>
+          <select aria-label="Filter by status" value={hStatus} onChange={(e) => setHStatus(e.target.value)} className={`${inputClass} w-auto!`}>
             <option value="">Any status</option>
             <option value="submitted">Submitted</option>
             <option value="draft">Draft</option>

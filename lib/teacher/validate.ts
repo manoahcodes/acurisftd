@@ -1,4 +1,4 @@
-import { ASSESSMENT_KINDS, ASSIGNMENT_KINDS, ATTENDANCE_STATUSES, type AssessmentKind, type ResultKind, type AssignmentKind, type AttendanceStatus, type AttendanceTally, type ResourceLink } from "@/types/teacher";
+import { RESOURCE_KINDS, type ResourceKind, ASSESSMENT_KINDS, ASSIGNMENT_KINDS, ATTENDANCE_STATUSES, type AssessmentKind, type ResultKind, type AssignmentKind, type AttendanceStatus, type AttendanceTally, type ResourceLink } from "@/types/teacher";
 
 /** Checks shared by the server actions (which must not trust the browser) and the forms. Pure, so they are easy to test. */
 
@@ -219,4 +219,62 @@ export function checkRemark(raw: unknown): Checked<string> {
   const t = typeof raw === "string" ? raw.trim() : "";
   if (t.length > 300) return { ok: false, error: "A remark can be at most 300 characters." };
   return { ok: true, value: t };
+}
+
+// ---- Lesson planner and learning resources
+
+export type LessonInput = { classId: string; title: string; date: string; startTime: string; objectives: string; activities: string; homework: string; links: ResourceLink[]; notes: string };
+
+export function checkLesson(raw: Record<string, unknown>, ownClassIds: string[]): Checked<LessonInput> {
+  const fields: Record<string, string> = {};
+  const text = (k: string) => (typeof raw[k] === "string" ? (raw[k] as string).trim() : "");
+  const classId = text("classId");
+  if (!ownClassIds.includes(classId)) fields.classId = "Choose one of your classes.";
+  const title = text("title");
+  if (!title) fields.title = "Enter the topic.";
+  else if (title.length > LIMITS.title) fields.title = `Keep the topic under ${LIMITS.title} characters.`;
+  const date = text("date");
+  if (!isIsoDate(date)) fields.date = "Choose a date.";
+  const startTime = text("startTime");
+  if (startTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime)) fields.startTime = "Use a time like 08:00.";
+  for (const k of ["objectives", "activities", "homework", "notes"] as const) {
+    if (text(k).length > LIMITS.instructions) fields[k] = `Keep this under ${LIMITS.instructions} characters.`;
+  }
+  const links = checkLinks(raw.links);
+  if (!links.ok) fields.links = links.error;
+  if (Object.keys(fields).length > 0) return { ok: false, error: "Fix the highlighted fields.", fields };
+  return { ok: true, value: { classId, title, date, startTime, objectives: text("objectives"), activities: text("activities"), homework: text("homework"), links: (links as { ok: true; value: ResourceLink[] }).value, notes: text("notes") } };
+}
+
+export const checkReflection = (raw: unknown): Checked<string> => {
+  const t = typeof raw === "string" ? raw.trim() : "";
+  return t.length > 1000 ? { ok: false, error: "The reflection can be at most 1000 characters." } : { ok: true, value: t };
+};
+
+export type ResourceInput = { classId: string; title: string; kind: ResourceKind; url: string; body: string; topic: string; shared: boolean };
+
+/** A resource is a web link, a note, or both. `classId` may be empty (all classes) or one of the teacher's own. */
+export function checkResource(raw: Record<string, unknown>, ownClassIds: string[]): Checked<ResourceInput> {
+  const fields: Record<string, string> = {};
+  const text = (k: string) => (typeof raw[k] === "string" ? (raw[k] as string).trim() : "");
+  const classId = text("classId");
+  if (classId && !ownClassIds.includes(classId)) fields.classId = "Choose one of your classes, or all of them.";
+  const title = text("title");
+  if (!title) fields.title = "Enter a title.";
+  else if (title.length > LIMITS.title) fields.title = `Keep the title under ${LIMITS.title} characters.`;
+  const kind = text("kind") as ResourceKind;
+  if (!RESOURCE_KINDS.includes(kind)) fields.kind = "Choose a type.";
+  const topic = text("topic");
+  if (topic.length > 60) fields.topic = "Keep the topic under 60 characters.";
+  const body = text("body");
+  if (body.length > LIMITS.instructions) fields.body = `Keep the note under ${LIMITS.instructions} characters.`;
+  let url = text("url");
+  if (url) {
+    const checked = checkLinks([{ label: title || "Link", url }]);
+    if (!checked.ok) fields.url = "Use a web address starting with https://";
+    else url = checked.value[0].url;
+  } else if (!body) fields.url = "Add a web link or write a note.";
+  else if (kind === "Link" || kind === "Video") fields.url = `A ${kind.toLowerCase()} needs a web address.`;
+  if (Object.keys(fields).length > 0) return { ok: false, error: "Fix the highlighted fields.", fields };
+  return { ok: true, value: { classId, title, kind, url, body, topic, shared: raw.shared === true } };
 }

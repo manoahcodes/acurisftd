@@ -6,11 +6,13 @@ import { bandsFor, isTertiary, PASS_MARK } from "@/lib/teacher/grading";
 import { AssessmentsView } from "./assessments-view";
 import { AssignmentsView } from "./assignments-view";
 import { GradebookView } from "./gradebook-view";
+import { LessonsView } from "./lessons-view";
+import { ResourcesView } from "./resources-view";
 import { ClassesView } from "./classes-view";
 import { RegisterView } from "./register-view";
 
 /** Slugs of the Teacher / Lecturer pages that are built. */
-export const TEACHER_PAGES = ["my-classes", "class-register", "assignments", "assessments", "gradebook"];
+export const TEACHER_PAGES = ["my-classes", "class-register", "assignments", "assessments", "gradebook", "lesson-planner", "learning-resources"];
 
 /** One Teacher or Lecturer page. Reads cookies and the session, so render it inside <Suspense>. */
 export async function TeacherSection({ slug }: { slug: string }) {
@@ -46,6 +48,16 @@ export async function TeacherSection({ slug }: { slug: string }) {
     const classes = await teaching.listClasses(ctx);
     const books = (await Promise.all(classes.map((c) => teaching.getGradebook(ctx, c.id)))).filter((b) => b !== undefined);
     return <GradebookView books={books} tertiary={isTertiary(ctx.institutionType)} terms={terms} branding={branding} />;
+  }
+
+  if (slug === "lesson-planner") {
+    const [rows, classes] = await Promise.all([teaching.listLessons(ctx), teaching.listClasses(ctx)]);
+    return <LessonsView rows={rows} classes={classes} terms={terms} branding={branding} />;
+  }
+
+  if (slug === "learning-resources") {
+    const [rows, classes] = await Promise.all([teaching.listResources(ctx), teaching.listClasses(ctx)]);
+    return <ResourcesView rows={rows} classes={classes} terms={terms} branding={branding} />;
   }
 
   return null;

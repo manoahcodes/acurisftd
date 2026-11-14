@@ -69,6 +69,6 @@ Data is the in-memory mock saved through the SQLite store (key `teaching`), scop
 
 - [x] Phase 1: My classes (cards, roster, watch list, class note, CSV, print), Class register (take, draft, submit, history, CSV, print), Assignments (create, edit, publish, close, delete, links and notes, marks entry, CSV, print)
 - [x] Phase 2: Assessments (schedule, open for marking, marks entry with absent/excused, publish, stats, grade spread, CSV, print) and Gradebook (weighted finals, coursework weight, rank, grade, remarks, CSV, print). Grading scales and the 50% pass mark are samples in `lib/teacher/grading.ts`; a school replaces them
-- [ ] Phase 3: Lesson planner, Learning resources
+- [x] Phase 3: Lesson planner / Course outline (plans by week, draft, ready, taught with reflection, copy to another date, links and notes, CSV, print) and Learning resources / Course materials (links and notes only, by class, type and topic, share with learners, CSV, print). Learners cannot see shared items until the Learner/Student role has pages
 - [ ] Swap `TeachingRepository` for a real one; `getTeacherSession` (`server/teacher-context.ts`) must verify the Teacher/Lecturer role and fail closed
 - [x] Sidebar badges (Class register, Assignments, Assessments) and the dashboard "To mark" KPI come from the teacher's own data
