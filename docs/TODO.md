@@ -46,7 +46,8 @@ All work on mock data now (CSV files up to 1 MB, 500 rows; every run is written 
 - [ ] Browser (end-to-end) tests in the repo, and CI to run lint, typecheck and tests
 
 ## Out of scope for Platform Admin (separate work)
-- Teacher, Bursar, Cashier, Parent and Student pages are still "hasn't been built yet" placeholders
+- Bursar, Cashier, Parent and Student pages are still "hasn't been built yet" placeholders
+- Teacher / Lecturer pages: see section 7
 
 ## 6. Branding and theme (added with the theme editor)
 - [x] Colour suggestions from the uploaded logo (or the saved one): the editor reads the logo in the browser (`lib/theme/logo-colours.ts`), skips transparent and white/black backgrounds, and offers up to three primary + secondary choices that fill the form and live preview; nothing saves until Save. SVG logos are not accepted today, so they are not read
@@ -60,3 +61,14 @@ All work on mock data now (CSV files up to 1 MB, 500 rows; every run is written 
 - [x] Dark mode checked on every screen of every role (automated contrast scan, light and dark; add new pages to that check)
 - [x] Ten theme fonts: Inter, Poppins, Lato, Source Sans 3, Roboto, Open Sans, Nunito Sans, Montserrat, Merriweather (serif) and Atkinson Hyperlegible, with a live sample in the picker
 - [ ] Verify the nine brand fonts (all except Inter) download in a networked build (sandbox could not reach Google Fonts)
+
+## 7. Teacher and Lecturer role
+Primary and High School get a **Teacher** (classes, learners, lessons, "Lesson planner"); College and University get a **Lecturer** (courses, students, sessions, "Attendance register", "Course outline"). Wording lives in `lib/teacher/terms.ts`; nav labels keep their stable keys and are re-worded through `Terminology.labels` in `config/institution.ts`.
+
+Data is the in-memory mock saved through the SQLite store (key `teaching`), scoped per school and per teacher (`server/repositories/teacher-mock.ts`, interface in `teacher-types.ts`). Server actions in `server/actions/teacher.ts` re-validate everything with `lib/teacher/validate.ts`.
+
+- [x] Phase 1: My classes (cards, roster, watch list, class note, CSV, print), Class register (take, draft, submit, history, CSV, print), Assignments (create, edit, publish, close, delete, links and notes, marks entry, CSV, print)
+- [ ] Phase 2: Assessments, Gradebook
+- [ ] Phase 3: Lesson planner, Learning resources
+- [ ] Swap `TeachingRepository` for a real one; `getTeacherSession` (`server/teacher-context.ts`) must verify the Teacher/Lecturer role and fail closed
+- [ ] The "To mark" KPI on the dashboard is still sample data until Assessments exist; the sidebar badges for Class register (draft registers) and Assignments (work to mark) already come from the teacher's data

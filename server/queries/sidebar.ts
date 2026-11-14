@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { ROLES, type RoleKey } from "@/config/navigation";
-import { navBadges } from "@/server/repositories";
+import { navBadges, teaching } from "@/server/repositories";
+import { getTeacherSession } from "@/server/teacher-context";
 import { getTenantContext } from "@/server/request-context";
 
 /**
@@ -12,7 +13,12 @@ import { getTenantContext } from "@/server/request-context";
 export const getNavBadges = cache(
   async (role: RoleKey): Promise<Record<string, number>> => {
     const ctx = await getTenantContext();
-    const raw = await navBadges.counts(ctx, role);
+    let raw = await navBadges.counts(ctx, role);
+    if (role === "teacher") {
+      // Registers still in draft and handed-in work waiting for a mark come from the teacher's own data.
+      const overview = await teaching.overview((await getTeacherSession()).ctx);
+      raw = { ...raw, "Class register": overview.draftRegisters, Assignments: overview.toMark };
+    }
     const labels = new Set(ROLES[role].nav.map((n) => n.label));
 
     const counts: Record<string, number> = {};

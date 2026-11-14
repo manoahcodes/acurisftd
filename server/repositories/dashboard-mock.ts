@@ -222,6 +222,7 @@ function teacher(ctx: TenantContext): Dashboard {
   const p = PROFILES[ctx.institutionType];
   const t = termsFor(ctx.institutionType);
   const first = p.lessons[0];
+  const tertiary = ctx.institutionType === "college" || ctx.institutionType === "university";
   const total = p.lessons.reduce((n, l) => n + l.size, 0);
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   return {
@@ -240,13 +241,13 @@ function teacher(ctx: TenantContext): Dashboard {
         rows: p.lessons.map((l) => r(l.time, l.group, l.course, l.room)),
       },
       {
-        title: "Teacher quick actions",
+        title: `${tertiary ? "Lecturer" : "Teacher"} quick actions`,
         span: "half",
         rows: [
-          go("Take class register", first.group),
+          go(tertiary ? "Take attendance register" : "Take class register", first.group),
           go("Create assignment", "Select class"),
           go("Enter assessment marks", "28 pending"),
-          go(ctx.institutionType === "college" || ctx.institutionType === "university" ? "View course outline" : "View lesson plan", "Week 4"),
+          go(tertiary ? "View course outline" : "View lesson plan", "Week 4"),
         ],
       },
       {

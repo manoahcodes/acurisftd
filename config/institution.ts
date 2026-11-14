@@ -95,6 +95,11 @@ export type Terminology = {
   courses: string;
   programmes: string;
   educators: string;
+  /**
+   * Display wording for a nav label that has no {token} of its own. The raw
+   * label stays the stable key (badges, icons, links); only what is shown changes.
+   */
+  labels?: Record<string, string>;
 };
 
 const SCHOOL_TERMS: Terminology = {
@@ -111,6 +116,12 @@ const TERTIARY_TERMS: Terminology = {
   courses: "Courses",
   programmes: "Programmes",
   educators: "Lecturers",
+  labels: {
+    "My classes": "My courses",
+    "Class register": "Attendance register",
+    "Lesson planner": "Course outline",
+    "Learning resources": "Course materials",
+  },
 };
 
 /** Shown when no school is selected, so the wording stays neutral. */
@@ -129,7 +140,8 @@ export function termsFor(type: InstitutionType | null | undefined): Terminology 
 
 /** Replaces {period}, {course}, {courses}, {programmes}, {educators} in a label. */
 export function resolveLabel(label: string, terms: Terminology): string {
+  if (terms.labels?.[label]) return terms.labels[label];
   return label.replace(/\{(\w+)\}/g, (match, key: string) =>
-    key in terms ? terms[key as keyof Terminology] : match,
+    key !== "labels" && key in terms ? terms[key as Exclude<keyof Terminology, "labels">] : match,
   );
 }

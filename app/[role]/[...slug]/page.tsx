@@ -18,6 +18,9 @@ import { ThemeSection } from "@/components/platform/theme/theme-section";
 import { SelectSchoolPrompt } from "@/components/platform/select-school-prompt";
 import { platformScreens } from "@/server/repositories";
 import { getTenantSelection } from "@/server/queries/platform";
+import { TEACHER_PAGES, TeacherSection } from "@/components/teacher/teacher-section";
+import { getTeacherSession } from "@/server/teacher-context";
+import { INSTITUTIONS } from "@/config/institution";
 
 type Params = Promise<{ role: string; slug: string[] }>;
 
@@ -36,6 +39,10 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   if (!isRoleKey(role)) return {};
   const item = ROLES[role].nav.find((n) => n.slug === slug.join("/"));
   if (!item) return {};
+  if (role === "teacher") {
+    const { ctx } = await getTeacherSession();
+    return { title: resolveLabel(item.label, termsFor(ctx.institutionType)) };
+  }
   if (role !== "platform") return { title: item.label };
   const { selected } = await getTenantSelection();
   return { title: resolveLabel(item.label, termsFor(selected && tenantTermsType(selected.divisions))) };
@@ -61,6 +68,8 @@ async function Section({ params }: { params: Params }) {
   if (!item) notFound();
 
   if (role === "platform") return <PlatformSection item={item} />;
+
+  if (role === "teacher") return <TeacherPage item={item} />;
 
   // Other roles: placeholder for every sidebar page that isn't built yet.
   return (
@@ -115,6 +124,30 @@ async function PlatformSection({ item }: { item: NavItem }) {
         <PlatformScreenView screen={screen} slug={item.slug} branding={printBrandingOf((await getResolvedTheme("platform")).branding)} />
       ) : null}
       {item.slug === "platform-settings" && <ThemeSection />}
+    </>
+  );
+}
+
+/**
+ * A Teacher page (Lecturer at a college or university). Wording follows the
+ * school's level: classes and learners, or courses and students.
+ */
+async function TeacherPage({ item }: { item: NavItem }) {
+  const { ctx, terms, schoolName, campus } = await getTeacherSession();
+  const title = resolveLabel(item.label, termsFor(ctx.institutionType));
+  const built = TEACHER_PAGES.includes(item.slug);
+  return (
+    <>
+      <PageHeader
+        crumbs={[
+          { label: "Dashboard", href: "/teacher" },
+          { label: terms.educator, href: hrefFor("teacher", "") },
+          { label: title, href: hrefFor("teacher", item.slug) },
+        ]}
+        title={title}
+        subtitle={built ? `${schoolName} • ${campus} • ${INSTITUTIONS[ctx.institutionType].label}` : "This section hasn't been built yet."}
+      />
+      {built && <TeacherSection slug={item.slug} />}
     </>
   );
 }
