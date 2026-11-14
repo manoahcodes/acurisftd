@@ -47,3 +47,56 @@ export type Timetable = {
   /** Gaps between sittings that are worth showing (break, lunch). */
   breaks: Array<{ start: string; end: string; label: string }>;
 };
+
+// ---- Assignments
+
+export const ASSIGNMENT_KINDS = ["Homework", "Classwork", "Project", "Quiz"] as const;
+export type AssignmentKind = (typeof ASSIGNMENT_KINDS)[number];
+
+export type AssignmentLink = { label: string; url: string };
+
+/** Work set by a teacher for this student's class. */
+export type StudentAssignment = {
+  id: string;
+  courseId: string;
+  title: string;
+  instructions: string;
+  kind: AssignmentKind;
+  postedOn: string;
+  dueDate: string;
+  maxMarks: number;
+  links: AssignmentLink[];
+  /** What the student may hand in. At least one is true. */
+  allowText: boolean;
+  allowFile: boolean;
+  /** Work can still be handed in after the due date (it is then marked late). */
+  acceptLate: boolean;
+};
+
+/** The file kept with a submission. The bytes stay on the server; the page only sees this. */
+export type SubmissionFile = { name: string; size: number; type: string };
+
+export type StudentSubmission = {
+  assignmentId: string;
+  text: string;
+  file?: SubmissionFile;
+  submittedAt: string;
+  /** Handed in after the due date. */
+  late: boolean;
+  /** How many times it has been handed in (1 = first time). */
+  attempts: number;
+  /** null until the teacher has marked it. */
+  mark: number | null;
+  feedback: string;
+};
+
+/**
+ * todo: not handed in, still open. overdue: not handed in, past the due date.
+ * submitted / late: handed in, waiting for a mark. marked: has a mark.
+ */
+export type AssignmentStatus = "todo" | "overdue" | "submitted" | "late" | "marked";
+
+export type StudentAssignmentRow = StudentAssignment & {
+  courseName: string;
+  submission?: StudentSubmission;
+};

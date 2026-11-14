@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { ROLES, type RoleKey } from "@/config/navigation";
-import { navBadges, teaching } from "@/server/repositories";
+import { navBadges, student, teaching } from "@/server/repositories";
+import { getStudentSession } from "@/server/student-context";
 import { getTeacherSession } from "@/server/teacher-context";
 import { getTenantContext } from "@/server/request-context";
 
@@ -18,6 +19,11 @@ export const getNavBadges = cache(
       // Registers still in draft and handed-in work waiting for a mark come from the teacher's own data.
       const overview = await teaching.overview((await getTeacherSession()).ctx);
       raw = { ...raw, "Class register": overview.draftRegisters, Assignments: overview.toMark, Assessments: overview.assessmentsToMark };
+    }
+    if (role === "student") {
+      // Assignments with nothing handed in come from the student's own work.
+      const pending = await student.countPending((await getStudentSession()).ctx);
+      raw = { ...raw, Assignments: pending };
     }
     const labels = new Set(ROLES[role].nav.map((n) => n.label));
 
