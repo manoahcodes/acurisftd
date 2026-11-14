@@ -1,11 +1,19 @@
 import { classesFor, learnersOf } from "@/lib/teacher/seed";
+import { bandsFor, finalPercent, gradeOf, PASS_MARK, percent, rankOf, round1 } from "@/lib/teacher/grading";
 import { tally } from "@/lib/teacher/validate";
 import type {
+  Assessment,
+  AssessmentDetail,
+  AssessmentResult,
+  AssessmentRow,
+  AssessmentStats,
   Assignment,
   AssignmentDetail,
   AssignmentRow,
   AttendanceStatus,
   ClassSummary,
+  Gradebook,
+  GradebookRow,
   Learner,
   RegisterRecord,
   RosterEntry,
@@ -31,6 +39,13 @@ type State = {
   /** Watch-list notes by learner id. */
   flags: Record<string, string>;
   seq: number;
+  assessments: Assessment[];
+  /** Key "assessmentId|learnerId". Missing means not marked yet. */
+  results: Record<string, AssessmentResult>;
+  /** Percent of the final grade from assignments, by class. */
+  cwWeight: Record<string, number>;
+  /** Gradebook remarks by learner id. */
+  remarks: Record<string, string>;
 };
 
 const g = globalThis as unknown as { __acurisTeaching?: Map<string, State> };
@@ -52,7 +67,7 @@ const SEED_NOW = "2026-11-12T16:00:00.000Z";
 
 function seed(ctx: TeacherContext): State {
   const classes = classesFor(ctx.institutionType);
-  const s: State = { registers: {}, assignments: [], submissions: {}, notes: {}, flags: {}, seq: 1 };
+  const s: State = { registers: {}, assignments: [], submissions: {}, notes: {}, flags: {}, seq: 1, assessments: [], results: {}, cwWeight: {}, remarks: {} };
 
   classes.forEach((cls) => {
     const roster = learnersOf(ctx.institutionType, cls.id);
@@ -126,7 +141,33 @@ function seed(ctx: TeacherContext): State {
       };
     }
   }
+  seedAssessments(ctx, s);
   return s;
+}
+
+function seedAssessments(ctx: TeacherContext, s: State) {
+  const classes = classesFor(ctx.institutionType);
+  const make = (ci: number, title: string, kind: Assessment["kind"], date: string, maxMarks: number, weight: number, status: Assessment["status"], share: number) => {
+    const cls = classes[ci];
+    if (!cls) return;
+    const a: Assessment = { id: `ass-${s.seq++}`, classId: cls.id, title, kind, date, maxMarks, weight, status, notes: "", createdAt: "2026-10-01T08:00:00.000Z", updatedAt: SEED_NOW };
+    s.assessments.push(a);
+    if (status === "scheduled") return;
+    for (const l of learnersOf(ctx.institutionType, cls.id)) {
+      const r = hash(`${a.id}|${l.id}`);
+      if (hash(`${a.id}|${l.id}|s`) > share) continue; // not marked yet
+      if (r < 0.03) s.results[`${a.id}|${l.id}`] = { assessmentId: a.id, learnerId: l.id, kind: r < 0.015 ? "absent" : "excused", mark: null, comment: "" };
+      else s.results[`${a.id}|${l.id}`] = { assessmentId: a.id, learnerId: l.id, kind: "marked", mark: Math.round(maxMarks * (0.3 + hash(`${l.id}|${a.id}|m`) * 0.65)), comment: "" };
+    }
+  };
+  make(0, "Mid-term test", "Test", "2026-10-14", 50, 30, "published", 1);
+  make(0, "Practical 1", "Practical", "2026-11-05", 20, 20, "marking", 0.6);
+  make(0, "End-of-term exam", "Exam", "2026-12-04", 100, 50, "scheduled", 0);
+  make(1, "Mid-term test", "Test", "2026-10-14", 50, 40, "published", 1);
+  make(1, "End-of-term exam", "Exam", "2026-12-04", 100, 60, "scheduled", 0);
+  make(2, "Mid-term test", "Test", "2026-10-15", 50, 40, "published", 1);
+  make(2, "Week 5 test", "Test", "2026-11-11", 30, 20, "marking", 0.25);
+  make(3, "Mid-term test", "Test", "2026-10-15", 50, 100, "published", 1);
 }
 
 function stateOf(ctx: TeacherContext): State {
@@ -134,6 +175,11 @@ function stateOf(ctx: TeacherContext): State {
   if (!s) {
     s = seed(ctx);
     data.set(scopeOf(ctx), s);
+    save();
+  } else if (!s.assessments) {
+    // Saved before assessments existed: add them and keep everything else.
+    Object.assign(s, { assessments: [], results: {}, cwWeight: {}, remarks: {} });
+    seedAssessments(ctx, s);
     save();
   }
   return s;
@@ -173,6 +219,77 @@ function rowOf(ctx: TeacherContext, s: State, a: Assignment): AssignmentRow {
   };
 }
 
+
+const resultOf = (s: State, a: Assessment, learnerId: string): AssessmentResult =>
+  s.results[`${a.id}|${learnerId}`] ?? { assessmentId: a.id, learnerId, kind: "pending", mark: null, comment: "" };
+
+function assessmentRow(ctx: TeacherContext, s: State, a: Assessment): AssessmentRow {
+  const roster = rosterOf(ctx, a.classId);
+  const results = roster.map((l) => resultOf(s, a, l.id));
+  const marks = results.filter((r) => r.kind === "marked" && r.mark !== null).map((r) => r.mark as number);
+  const pass = PASS_MARK;
+  const stats: AssessmentStats = {
+    marked: marks.length,
+    average: marks.length ? round1(marks.reduce((n, m) => n + m, 0) / marks.length) : null,
+    highest: marks.length ? Math.max(...marks) : null,
+    lowest: marks.length ? Math.min(...marks) : null,
+    passRate: marks.length ? Math.round((marks.filter((m) => percent(m, a.maxMarks) >= pass).length / marks.length) * 100) : null,
+  };
+  return {
+    ...a,
+    ...stats,
+    className: classOf(ctx, a.classId)?.name ?? "",
+    total: roster.length,
+    absent: results.filter((r) => r.kind === "absent").length,
+    excused: results.filter((r) => r.kind === "excused").length,
+    toMark: a.status === "marking" ? results.filter((r) => r.kind === "pending").length : 0,
+  };
+}
+
+function buildGradebook(ctx: TeacherContext, s: State, cls: NonNullable<ReturnType<typeof classOf>>): Gradebook {
+  const bands = bandsFor(ctx.institutionType);
+  const passMark = PASS_MARK;
+  const cw = s.cwWeight[cls.id] ?? 20;
+  const assessments = s.assessments.filter((a) => a.classId === cls.id && a.status !== "scheduled").sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
+  const assignments = s.assignments.filter((a) => a.classId === cls.id && a.status !== "draft");
+  const roster = rosterOf(ctx, cls.id);
+
+  const partial = roster.map((learner) => {
+    const scores: Record<string, number | null> = {};
+    for (const a of assessments) {
+      const r = resultOf(s, a, learner.id);
+      scores[a.id] = r.kind === "marked" && r.mark !== null ? percent(r.mark, a.maxMarks) : null;
+    }
+    const works = assignments.map((a) => s.submissions[`${a.id}|${learner.id}`]).flatMap((x, i) => (x && x.mark !== null ? [percent(x.mark, assignments[i].maxMarks)] : []));
+    const coursework = works.length ? round1(works.reduce((n, w) => n + w, 0) / works.length) : null;
+    const final = finalPercent(assessments.map((a) => ({ pct: scores[a.id], weight: a.weight })), coursework, cw);
+    const missing = assessments.filter((a) => scores[a.id] === null && resultOf(s, a, learner.id).kind !== "excused").length;
+    return { learner, scores, coursework, final, missing };
+  });
+
+  const ranks = rankOf(partial.map((p) => p.final));
+  const rows: GradebookRow[] = partial.map((p, i) => {
+    const band = p.final === null ? null : gradeOf(p.final, bands);
+    return { ...p, grade: band?.grade ?? "—", points: band?.points ?? null, rank: ranks[i], passed: p.final === null ? null : p.final >= passMark, remark: s.remarks[p.learner.id] ?? "" };
+  });
+  const finals = rows.map((r) => r.final).filter((f): f is number => f !== null);
+  return {
+    classId: cls.id,
+    className: cls.name,
+    subject: cls.subject,
+    courseworkWeight: cw,
+    columns: assessments.map((a) => ({ id: a.id, title: a.title, kind: a.kind, maxMarks: a.maxMarks, weight: a.weight, status: a.status })),
+    assignmentCount: assignments.length,
+    rows,
+    average: finals.length ? round1(finals.reduce((n, f) => n + f, 0) / finals.length) : null,
+    highest: finals.length ? Math.max(...finals) : null,
+    passRate: finals.length ? Math.round((finals.filter((f) => f >= passMark).length / finals.length) * 100) : null,
+    distribution: bands.map((b) => ({ grade: b.grade, count: rows.filter((r) => r.grade === b.grade).length })),
+    bands,
+    passMark,
+  };
+}
+
 const fail = (error: string) => ({ ok: false as const, error });
 
 export const mockTeachingRepository: TeachingRepository = {
@@ -186,6 +303,7 @@ export const mockTeachingRepository: TeachingRepository = {
       flaggedClasses: summaries.filter((c) => c.flagged > 0).length,
       draftRegisters: Object.values(s.registers).filter((r) => r.status === "draft").length,
       toMark: s.assignments.filter((a) => a.status !== "draft").reduce((n, a) => n + toMarkIn(s, a), 0),
+      assessmentsToMark: s.assessments.reduce((n, a) => n + assessmentRow(ctx, s, a).toMark, 0),
     };
   },
 
@@ -330,6 +448,102 @@ export const mockTeachingRepository: TeachingRepository = {
       if (status === "pending" && e.feedback === "" && !old) continue;
       s.submissions[key] = { assignmentId, learnerId: e.learnerId, status, mark: e.mark, feedback: e.feedback };
     }
+    save();
+    return { ok: true };
+  },
+  async listAssessments(ctx) {
+    const s = stateOf(ctx);
+    return s.assessments.map((a) => assessmentRow(ctx, s, a)).sort((a, b) => b.date.localeCompare(a.date) || a.title.localeCompare(b.title));
+  },
+
+  async getAssessment(ctx, id) {
+    const s = stateOf(ctx);
+    const a = s.assessments.find((x) => x.id === id);
+    if (!a || !classOf(ctx, a.classId)) return undefined;
+    const entries = rosterOf(ctx, a.classId).map((learner) => ({ learner, result: resultOf(s, a, learner.id) }));
+    return { ...assessmentRow(ctx, s, a), entries } satisfies AssessmentDetail;
+  },
+
+  async saveAssessment(ctx, id, input, now) {
+    if (!classOf(ctx, input.classId)) return fail("That class is not one of yours.");
+    const s = stateOf(ctx);
+    if (!id) {
+      const a: Assessment = { ...input, id: `ass-${s.seq++}`, status: "scheduled", createdAt: now, updatedAt: now };
+      s.assessments.push(a);
+      save();
+      return { ok: true, id: a.id };
+    }
+    const i = s.assessments.findIndex((x) => x.id === id);
+    if (i < 0) return fail("That assessment no longer exists.");
+    const old = s.assessments[i];
+    const hasMarks = Object.values(s.results).some((r) => r.assessmentId === id && (r.mark !== null || r.kind !== "pending"));
+    if (hasMarks && old.classId !== input.classId) return fail("The class cannot change once marks are entered.");
+    if (Object.values(s.results).some((r) => r.assessmentId === id && r.mark !== null && r.mark > input.maxMarks)) return fail("Some marks are above the new maximum. Correct them first.");
+    s.assessments[i] = { ...old, ...input, updatedAt: now };
+    save();
+    return { ok: true, id };
+  },
+
+  async setAssessmentStatus(ctx, id, status, now) {
+    const s = stateOf(ctx);
+    const a = s.assessments.find((x) => x.id === id);
+    if (!a || !classOf(ctx, a.classId)) return fail("That assessment no longer exists.");
+    if (status === "published") {
+      const open = assessmentRow(ctx, s, { ...a, status: "marking" }).toMark;
+      if (open > 0) return fail(`${open} ${open === 1 ? "person has" : "people have"} no mark yet. Enter a mark, or mark them absent or excused, before publishing.`);
+    }
+    if (status === "scheduled" && Object.values(s.results).some((r) => r.assessmentId === id && r.kind !== "pending")) return fail("Marks are already entered, so this cannot go back to scheduled.");
+    a.status = status;
+    a.updatedAt = now;
+    save();
+    return { ok: true };
+  },
+
+  async deleteAssessment(ctx, id) {
+    const s = stateOf(ctx);
+    const a = s.assessments.find((x) => x.id === id);
+    if (!a || !classOf(ctx, a.classId)) return fail("That assessment no longer exists.");
+    if (Object.values(s.results).some((r) => r.assessmentId === id && r.kind !== "pending")) return fail("Marks are entered for this assessment, so it cannot be deleted.");
+    s.assessments = s.assessments.filter((x) => x.id !== id);
+    for (const k of Object.keys(s.results)) if (s.results[k].assessmentId === id) delete s.results[k];
+    save();
+    return { ok: true };
+  },
+
+  async saveResults(ctx, assessmentId, entries) {
+    const s = stateOf(ctx);
+    const a = s.assessments.find((x) => x.id === assessmentId);
+    if (!a || !classOf(ctx, a.classId)) return fail("That assessment no longer exists.");
+    if (a.status === "scheduled") return fail("Open the assessment for marking before entering marks.");
+    for (const e of entries) {
+      const key = `${assessmentId}|${e.learnerId}`;
+      if (e.kind === "pending" && e.comment === "") delete s.results[key];
+      else s.results[key] = { assessmentId, learnerId: e.learnerId, kind: e.kind, mark: e.mark, comment: e.comment };
+    }
+    // Changing a published result reopens it, so nobody reads figures that were not re-checked.
+    if (a.status === "published") a.status = "marking";
+    save();
+    return { ok: true };
+  },
+
+  async getGradebook(ctx, classId) {
+    const cls = classOf(ctx, classId);
+    return cls ? buildGradebook(ctx, stateOf(ctx), cls) : undefined;
+  },
+
+  async setCourseworkWeight(ctx, classId, weight) {
+    if (!classOf(ctx, classId)) return fail("That class is not one of yours.");
+    stateOf(ctx).cwWeight[classId] = weight;
+    save();
+    return { ok: true };
+  },
+
+  async setGradebookRemark(ctx, classId, learnerId, remark) {
+    if (!classOf(ctx, classId)) return fail("That class is not one of yours.");
+    if (!rosterOf(ctx, classId).some((l) => l.id === learnerId)) return fail("That person is not in this class.");
+    const s = stateOf(ctx);
+    if (remark) s.remarks[learnerId] = remark;
+    else delete s.remarks[learnerId];
     save();
     return { ok: true };
   },

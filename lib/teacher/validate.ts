@@ -1,4 +1,4 @@
-import { ASSIGNMENT_KINDS, ATTENDANCE_STATUSES, type AssignmentKind, type AttendanceStatus, type AttendanceTally, type ResourceLink } from "@/types/teacher";
+import { ASSESSMENT_KINDS, ASSIGNMENT_KINDS, ATTENDANCE_STATUSES, type AssessmentKind, type ResultKind, type AssignmentKind, type AttendanceStatus, type AttendanceTally, type ResourceLink } from "@/types/teacher";
 
 /** Checks shared by the server actions (which must not trust the browser) and the forms. Pure, so they are easy to test. */
 
@@ -141,4 +141,82 @@ export function checkMarks(raw: unknown, maxMarks: number, rosterIds: string[]):
     out.push({ learnerId, mark, feedback, status });
   }
   return { ok: true, value: out };
+}
+
+// ---- Assessments and gradebook
+
+export type AssessmentInput = { classId: string; title: string; kind: AssessmentKind; date: string; maxMarks: number; weight: number; notes: string };
+
+export function checkAssessment(raw: Record<string, unknown>, ownClassIds: string[]): Checked<AssessmentInput> {
+  const fields: Record<string, string> = {};
+  const text = (k: string) => (typeof raw[k] === "string" ? (raw[k] as string).trim() : "");
+  const classId = text("classId");
+  if (!ownClassIds.includes(classId)) fields.classId = "Choose one of your classes.";
+  const title = text("title");
+  if (!title) fields.title = "Enter a title.";
+  else if (title.length > LIMITS.title) fields.title = `Keep the title under ${LIMITS.title} characters.`;
+  const kind = text("kind") as AssessmentKind;
+  if (!ASSESSMENT_KINDS.includes(kind)) fields.kind = "Choose a type.";
+  const date = text("date");
+  if (!isIsoDate(date)) fields.date = "Choose the date it is sat.";
+  const num = (k: string) => (typeof raw[k] === "number" ? (raw[k] as number) : Number(text(k)));
+  const maxMarks = num("maxMarks");
+  if (!Number.isFinite(maxMarks) || maxMarks <= 0 || maxMarks > LIMITS.maxMarks) fields.maxMarks = `Marks must be between 1 and ${LIMITS.maxMarks}.`;
+  else if (Math.round(maxMarks * 100) !== maxMarks * 100) fields.maxMarks = "Use at most two decimal places.";
+  const weight = num("weight");
+  if (!Number.isFinite(weight) || weight < 1 || weight > 100) fields.weight = "Weight must be between 1 and 100.";
+  else if (!Number.isInteger(weight)) fields.weight = "Use a whole number.";
+  const notes = text("notes");
+  if (notes.length > LIMITS.notes) fields.notes = `Keep the notes under ${LIMITS.notes} characters.`;
+  if (Object.keys(fields).length > 0) return { ok: false, error: "Fix the highlighted fields.", fields };
+  return { ok: true, value: { classId, title, kind, date, maxMarks, weight, notes } };
+}
+
+export type ResultEntry = { learnerId: string; kind: ResultKind; mark: number | null; comment: string };
+const RESULT_KINDS: ResultKind[] = ["marked", "absent", "excused", "pending"];
+
+/**
+ * Results for one assessment. A mark must be between 0 and the maximum and
+ * only goes with "marked"; absent, excused and pending carry no mark. A mark
+ * typed with no kind becomes "marked".
+ */
+export function checkResults(raw: unknown, maxMarks: number, rosterIds: string[]): Checked<ResultEntry[]> {
+  if (!Array.isArray(raw)) return { ok: false, error: "Results are missing." };
+  const known = new Set(rosterIds);
+  const seen = new Set<string>();
+  const out: ResultEntry[] = [];
+  for (const item of raw) {
+    const learnerId = typeof item?.learnerId === "string" ? item.learnerId : "";
+    if (!known.has(learnerId)) return { ok: false, error: "A result is for someone who is not in this class." };
+    if (seen.has(learnerId)) return { ok: false, error: "Someone appears twice." };
+    seen.add(learnerId);
+    const comment = typeof item.comment === "string" ? item.comment.trim() : "";
+    if (comment.length > LIMITS.feedback) return { ok: false, error: `Comments can be at most ${LIMITS.feedback} characters.` };
+    const hasMark = item.mark !== null && item.mark !== undefined && item.mark !== "";
+    let kind = (item.kind ?? (hasMark ? "marked" : "pending")) as ResultKind;
+    if (!RESULT_KINDS.includes(kind)) return { ok: false, error: "Not a valid result." };
+    let mark: number | null = null;
+    if (hasMark) {
+      mark = Number(item.mark);
+      if (!Number.isFinite(mark) || mark < 0 || mark > maxMarks) return { ok: false, error: `Marks must be between 0 and ${maxMarks}.` };
+      if (Math.round(mark * 100) !== mark * 100) return { ok: false, error: "Use at most two decimal places." };
+      if (kind === "absent" || kind === "excused") return { ok: false, error: "Someone who was absent cannot have a mark." };
+      kind = "marked";
+    } else if (kind === "marked") kind = "pending";
+    out.push({ learnerId, kind, mark, comment });
+  }
+  return { ok: true, value: out };
+}
+
+/** Share of the final grade that comes from assignments: 0 to 50 percent. */
+export function checkCourseworkWeight(raw: unknown): Checked<number> {
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isInteger(n) || n < 0 || n > 50) return { ok: false, error: "Coursework can count for 0 to 50 percent, in whole numbers." };
+  return { ok: true, value: n };
+}
+
+export function checkRemark(raw: unknown): Checked<string> {
+  const t = typeof raw === "string" ? raw.trim() : "";
+  if (t.length > 300) return { ok: false, error: "A remark can be at most 300 characters." };
+  return { ok: true, value: t };
 }

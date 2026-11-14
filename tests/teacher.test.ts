@@ -192,3 +192,120 @@ describe("teaching repository", () => {
     expect(o.learners).toBe(120 + 95 + 64 + 48);
   });
 });
+
+describe("grading", () => {
+  it("picks the grade band for a percentage, per school level", async () => {
+    const { bandsFor, gradeOf } = await import("@/lib/teacher/grading");
+    expect(gradeOf(80, bandsFor("high_school")).grade).toBe("A");
+    expect(gradeOf(79.9, bandsFor("high_school")).grade).toBe("B");
+    expect(gradeOf(10, bandsFor("primary")).grade).toBe("F");
+    expect(gradeOf(72, bandsFor("university"))).toMatchObject({ grade: "B+", points: 3.5 });
+    expect(gradeOf(30, bandsFor("college")).grade).toBe("F");
+  });
+  it("weights assessments, adds coursework, and leaves unmarked work out instead of scoring zero", async () => {
+    const { finalPercent, rankOf } = await import("@/lib/teacher/grading");
+    expect(finalPercent([{ pct: 80, weight: 30 }, { pct: 60, weight: 70 }], null, 0)).toBe(66);
+    expect(finalPercent([{ pct: 80, weight: 50 }, { pct: null, weight: 50 }], null, 0)).toBe(80);
+    expect(finalPercent([{ pct: 60, weight: 100 }], 100, 20)).toBe(68);
+    expect(finalPercent([], 75, 20)).toBe(75);
+    expect(finalPercent([], null, 20)).toBeNull();
+    expect(rankOf([90, 80, 80, null, 70])).toEqual([1, 2, 2, null, 4]);
+  });
+});
+
+describe("assessment and result validation", () => {
+  const base = { classId: "c1", title: "Test 1", kind: "Test", date: "2026-11-20", maxMarks: "50", weight: "30", notes: "" };
+  it("accepts a good assessment and reports each bad field", async () => {
+    const { checkAssessment } = await import("@/lib/teacher/validate");
+    expect(checkAssessment(base, ["c1"]).ok).toBe(true);
+    const r = checkAssessment({ ...base, classId: "x", title: "", kind: "Quiz", date: "nope", maxMarks: "-1", weight: "0" }, ["c1"]);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(Object.keys(r.fields ?? {}).sort()).toEqual(["classId", "date", "kind", "maxMarks", "title", "weight"]);
+    expect(checkAssessment({ ...base, weight: "12.5" }, ["c1"]).ok).toBe(false);
+  });
+  it("keeps results in range, and only marked people have marks", async () => {
+    const { checkResults, checkCourseworkWeight, checkRemark } = await import("@/lib/teacher/validate");
+    expect(checkResults([{ learnerId: "a", mark: 50, comment: "" }], 50, ["a"])).toMatchObject({ ok: true, value: [{ kind: "marked", mark: 50 }] });
+    expect(checkResults([{ learnerId: "a", mark: 51, comment: "" }], 50, ["a"]).ok).toBe(false);
+    expect(checkResults([{ learnerId: "a", kind: "absent", mark: 5, comment: "" }], 50, ["a"]).ok).toBe(false);
+    expect(checkResults([{ learnerId: "a", kind: "absent", mark: null, comment: "" }], 50, ["a"])).toMatchObject({ ok: true, value: [{ kind: "absent", mark: null }] });
+    expect(checkResults([{ learnerId: "zz", mark: 1, comment: "" }], 50, ["a"]).ok).toBe(false);
+    expect(checkCourseworkWeight(50).ok).toBe(true);
+    expect(checkCourseworkWeight(51).ok).toBe(false);
+    expect(checkCourseworkWeight(10.5).ok).toBe(false);
+    expect(checkRemark("x".repeat(301)).ok).toBe(false);
+  });
+});
+
+describe("assessments and gradebook in the repository", () => {
+  beforeEach(() => resetMockTeaching());
+  const NOW = "2026-11-14T08:00:00.000Z";
+  const input = (classId: string) => ({ classId, title: "Quiz A", kind: "Test" as const, date: "2026-11-20", maxMarks: 20, weight: 25, notes: "" });
+
+  it("starts with assessments being marked, so there is work to mark", async () => {
+    const o = await repo.overview(ctx);
+    expect(o.assessmentsToMark).toBeGreaterThan(0);
+    const rows = await repo.listAssessments(ctx);
+    expect(rows.some((a) => a.status === "marking")).toBe(true);
+    expect(rows.some((a) => a.status === "scheduled")).toBe(true);
+  });
+
+  it("cannot publish until everyone has a mark, absent or excused", async () => {
+    const marking = (await repo.listAssessments(ctx)).find((a) => a.status === "marking")!;
+    const blocked = await repo.setAssessmentStatus(ctx, marking.id, "published", NOW);
+    expect(blocked.ok).toBe(false);
+    const d = (await repo.getAssessment(ctx, marking.id))!;
+    const entries = d.entries.map((e) => (e.result.kind === "pending" ? { learnerId: e.learner.id, kind: "marked" as const, mark: 10, comment: "" } : { learnerId: e.learner.id, kind: e.result.kind, mark: e.result.mark, comment: e.result.comment }));
+    expect((await repo.saveResults(ctx, marking.id, entries)).ok).toBe(true);
+    expect((await repo.setAssessmentStatus(ctx, marking.id, "published", NOW)).ok).toBe(true);
+    // Changing a published result reopens it.
+    await repo.saveResults(ctx, marking.id, [{ learnerId: d.entries[0].learner.id, kind: "marked", mark: 11, comment: "" }]);
+    expect((await repo.getAssessment(ctx, marking.id))!.status).toBe("marking");
+  });
+
+  it("will not take marks before marking is opened, and protects marked work from deletion", async () => {
+    const [c] = await repo.listClasses(ctx);
+    const made = await repo.saveAssessment(ctx, undefined, input(c.id), NOW);
+    const id = made.ok ? made.id! : "";
+    const who = (await repo.getAssessment(ctx, id))!.entries[0].learner.id;
+    expect((await repo.saveResults(ctx, id, [{ learnerId: who, kind: "marked", mark: 5, comment: "" }])).ok).toBe(false);
+    await repo.setAssessmentStatus(ctx, id, "marking", NOW);
+    expect((await repo.saveResults(ctx, id, [{ learnerId: who, kind: "marked", mark: 5, comment: "" }])).ok).toBe(true);
+    expect((await repo.deleteAssessment(ctx, id)).ok).toBe(false);
+    expect((await repo.saveAssessment(ctx, id, { ...input(c.id), maxMarks: 4 }, NOW)).ok).toBe(false);
+  });
+
+  it("builds a gradebook with weighted finals, ranks and a spread that adds up", async () => {
+    const [c] = await repo.listClasses(ctx);
+    const book = (await repo.getGradebook(ctx, c.id))!;
+    expect(book.rows).toHaveLength(c.size);
+    expect(book.columns.length).toBeGreaterThan(0);
+    expect(book.columns.every((col) => col.status !== "scheduled")).toBe(true);
+    const withFinal = book.rows.filter((r) => r.final !== null);
+    expect(book.distribution.reduce((n, d) => n + d.count, 0)).toBe(withFinal.length);
+    expect(Math.min(...withFinal.map((r) => r.rank!))).toBe(1);
+    for (const r of withFinal) {
+      expect(r.final!).toBeGreaterThanOrEqual(0);
+      expect(r.final!).toBeLessThanOrEqual(100);
+    }
+  });
+
+  it("changes finals when the coursework weight changes, and refuses other teachers' classes", async () => {
+    const [c] = await repo.listClasses(ctx);
+    const before = (await repo.getGradebook(ctx, c.id))!;
+    await repo.setCourseworkWeight(ctx, c.id, 50);
+    const after = (await repo.getGradebook(ctx, c.id))!;
+    expect(after.courseworkWeight).toBe(50);
+    expect(after.rows.map((r) => r.final)).not.toEqual(before.rows.map((r) => r.final));
+    expect((await repo.setCourseworkWeight(ctx, "cls-nope", 10)).ok).toBe(false);
+    expect(await repo.getGradebook(ctx, "cls-nope")).toBeUndefined();
+    expect((await repo.setGradebookRemark(ctx, c.id, "not-a-learner", "x")).ok).toBe(false);
+  });
+
+  it("uses the 4.0 scale at a university", async () => {
+    const uni: TeacherContext = { tenantId: "u", teacherId: "l1", institutionType: "university" };
+    const [c] = await repo.listClasses(uni);
+    const book = (await repo.getGradebook(uni, c.id))!;
+    expect(book.bands[0]).toMatchObject({ grade: "A", points: 4 });
+  });
+});

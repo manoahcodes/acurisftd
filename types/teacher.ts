@@ -100,8 +100,84 @@ export type TeachingOverview = {
   learners: number;
   flaggedClasses: number;
   draftRegisters: number;
+  /** Handed-in assignment work with no mark yet. */
   toMark: number;
+  /** People still to be marked on assessments that are being marked. */
+  assessmentsToMark: number;
 };
 
 /** What a repository write returns: it worked (with the new id, if any), or why not. */
 export type Outcome = { ok: true; id?: string } | { ok: false; error: string };
+
+// ---- Assessments and gradebook
+
+export const ASSESSMENT_KINDS = ["Test", "Exam", "Practical", "Oral"] as const;
+export type AssessmentKind = (typeof ASSESSMENT_KINDS)[number];
+
+/** scheduled: not sat yet. marking: marks are being entered. published: results are final. */
+export type AssessmentStatus = "scheduled" | "marking" | "published";
+
+export type Assessment = {
+  id: string;
+  classId: string;
+  title: string;
+  kind: AssessmentKind;
+  date: string;
+  maxMarks: number;
+  /** Share (1-100) of the assessment part of the final grade. */
+  weight: number;
+  status: AssessmentStatus;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** What a learner got: a mark, or why there is none. */
+export type ResultKind = "marked" | "absent" | "excused" | "pending";
+export type AssessmentResult = { assessmentId: string; learnerId: string; kind: ResultKind; mark: number | null; comment: string };
+
+export type AssessmentStats = {
+  marked: number;
+  average: number | null;
+  highest: number | null;
+  lowest: number | null;
+  /** Share (0-100) of marked learners at or above the pass mark. */
+  passRate: number | null;
+};
+
+export type AssessmentRow = Assessment & AssessmentStats & { className: string; total: number; absent: number; excused: number; toMark: number };
+export type AssessmentDetail = AssessmentRow & { entries: Array<{ learner: Learner; result: AssessmentResult }> };
+
+export type GradeBand = { grade: string; min: number; points: number; remark: string };
+
+export type GradebookColumn = { id: string; title: string; kind: string; maxMarks: number; weight: number; status: AssessmentStatus };
+export type GradebookRow = {
+  learner: Learner;
+  /** Percent per assessment id; null where there is no mark. */
+  scores: Record<string, number | null>;
+  /** Average assignment percent, null when none are marked. */
+  coursework: number | null;
+  final: number | null;
+  grade: string;
+  points: number | null;
+  rank: number | null;
+  passed: boolean | null;
+  remark: string;
+  /** Marks still missing from the final figure. */
+  missing: number;
+};
+export type Gradebook = {
+  classId: string;
+  className: string;
+  subject: string;
+  courseworkWeight: number;
+  columns: GradebookColumn[];
+  assignmentCount: number;
+  rows: GradebookRow[];
+  average: number | null;
+  highest: number | null;
+  passRate: number | null;
+  distribution: Array<{ grade: string; count: number }>;
+  bands: GradeBand[];
+  passMark: number;
+};

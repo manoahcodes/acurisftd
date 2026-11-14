@@ -2,12 +2,15 @@ import { printBrandingOf } from "@/lib/print";
 import { teaching } from "@/server/repositories";
 import { getTeacherSession } from "@/server/teacher-context";
 import { getResolvedTheme } from "@/server/queries/theme";
+import { bandsFor, isTertiary, PASS_MARK } from "@/lib/teacher/grading";
+import { AssessmentsView } from "./assessments-view";
 import { AssignmentsView } from "./assignments-view";
+import { GradebookView } from "./gradebook-view";
 import { ClassesView } from "./classes-view";
 import { RegisterView } from "./register-view";
 
 /** Slugs of the Teacher / Lecturer pages that are built. */
-export const TEACHER_PAGES = ["my-classes", "class-register", "assignments"];
+export const TEACHER_PAGES = ["my-classes", "class-register", "assignments", "assessments", "gradebook"];
 
 /** One Teacher or Lecturer page. Reads cookies and the session, so render it inside <Suspense>. */
 export async function TeacherSection({ slug }: { slug: string }) {
@@ -31,6 +34,18 @@ export async function TeacherSection({ slug }: { slug: string }) {
     const [rows, classes] = await Promise.all([teaching.listAssignments(ctx), teaching.listClasses(ctx)]);
     const details = (await Promise.all(rows.filter((r) => r.status !== "draft").map((r) => teaching.getAssignment(ctx, r.id)))).filter((d) => d !== undefined);
     return <AssignmentsView rows={rows} details={details} classes={classes} terms={terms} branding={branding} />;
+  }
+
+  if (slug === "assessments") {
+    const [rows, classes] = await Promise.all([teaching.listAssessments(ctx), teaching.listClasses(ctx)]);
+    const details = (await Promise.all(rows.filter((r) => r.status !== "scheduled").map((r) => teaching.getAssessment(ctx, r.id)))).filter((d) => d !== undefined);
+    return <AssessmentsView rows={rows} details={details} classes={classes} bands={bandsFor(ctx.institutionType)} passMark={PASS_MARK} terms={terms} branding={branding} />;
+  }
+
+  if (slug === "gradebook") {
+    const classes = await teaching.listClasses(ctx);
+    const books = (await Promise.all(classes.map((c) => teaching.getGradebook(ctx, c.id)))).filter((b) => b !== undefined);
+    return <GradebookView books={books} tertiary={isTertiary(ctx.institutionType)} terms={terms} branding={branding} />;
   }
 
   return null;

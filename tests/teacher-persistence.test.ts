@@ -44,3 +44,47 @@ describe("teaching data survives a restart", () => {
     expect(kept.entries[0].submission).toMatchObject({ mark: 7, feedback: "ok" });
   });
 });
+
+describe("assessments survive a restart, and older saved data gains them", () => {
+  it("keeps marks and gradebook settings", async () => {
+    const ctx = { tenantId: "t1", teacherId: "u1", institutionType: "high_school" as const };
+    await restart();
+    const first = (await import("@/server/repositories/teacher-mock")).mockTeachingRepository;
+    const [c] = await first.listClasses(ctx);
+    const made = await first.saveAssessment(ctx, undefined, { classId: c.id, title: "Kept test", kind: "Test", date: "2026-11-20", maxMarks: 10, weight: 10, notes: "" }, "2026-11-14T08:00:00.000Z");
+    const id = made.ok ? made.id! : "";
+    await first.setAssessmentStatus(ctx, id, "marking", "2026-11-14T08:00:00.000Z");
+    const who = (await first.getAssessment(ctx, id))!.entries[0].learner.id;
+    await first.saveResults(ctx, id, [{ learnerId: who, kind: "marked", mark: 9, comment: "good" }]);
+    await first.setCourseworkWeight(ctx, c.id, 35);
+    await first.setGradebookRemark(ctx, c.id, who, "Excellent");
+
+    await restart();
+    const again = (await import("@/server/repositories/teacher-mock")).mockTeachingRepository;
+    const d = (await again.getAssessment(ctx, id))!;
+    expect(d).toMatchObject({ title: "Kept test", status: "marking" });
+    expect(d.entries[0].result).toMatchObject({ mark: 9, comment: "good" });
+    const book = (await again.getGradebook(ctx, c.id))!;
+    expect(book.courseworkWeight).toBe(35);
+    expect(book.rows.find((r) => r.learner.id === who)!.remark).toBe("Excellent");
+  });
+
+  it("adds assessments to data saved by Phase 1 without losing anything", async () => {
+    const ctx = { tenantId: "t1", teacherId: "u1", institutionType: "high_school" as const };
+    await restart();
+    const { saveSnapshot } = await import("@/server/persistence/store");
+    const first = (await import("@/server/repositories/teacher-mock")).mockTeachingRepository;
+    const [c] = await first.listClasses(ctx);
+    await first.setClassNote(ctx, c.id, "Phase 1 note");
+    // Strip the new fields from what is on disk, as a Phase 1 database would have it.
+    const g = globalThis as unknown as { __acurisTeaching: Map<string, Record<string, unknown>> };
+    const NEW = new Set(["assessments", "results", "cwWeight", "remarks"]);
+    const old = [...g.__acurisTeaching].map(([k, v]) => [k, Object.fromEntries(Object.entries(v).filter(([f]) => !NEW.has(f)))] as const);
+    saveSnapshot("teaching", old);
+
+    await restart();
+    const again = (await import("@/server/repositories/teacher-mock")).mockTeachingRepository;
+    expect((await again.listClasses(ctx))[0].note).toBe("Phase 1 note");
+    expect((await again.listAssessments(ctx)).length).toBeGreaterThan(0);
+  });
+});

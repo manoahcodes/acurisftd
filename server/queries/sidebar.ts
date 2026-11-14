@@ -17,7 +17,7 @@ export const getNavBadges = cache(
     if (role === "teacher") {
       // Registers still in draft and handed-in work waiting for a mark come from the teacher's own data.
       const overview = await teaching.overview((await getTeacherSession()).ctx);
-      raw = { ...raw, "Class register": overview.draftRegisters, Assignments: overview.toMark };
+      raw = { ...raw, "Class register": overview.draftRegisters, Assignments: overview.toMark, Assessments: overview.assessmentsToMark };
     }
     const labels = new Set(ROLES[role].nav.map((n) => n.label));
 

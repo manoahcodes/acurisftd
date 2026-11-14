@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { todayIn } from "@/lib/format";
-import { checkAssignment, checkMarks, checkRegister, type Checked } from "@/lib/teacher/validate";
-import type { AssignmentStatus, Outcome } from "@/types/teacher";
+import { checkAssessment, checkAssignment, checkCourseworkWeight, checkMarks, checkRegister, checkRemark, checkResults, type Checked } from "@/lib/teacher/validate";
+import type { AssessmentStatus, AssignmentStatus, Outcome } from "@/types/teacher";
 import { teaching } from "../repositories";
 import { getTeacherSession } from "../teacher-context";
 
@@ -93,6 +93,69 @@ export async function saveMarks(assignmentId: string, entries: unknown): Promise
   const checked = checkMarks(entries, detail.maxMarks, detail.entries.map((e) => e.learner.id));
   if (!checked.ok) return fromChecked(checked);
   const r = await teaching.saveMarks(ctx, assignmentId, checked.value);
+  if (r.ok) refresh();
+  return r;
+}
+
+// ---- Assessments and gradebook
+
+export async function saveAssessment(id: string | null, raw: Record<string, unknown>): Promise<ActionResult> {
+  const { ctx } = await getTeacherSession();
+  if (id !== null && !ID.test(id)) return bad("That assessment is not available.");
+  const classes = await teaching.listClasses(ctx);
+  const checked = checkAssessment(raw ?? {}, classes.map((c) => c.id));
+  if (!checked.ok) return fromChecked(checked);
+  const r = await teaching.saveAssessment(ctx, id ?? undefined, checked.value, new Date().toISOString());
+  if (r.ok) refresh();
+  return r;
+}
+
+const ASSESSMENT_STATUSES: AssessmentStatus[] = ["scheduled", "marking", "published"];
+
+export async function changeAssessmentStatus(id: string, status: AssessmentStatus): Promise<ActionResult> {
+  const { ctx } = await getTeacherSession();
+  if (!ID.test(id) || !ASSESSMENT_STATUSES.includes(status)) return bad("That change is not available.");
+  const r = await teaching.setAssessmentStatus(ctx, id, status, new Date().toISOString());
+  if (r.ok) refresh();
+  return r;
+}
+
+export async function removeAssessment(id: string): Promise<ActionResult> {
+  const { ctx } = await getTeacherSession();
+  if (!ID.test(id)) return bad("That assessment is not available.");
+  const r = await teaching.deleteAssessment(ctx, id);
+  if (r.ok) refresh();
+  return r;
+}
+
+export async function saveResults(assessmentId: string, entries: unknown): Promise<ActionResult> {
+  const { ctx } = await getTeacherSession();
+  if (!ID.test(assessmentId)) return bad("That assessment is not available.");
+  const detail = await teaching.getAssessment(ctx, assessmentId);
+  if (!detail) return bad("That assessment no longer exists.");
+  const checked = checkResults(entries, detail.maxMarks, detail.entries.map((e) => e.learner.id));
+  if (!checked.ok) return fromChecked(checked);
+  const r = await teaching.saveResults(ctx, assessmentId, checked.value);
+  if (r.ok) refresh();
+  return r;
+}
+
+export async function saveCourseworkWeight(classId: string, weight: unknown): Promise<ActionResult> {
+  const { ctx } = await getTeacherSession();
+  if (!ID.test(classId)) return bad("That class is not available.");
+  const checked = checkCourseworkWeight(weight);
+  if (!checked.ok) return fromChecked(checked);
+  const r = await teaching.setCourseworkWeight(ctx, classId, checked.value);
+  if (r.ok) refresh();
+  return r;
+}
+
+export async function saveGradebookRemark(classId: string, learnerId: string, remark: unknown): Promise<ActionResult> {
+  const { ctx } = await getTeacherSession();
+  if (!ID.test(classId) || !ID.test(learnerId)) return bad("That person is not available.");
+  const checked = checkRemark(remark);
+  if (!checked.ok) return fromChecked(checked);
+  const r = await teaching.setGradebookRemark(ctx, classId, learnerId, checked.value);
   if (r.ok) refresh();
   return r;
 }
