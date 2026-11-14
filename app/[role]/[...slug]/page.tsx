@@ -20,6 +20,8 @@ import { platformScreens } from "@/server/repositories";
 import { getTenantSelection } from "@/server/queries/platform";
 import { TEACHER_PAGES, TeacherSection } from "@/components/teacher/teacher-section";
 import { getTeacherSession } from "@/server/teacher-context";
+import { STUDENT_PAGES, StudentSection } from "@/components/student/student-section";
+import { getStudentSession } from "@/server/student-context";
 import { INSTITUTIONS } from "@/config/institution";
 
 type Params = Promise<{ role: string; slug: string[] }>;
@@ -41,6 +43,10 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   if (!item) return {};
   if (role === "teacher") {
     const { ctx } = await getTeacherSession();
+    return { title: resolveLabel(item.label, termsFor(ctx.institutionType)) };
+  }
+  if (role === "student") {
+    const { ctx } = await getStudentSession();
     return { title: resolveLabel(item.label, termsFor(ctx.institutionType)) };
   }
   if (role !== "platform") return { title: item.label };
@@ -70,6 +76,8 @@ async function Section({ params }: { params: Params }) {
   if (role === "platform") return <PlatformSection item={item} />;
 
   if (role === "teacher") return <TeacherPage item={item} />;
+
+  if (role === "student") return <StudentPage item={item} />;
 
   // Other roles: placeholder for every sidebar page that isn't built yet.
   return (
@@ -148,6 +156,30 @@ async function TeacherPage({ item }: { item: NavItem }) {
         subtitle={built ? `${schoolName} • ${campus} • ${INSTITUTIONS[ctx.institutionType].label}` : "This section hasn't been built yet."}
       />
       {built && <TeacherSection slug={item.slug} />}
+    </>
+  );
+}
+
+/**
+ * A Student page. Wording follows the school's level: subjects, terms and
+ * percentages, or courses, semesters and a grade-point average.
+ */
+async function StudentPage({ item }: { item: NavItem }) {
+  const { ctx, terms, schoolName, campus } = await getStudentSession();
+  const title = resolveLabel(item.label, termsFor(ctx.institutionType));
+  const built = STUDENT_PAGES.includes(item.slug);
+  return (
+    <>
+      <PageHeader
+        crumbs={[
+          { label: "Dashboard", href: "/student" },
+          { label: terms.member, href: hrefFor("student", "") },
+          { label: title, href: hrefFor("student", item.slug) },
+        ]}
+        title={title}
+        subtitle={built ? `${schoolName} • ${campus} • ${INSTITUTIONS[ctx.institutionType].label}` : "This section hasn't been built yet."}
+      />
+      {built && <StudentSection slug={item.slug} />}
     </>
   );
 }

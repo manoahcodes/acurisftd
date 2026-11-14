@@ -17,6 +17,8 @@ import { mockRecordStore } from "./records-mock";
 import { mockThemeRepository } from "./theme-mock";
 import { mockTeachingRepository } from "./teacher-mock";
 import type { TeachingRepository } from "./teacher-types";
+import { mockStudentRepository } from "./student-mock";
+import type { StudentRepository } from "./student-types";
 import type { ThemeRepository } from "./theme-types";
 import type { AuditLog } from "./audit-types";
 import type { RecordStore } from "./records-types";
@@ -55,3 +57,4 @@ export const themes: ThemeRepository = mockThemeRepository;
 export const audit: AuditLog = mockAuditLog;
 
 export const teaching: TeachingRepository = mockTeachingRepository;
+export const student: StudentRepository = mockStudentRepository;
