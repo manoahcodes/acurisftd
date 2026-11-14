@@ -203,3 +203,72 @@ export function assignmentsFor(type: InstitutionType): SeededWork[] {
     };
   });
 }
+
+// ---- Results and grades
+
+/** A small stable hash, so sample marks do not change between restarts. */
+const hash = (s: string) => {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return (h >>> 0) / 4294967296;
+};
+
+export type AssessmentSeed = {
+  id: string;
+  /** Index into the school's courses. */
+  course: number;
+  title: string;
+  kind: "Test" | "Exam" | "Practical" | "Oral";
+  date: string;
+  max: number;
+  weight: number;
+  state: "marked" | "upcoming" | "pending" | "excused";
+  /** Class average percent, for marked items. */
+  classAverage?: number;
+  mark?: number;
+};
+
+/** Assessments for the current period: a mid-term test and a practical or quiz per course, then an exam still to come. */
+export function assessmentsFor(type: InstitutionType): AssessmentSeed[] {
+  const courses = coursesFor(type);
+  const out: AssessmentSeed[] = [];
+  courses.forEach((c, i) => {
+    const tag = (n: string) => `${type}|${c.code}|${n}`;
+    const pct = (n: string) => 0.48 + hash(tag(n)) * 0.45;
+    const test = { id: `ast-${i + 1}-1`, course: i, title: "Mid-term test", kind: "Test" as const, date: "2026-10-14", max: 50, weight: 30 };
+    out.push({ ...test, state: "marked", mark: Math.round(test.max * pct("t")), classAverage: Math.round(52 + hash(tag("ct")) * 18) });
+    const second = i === 2 ? { title: "Practical 1", kind: "Practical" as const, max: 20 } : { title: i % 2 ? "Week 5 quiz" : "Practical 1", kind: i % 2 ? ("Test" as const) : ("Practical" as const), max: 20 };
+    const base = { id: `ast-${i + 1}-2`, course: i, date: "2026-11-05", weight: 20, ...second };
+    // One course is excused and one is still being marked, so the page shows both.
+    if (i === 2) out.push({ ...base, state: "excused" });
+    else if (i === 3) out.push({ ...base, state: "pending" });
+    else out.push({ ...base, state: "marked", mark: Math.round(base.max * pct("p")), classAverage: Math.round(54 + hash(tag("cp")) * 16) });
+    out.push({ id: `ast-${i + 1}-3`, course: i, title: "End-of-period exam", kind: "Exam", date: "2026-12-04", max: 100, weight: 50, state: "upcoming" });
+  });
+  return out;
+}
+
+export type PastSeed = { label: string; courses: Array<{ name: string; credits: number | null; pct: number }> };
+
+/** Finished periods, so the history and the cumulative grade-point average have something to show. */
+export const HISTORY: Record<InstitutionType, PastSeed[]> = {
+  primary: [
+    { label: "Term 1 2026", courses: [{ name: "Mathematics", credits: null, pct: 74 }, { name: "English", credits: null, pct: 79 }, { name: "Science", credits: null, pct: 68 }, { name: "Social Studies", credits: null, pct: 71 }, { name: "Creative Arts", credits: null, pct: 85 }, { name: "Religious Education", credits: null, pct: 77 }] },
+    { label: "Term 2 2026", courses: [{ name: "Mathematics", credits: null, pct: 76 }, { name: "English", credits: null, pct: 81 }, { name: "Science", credits: null, pct: 70 }, { name: "Social Studies", credits: null, pct: 73 }, { name: "Creative Arts", credits: null, pct: 88 }, { name: "Religious Education", credits: null, pct: 80 }] },
+  ],
+  high_school: [
+    { label: "Term 1 2026", courses: [{ name: "Mathematics", credits: null, pct: 72 }, { name: "English", credits: null, pct: 78 }, { name: "Physics", credits: null, pct: 64 }, { name: "Biology", credits: null, pct: 69 }, { name: "ICT", credits: null, pct: 83 }, { name: "History", credits: null, pct: 66 }] },
+    { label: "Term 2 2026", courses: [{ name: "Mathematics", credits: null, pct: 75 }, { name: "English", credits: null, pct: 80 }, { name: "Physics", credits: null, pct: 61 }, { name: "Biology", credits: null, pct: 72 }, { name: "ICT", credits: null, pct: 86 }, { name: "History", credits: null, pct: 70 }] },
+  ],
+  college: [
+    { label: "Semester 2 2025", courses: [{ name: "Programming Fundamentals", credits: 4, pct: 71 }, { name: "Computer Systems", credits: 3, pct: 64 }, { name: "Mathematics for IT", credits: 3, pct: 58 }, { name: "Communication Skills I", credits: 2, pct: 77 }] },
+    { label: "Semester 1 2026", courses: [{ name: "Systems Analysis", credits: 4, pct: 74 }, { name: "Introduction to Databases", credits: 3, pct: 69 }, { name: "Web Basics", credits: 3, pct: 82 }, { name: "Business Studies", credits: 2, pct: 63 }] },
+  ],
+  university: [
+    { label: "Semester 2 2025", courses: [{ name: "Data Structures", credits: 4, pct: 72 }, { name: "Linear Algebra", credits: 3, pct: 66 }, { name: "Computer Organisation", credits: 4, pct: 61 }, { name: "Technical Writing", credits: 2, pct: 79 }] },
+    { label: "Semester 1 2026", courses: [{ name: "Object-Oriented Programming", credits: 4, pct: 77 }, { name: "Probability", credits: 3, pct: 69 }, { name: "Computer Networks", credits: 4, pct: 64 }, { name: "Ethics in Computing", credits: 2, pct: 81 }] },
+  ],
+};
+
+/** The period now under way: Term 3 or Semester 2 of 2026. */
+export const CURRENT_PERIOD_NO: Record<InstitutionType, number> = { primary: 3, high_school: 3, college: 2, university: 2 };

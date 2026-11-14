@@ -1,5 +1,5 @@
 import type { InstitutionType } from "@/config/institution";
-import type { StudentAssignmentRow, Outcome, Timetable } from "@/types/student";
+import type { Outcome, ResultsReport, StudentAssignmentRow, Timetable } from "@/types/student";
 
 /**
  * Who is asking. Every method reads and writes only this student's own records
@@ -35,4 +35,12 @@ export interface StudentRepository {
   withdrawWork(ctx: StudentContext, assignmentId: string): Promise<Outcome>;
   /** The file kept with a submission, for the student to download again. */
   getSubmissionFile(ctx: StudentContext, assignmentId: string): Promise<{ name: string; type: string; data: string } | undefined>;
+
+  // Results and grades
+  /**
+   * This period's results with the grade and average so far (and GPA at
+   * colleges and universities), plus earlier periods. Marked assignments count
+   * as coursework toward each course's figure.
+   */
+  getResults(ctx: StudentContext): Promise<ResultsReport>;
 }

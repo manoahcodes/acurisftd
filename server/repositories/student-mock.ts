@@ -1,4 +1,6 @@
-import { assignmentsFor, timetableFor } from "@/lib/student/seed";
+import { assessmentsFor, assignmentsFor, CURRENT_PERIOD_NO, HISTORY, timetableFor } from "@/lib/student/seed";
+import { buildReport } from "@/lib/student/results";
+import { studentTermsFor } from "@/lib/student/terms";
 import { canSubmit, canWithdraw } from "@/lib/student/assignments";
 import type { StudentAssignment, StudentSubmission } from "@/types/student";
 import { loadSnapshot, saveSnapshot } from "../persistence/store";
@@ -103,6 +105,24 @@ export const mockStudentRepository: StudentRepository = {
     delete s.submissions[a.id];
     save();
     return { ok: true, id: a.id };
+  },
+
+  async getResults(ctx) {
+    const s = stateOf(ctx);
+    const type = ctx.institutionType;
+    const tt = timetableFor(type);
+    const coursework = assignmentsFor(type).flatMap(({ assignment }) => {
+      const mark = s.submissions[assignment.id]?.mark;
+      return mark === null || mark === undefined ? [] : [{ courseId: assignment.courseId, mark, max: assignment.maxMarks }];
+    });
+    return buildReport({
+      type,
+      periodLabel: `${studentTermsFor(type).period} ${CURRENT_PERIOD_NO[type]} 2026`,
+      courses: tt.courses,
+      assessments: assessmentsFor(type),
+      coursework,
+      history: HISTORY[type],
+    });
   },
 
   async getSubmissionFile(ctx, assignmentId) {
