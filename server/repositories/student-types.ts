@@ -1,5 +1,5 @@
 import type { InstitutionType } from "@/config/institution";
-import type { AttendanceReport, Outcome, ResultsReport, StudentAssignmentRow, StudentNoticeRow, StudentResourceRow, Timetable } from "@/types/student";
+import type { AttendanceReport, ContactDetails, Outcome, ProfilePhoto, ResultsReport, StudentAssignmentRow, StudentNoticeRow, StudentProfile, StudentResourceRow, Timetable } from "@/types/student";
 
 /**
  * Who is asking. Every method reads and writes only this student's own records
@@ -69,4 +69,13 @@ export interface StudentRepository {
   countUnreadNotices(ctx: StudentContext): Promise<number>;
   setNoticeRead(ctx: StudentContext, noticeId: string, read: boolean): Promise<Outcome>;
   markAllNoticesRead(ctx: StudentContext): Promise<Outcome>;
+
+  // My profile
+  getProfile(ctx: StudentContext): Promise<StudentProfile>;
+  /** Saves what the student may change. Name, number, class and the rest are set by the school and cannot be changed here. */
+  saveContact(ctx: StudentContext, contact: ContactDetails, now: string): Promise<Outcome>;
+  /** Replaces the profile photo. The caller has already checked the file. */
+  savePhoto(ctx: StudentContext, photo: ProfilePhoto, now: string): Promise<Outcome>;
+  removePhoto(ctx: StudentContext, now: string): Promise<Outcome>;
+  getPhoto(ctx: StudentContext): Promise<ProfilePhoto | undefined>;
 }

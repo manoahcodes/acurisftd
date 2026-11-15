@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { todayIn } from "@/lib/format";
 import { readSubmissionFile } from "@/lib/student/files";
 import { checkAbsenceNote } from "@/lib/student/attendance";
+import { checkContact, readPhoto } from "@/lib/student/profile";
 import { checkSubmission } from "@/lib/student/validate";
 import type { Outcome } from "@/types/student";
 import { student } from "../repositories";
@@ -107,6 +108,39 @@ export async function setNoticeRead(id: unknown, read: unknown): Promise<ActionR
 export async function markEveryNoticeRead(): Promise<ActionResult> {
   const { ctx } = await getStudentSession();
   const r = await student.markAllNoticesRead(ctx);
+  if (r.ok) refresh();
+  return r;
+}
+
+// ---- Profile
+
+export type ContactResult = ActionResult;
+
+/**
+ * Saves the contact details. Only the fields a student may change are read;
+ * anything else in the form (a name, a student number, a class) is ignored.
+ */
+export async function saveContactDetails(raw: Record<string, unknown>): Promise<ContactResult> {
+  const { ctx } = await getStudentSession();
+  const checked = checkContact(raw ?? {});
+  if (!checked.ok) return { ok: false, error: "Check the highlighted fields.", fields: checked.errors as Record<string, string> };
+  const r = await student.saveContact(ctx, checked.value, new Date().toISOString());
+  if (r.ok) refresh();
+  return r;
+}
+
+export async function uploadProfilePhoto(form: FormData): Promise<ActionResult> {
+  const { ctx } = await getStudentSession();
+  const read = await readPhoto(form.get("photo"));
+  if (!read.ok) return { ok: false, error: read.error, fields: { photo: read.error } };
+  const r = await student.savePhoto(ctx, read.photo, new Date().toISOString());
+  if (r.ok) refresh();
+  return r;
+}
+
+export async function removeProfilePhoto(): Promise<ActionResult> {
+  const { ctx } = await getStudentSession();
+  const r = await student.removePhoto(ctx, new Date().toISOString());
   if (r.ok) refresh();
   return r;
 }

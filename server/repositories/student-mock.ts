@@ -1,9 +1,9 @@
-import { assessmentsFor, assignmentsFor, CURRENT_PERIOD_NO, HISTORY, NOTICES_READ_BEFORE, noticesFor, OPENED_BEFORE, resourcesFor, timetableFor } from "@/lib/student/seed";
+import { CONTACT_SEED, identityFor, assessmentsFor, assignmentsFor, CURRENT_PERIOD_NO, HISTORY, NOTICES_READ_BEFORE, noticesFor, OPENED_BEFORE, resourcesFor, timetableFor } from "@/lib/student/seed";
 import { buildReport } from "@/lib/student/results";
 import { studentTermsFor } from "@/lib/student/terms";
 import { canSubmit, canWithdraw } from "@/lib/student/assignments";
 import { buildAttendance, canExplain, generateEntries, PERIOD_START, SAMPLE_END } from "@/lib/student/attendance";
-import type { AbsenceNote, StudentAssignment, StudentSubmission } from "@/types/student";
+import type { AbsenceNote, ContactDetails, ProfilePhoto, StudentAssignment, StudentSubmission } from "@/types/student";
 import { loadSnapshot, saveSnapshot } from "../persistence/store";
 import type { StudentContext, StudentRepository } from "./student-types";
 
@@ -23,6 +23,7 @@ type State = {
   resources?: { saved: string[]; opened: string[] };
   /** Notice ids read. */
   readNotices?: string[];
+  profile?: { contact: ContactDetails; photo?: ProfilePhoto; photoVersion?: string; updatedAt?: string };
 };
 
 const g = globalThis as unknown as { __acurisStudent?: Map<string, State> };
@@ -64,13 +65,15 @@ function stateOf(ctx: StudentContext): State {
     s.notes = seedNotes(ctx);
     s.resources = seedResources(ctx);
     s.readNotices = seedReadNotices(ctx);
+    s.profile = { contact: { ...CONTACT_SEED } };
     data.set(scopeOf(ctx), s);
     save();
-  } else if (!s.notes || !s.resources || !s.readNotices) {
+  } else if (!s.notes || !s.resources || !s.readNotices || !s.profile) {
     // Saved before these pages existed: add what is missing and keep everything else.
     s.notes ??= seedNotes(ctx);
     s.resources ??= seedResources(ctx);
     s.readNotices ??= seedReadNotices(ctx);
+    s.profile ??= { contact: { ...CONTACT_SEED } };
     save();
   }
   return s;
@@ -240,6 +243,43 @@ export const mockStudentRepository: StudentRepository = {
     stateOf(ctx).readNotices = noticesFor(ctx.institutionType).map((n) => n.id);
     save();
     return { ok: true };
+  },
+
+  async getProfile(ctx) {
+    const p = stateOf(ctx).profile!;
+    return { identity: identityFor(ctx.institutionType), contact: { ...p.contact }, photoVersion: p.photo ? (p.photoVersion ?? "1") : null, updatedAt: p.updatedAt ?? null };
+  },
+
+  async saveContact(ctx, contact, now) {
+    const p = stateOf(ctx).profile!;
+    p.contact = { ...contact };
+    p.updatedAt = now;
+    save();
+    return { ok: true };
+  },
+
+  async savePhoto(ctx, photo, now) {
+    const p = stateOf(ctx).profile!;
+    p.photo = { ...photo };
+    p.photoVersion = now;
+    p.updatedAt = now;
+    save();
+    return { ok: true };
+  },
+
+  async removePhoto(ctx, now) {
+    const p = stateOf(ctx).profile!;
+    if (!p.photo) return bad("There is no photo to remove.");
+    delete p.photo;
+    delete p.photoVersion;
+    p.updatedAt = now;
+    save();
+    return { ok: true };
+  },
+
+  async getPhoto(ctx) {
+    const photo = stateOf(ctx).profile!.photo;
+    return photo ? { ...photo } : undefined;
   },
 
   async getSubmissionFile(ctx, assignmentId) {

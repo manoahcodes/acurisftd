@@ -259,3 +259,42 @@ export type StudentNotice = {
 };
 
 export type StudentNoticeRow = StudentNotice & { read: boolean };
+
+// ---- Profile
+
+export const RELATIONSHIPS = ["Parent", "Guardian", "Sibling", "Relative", "Other"] as const;
+export type Relationship = (typeof RELATIONSHIPS)[number];
+
+/** What the student may change about themselves. */
+export type ContactDetails = {
+  phone: string;
+  email: string;
+  address: string;
+  emergencyName: string;
+  emergencyRelationship: Relationship;
+  emergencyPhone: string;
+};
+
+/** Set by the school; the student can read these but not change them. */
+export type StudentIdentity = {
+  name: string;
+  number: string;
+  group: string;
+  institution: string;
+  enrolledOn: string;
+  dateOfBirth: string;
+  guardian: string;
+  /** Class teacher or academic advisor. */
+  advisor: string;
+  advisorTitle: string;
+};
+
+export type StudentProfile = {
+  identity: StudentIdentity;
+  contact: ContactDetails;
+  /** Version of the photo (a timestamp), for refreshing the picture; null when there is none. */
+  photoVersion: string | null;
+  updatedAt: string | null;
+};
+
+export type ProfilePhoto = { type: "image/png" | "image/jpeg"; size: number; data: string };

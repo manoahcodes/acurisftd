@@ -6,12 +6,13 @@ import { getStudentSession } from "@/server/student-context";
 import { AssignmentsView } from "./assignments-view";
 import { AttendanceView } from "./attendance-view";
 import { NoticesView } from "./notices-view";
+import { ProfileView } from "./profile-view";
 import { ResourcesView } from "./resources-view";
 import { ResultsView } from "./results-view";
 import { TimetableView } from "./timetable-view";
 
 /** Slugs of the Student pages that are built. */
-export const STUDENT_PAGES = ["my-timetable", "assignments", "results-and-grades", "attendance", "learning-resources", "school-notices"];
+export const STUDENT_PAGES = ["my-timetable", "assignments", "results-and-grades", "attendance", "learning-resources", "school-notices", "my-profile"];
 
 /** One Student page. Reads cookies and the session, so render it inside <Suspense>. */
 export async function StudentSection({ slug }: { slug: string }) {
@@ -48,6 +49,11 @@ export async function StudentSection({ slug }: { slug: string }) {
   if (slug === "school-notices") {
     const rows = await student.listNotices(ctx);
     return <NoticesView rows={rows} timezone={branding.timezone} />;
+  }
+
+  if (slug === "my-profile") {
+    const profile = await student.getProfile(ctx);
+    return <ProfileView profile={profile} terms={terms} timezone={branding.timezone} />;
   }
 
   return null;

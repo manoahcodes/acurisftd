@@ -1,6 +1,6 @@
 import type { InstitutionType } from "@/config/institution";
 import { studentTermsFor } from "./terms";
-import { WEEKDAYS, type AssignmentKind, type StudentAssignment, type StudentCourse, type StudentNotice, type StudentResource, type Timetable, type TimetableChange, type TimetableSlot } from "@/types/student";
+import { WEEKDAYS, type AssignmentKind, type ContactDetails, type StudentAssignment, type StudentCourse, type StudentIdentity, type StudentNotice, type StudentResource, type Timetable, type TimetableChange, type TimetableSlot } from "@/types/student";
 
 /**
  * Sample student, courses and weekly timetable for the mock. The subjects and
@@ -364,3 +364,32 @@ export function noticesFor(type: InstitutionType): StudentNotice[] {
 
 /** Notices already read: everything posted before this date. The newest three start unread. */
 export const NOTICES_READ_BEFORE = "2026-11-11";
+
+// ---- Profile
+
+export function identityFor(type: InstitutionType): StudentIdentity {
+  const t = studentTermsFor(type);
+  const who = STUDENT_SEED[type];
+  return {
+    name: who.name,
+    number: who.number,
+    group: who.group,
+    institution: INSTITUTION_LABEL[type],
+    enrolledOn: t.tertiary ? "2025-08-18" : "2024-01-15",
+    dateOfBirth: type === "primary" ? "2017-03-09" : type === "high_school" ? "2010-05-21" : "2005-08-14",
+    guardian: "Grace Banda",
+    advisor: t.tertiary ? "Dr. A. Mumba" : "Mrs. N. Mwale",
+    advisorTitle: t.tertiary ? "Academic advisor" : "Class teacher",
+  };
+}
+
+const INSTITUTION_LABEL: Record<InstitutionType, string> = { primary: "Primary School", high_school: "High School", college: "College", university: "University" };
+
+export const CONTACT_SEED: ContactDetails = {
+  phone: "+260 971 234 567",
+  email: "chisomo.banda@example.org",
+  address: "Plot 24, Kabulonga, Lusaka",
+  emergencyName: "Grace Banda",
+  emergencyRelationship: "Parent",
+  emergencyPhone: "+260 977 123 456",
+};
