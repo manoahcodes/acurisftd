@@ -87,8 +87,11 @@ Data is the in-memory mock saved through the SQLite store (key `student`), scope
 - [x] School notices: pinned first, category filter, search, unread only, read on open, mark read or unread, mark all read
 - [x] My profile: identity read-only; edit phone, email, address, required emergency contact; profile photo (PNG or JPEG by bytes, 1 MB, `/api/student/photo`)
 - [x] Sidebar badges (Assignments, School notices), the bell and the top bar search come from the student's own data
+- [x] Unpaid fees, set per school by the Platform Admin: **Fee policy** on the school form (Tenants & schools): information only, withhold exam card, withhold result slip, or both (`lib/fee-policy.ts`, field `feePolicy` on `TenantSummary`, audited as "Fee policy changed"). The student sees a fee notice on My home and in the bell; a withheld page shows "Available once your balance is cleared" and, at colleges and universities, the amount. Learners at schools are pointed to their parent or guardian and are not shown the amount. New **Exam card** page (printable). The result slip (print and CSV) is the withheld item on Results & grades; marks stay visible.
+- [ ] Fee balance is sample data (`lib/student/fees.ts`, `StudentRepository.getFees`); connect it to the Bursar's records when that role is built, and compute overdue from the due date
+- [ ] Exam card lists each course's upcoming exam; replace with the Registrar's exam timetable and add a student-specific exam number and venue when those exist
 - [ ] Link the student's data to the Teacher module: assignments, marks, attendance and shared resources a teacher enters should be what the student sees (today the two mocks are separate)
 - [ ] Swap `StudentRepository` for a real one; the school's timetable, notices and the review of absence reasons need an owner role (Teacher, Registrar or Parent)
 - [ ] Move submission files and photos from base64 in the saved snapshot to file storage when a real backend exists
 - [ ] Dark mode and phone layout check of the seven Student pages (not run in the sandbox); add them to the contrast scan
-- [ ] `next build` could not be run in the sandbox (Google Fonts unreachable); dev server and 639 tests pass
+- [ ] `next build` could not be run in the sandbox (Google Fonts unreachable); dev server and 647 tests pass

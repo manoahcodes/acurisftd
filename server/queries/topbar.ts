@@ -11,7 +11,7 @@ import type { Child, NotificationSummary } from "@/types/topbar";
 /** Recent notifications and the unread total for the signed-in user. */
 export const getNotifications = cache(
   async (role: RoleKey): Promise<NotificationSummary> => {
-    if (role === "student") return studentNotifications((await getStudentSession()).ctx);
+    if (role === "student") return studentNotifications(await getStudentSession());
     const ctx = await getTenantContext();
     return notifications.list(ctx, role);
   },

@@ -38,13 +38,13 @@ export const mockTenantDirectory: TenantDirectory = {
   async list() {
     return [...TENANTS];
   },
-  async create({ name, plan, status, campuses, types }) {
+  async create({ name, plan, status, campuses, types, feePolicy }) {
     const divisions = combined(...types);
     // Same rule as the seed data: one academic system per school.
     assertSharedSystem(name, divisions);
     let id = slugify(name);
     for (let n = 2; TENANTS.some((t) => t.id === id); n++) id = `${slugify(name)}-${n}`;
-    const tenant: TenantSummary = { id, name, divisions, campuses, learners: 0, plan, status };
+    const tenant: TenantSummary = { id, name, divisions, campuses, learners: 0, plan, status, feePolicy };
     TENANTS.push(tenant);
     save();
     return tenant;

@@ -1,4 +1,5 @@
 import { INSTITUTIONS, INSTITUTION_TYPES, LEVEL_LABELS, divisionsLabel, systemLabel, tenantSystem, tenantSystemLabel } from "@/config/institution";
+import { DEFAULT_FEE_POLICY, FEE_POLICY_LABELS } from "@/lib/fee-policy";
 import { scopeLabel, visibleDivisions } from "@/lib/division-scope";
 import type { PlatformContext } from "../platform-types";
 import { K, tableOf, type Builder } from "./shared";
@@ -16,7 +17,7 @@ const tenants: Builder = ({ tenants }) => ({
   tables: [
     tableOf("tenants",
       "Tenants & schools",
-      ["School", "Institution type", "Divisions", "Academic system", "Campuses", "Learners", "Plan", "Status"],
+      ["School", "Institution type", "Divisions", "Academic system", "Campuses", "Learners", "Plan", "Fee policy", "Status"],
       tenants.map((t) => [
         t.name,
         divisionsLabel(t.divisions),
@@ -25,6 +26,7 @@ const tenants: Builder = ({ tenants }) => ({
         String(t.campuses),
         t.learners.toLocaleString("en-US"),
         t.plan,
+        FEE_POLICY_LABELS[t.feePolicy ?? DEFAULT_FEE_POLICY],
         t.status,
       ]),
       {

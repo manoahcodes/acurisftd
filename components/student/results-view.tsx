@@ -4,11 +4,13 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { DetailsList, PrintSheet, PrintTable } from "@/components/platform/print-sheet";
 import { Card, Chip, ExportBar, Stat, buttonClass, downloadCsv, useToday } from "@/components/teacher/shared";
+import type { FeeBalance } from "@/lib/fee-policy";
 import { cn } from "@/lib/format";
 import type { PrintBranding } from "@/lib/print";
 import { csvFilename } from "@/lib/table-tools";
 import { prettyDate } from "@/lib/teacher/dates";
 import type { StudentTerms } from "@/lib/student/terms";
+import { WithheldCard } from "./fee-notice";
 import type { CourseResult, ResultItem, ResultsReport } from "@/types/student";
 
 const fmt = (n: number | null, suffix = "%") => (n === null ? "—" : `${n}${suffix}`);
@@ -16,7 +18,7 @@ const gradeTone = (r: Pick<CourseResult, "final" | "passed">) => (r.final === nu
 
 const STATE_LABEL: Record<ResultItem["state"], string> = { marked: "", absent: "Absent", excused: "Excused", pending: "Being marked", upcoming: "Not sat yet" };
 
-export function ResultsView({ report, studentName, studentNumber, group, terms, branding }: { report: ResultsReport; studentName: string; studentNumber: string; group: string; terms: StudentTerms; branding: PrintBranding }) {
+export function ResultsView({ report, studentName, studentNumber, group, terms, branding, slipWithheld = false, fee }: { slipWithheld?: boolean; fee: FeeBalance; report: ResultsReport; studentName: string; studentNumber: string; group: string; terms: StudentTerms; branding: PrintBranding }) {
   const today = useToday(branding.timezone);
   const [open, setOpen] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
@@ -52,10 +54,12 @@ export function ResultsView({ report, studentName, studentNumber, group, terms, 
             <p className="text-sm text-muted">Marked assignments count for {report.courses[0]?.courseworkWeight ?? 20}% of each {terms.course.toLowerCase()}; assessments share the rest by weight. Anything not yet marked is left out, so the figures can still change.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <ExportBar onCsv={() => downloadCsv(csvFilename(`results ${report.periodLabel}`, today || "export"), [columns, ...table])} onPrint={() => setPrinting(true)} disabled={report.courses.length === 0} />
+            {!slipWithheld && <ExportBar onCsv={() => downloadCsv(csvFilename(`results ${report.periodLabel}`, today || "export"), [columns, ...table])} onPrint={() => setPrinting(true)} disabled={report.courses.length === 0} />}
           </div>
         </div>
       </Card>
+
+      {slipWithheld && <WithheldCard what="Result slip" fee={fee} terms={terms} />}
 
       <ul className="space-y-3">
         {report.courses.map((c) => {
@@ -174,11 +178,11 @@ export function ResultsView({ report, studentName, studentNumber, group, terms, 
               {report.bands.map((b) => <tr key={b.grade}><td className="py-1.5 pr-3 text-muted">{b.min}%</td><th scope="row" className="py-1.5 pr-3 font-medium text-ink">{b.grade}</th>{tertiary && <td className="py-1.5 pr-3 text-ink">{b.points.toFixed(1)}</td>}<td className="py-1.5 text-ink">{b.remark}</td></tr>)}
             </tbody>
           </table>
-          <button type="button" onClick={() => setPrinting(true)} className={`${buttonClass} mt-4`}>Print result slip</button>
+          {!slipWithheld && <button type="button" onClick={() => setPrinting(true)} className={`${buttonClass} mt-4`}>Print result slip</button>}
         </details>
       </Card>
 
-      {printing && (
+      {printing && !slipWithheld && (
         <PrintSheet branding={branding} title={`Result slip, ${report.periodLabel}`} signature lines={[report.provisional ? "Provisional: some results are still to come." : "Final results."]} onClose={() => setPrinting(false)}>
           <DetailsList details={[[terms.member, studentName], [`${terms.member} number`, studentNumber], [terms.group, group], [terms.period, report.periodLabel], ...(tertiary ? ([["GPA", report.gpa === null ? "—" : report.gpa.toFixed(2)], ["Cumulative GPA", report.cumulativeGpa === null ? "—" : report.cumulativeGpa.toFixed(2)]] as Array<[string, string]>) : ([["Average", fmt(report.average)], ["Overall grade", report.overallGrade]] as Array<[string, string]>))]} />
           <div className="mt-6"><PrintTable columns={columns} rows={table} /></div>

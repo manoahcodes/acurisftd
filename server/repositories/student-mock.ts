@@ -1,3 +1,4 @@
+import { FEE_SEED } from "@/lib/student/fees";
 import { CONTACT_SEED, identityFor, assessmentsFor, assignmentsFor, CURRENT_PERIOD_NO, HISTORY, NOTICES_READ_BEFORE, noticesFor, OPENED_BEFORE, resourcesFor, timetableFor } from "@/lib/student/seed";
 import { buildReport } from "@/lib/student/results";
 import { studentTermsFor } from "@/lib/student/terms";
@@ -139,6 +140,10 @@ export const mockStudentRepository: StudentRepository = {
     delete s.submissions[a.id];
     save();
     return { ok: true, id: a.id };
+  },
+
+  async getFees(ctx) {
+    return { ...FEE_SEED[ctx.institutionType] };
   },
 
   async getResults(ctx) {

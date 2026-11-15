@@ -5,6 +5,7 @@ import { DashboardView } from "@/components/dashboard/dashboard-view";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PageSkeleton } from "@/components/dashboard/page-skeleton";
 import { TodayDate } from "@/components/dashboard/today-date";
+import { StudentFeeBanner } from "@/components/student/student-fee-banner";
 import { dashboards, teaching } from "@/server/repositories";
 import { getTeacherSession } from "@/server/teacher-context";
 import { getDashboardSchool } from "@/server/queries/dashboard";
@@ -65,6 +66,7 @@ async function RoleDashboard({ params }: { params: Params }) {
           </>
         }
       />
+      {role === "student" && <StudentFeeBanner />}
       <DashboardView data={data} />
     </>
   );

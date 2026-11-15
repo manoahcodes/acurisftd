@@ -2,9 +2,11 @@ import { printBrandingOf } from "@/lib/print";
 import { STUDENT_SEED } from "@/lib/student/seed";
 import { student } from "@/server/repositories";
 import { getResolvedTheme } from "@/server/queries/theme";
+import { getStudentFeeView } from "@/server/queries/student-fees";
 import { getStudentSession } from "@/server/student-context";
 import { AssignmentsView } from "./assignments-view";
 import { AttendanceView } from "./attendance-view";
+import { ExamCardView } from "./exam-card-view";
 import { NoticesView } from "./notices-view";
 import { ProfileView } from "./profile-view";
 import { ResourcesView } from "./resources-view";
@@ -12,11 +14,12 @@ import { ResultsView } from "./results-view";
 import { TimetableView } from "./timetable-view";
 
 /** Slugs of the Student pages that are built. */
-export const STUDENT_PAGES = ["my-timetable", "assignments", "results-and-grades", "attendance", "learning-resources", "school-notices", "my-profile"];
+export const STUDENT_PAGES = ["my-timetable", "assignments", "results-and-grades", "exam-card", "attendance", "learning-resources", "school-notices", "my-profile"];
 
 /** One Student page. Reads cookies and the session, so render it inside <Suspense>. */
 export async function StudentSection({ slug }: { slug: string }) {
-  const { ctx, terms } = await getStudentSession();
+  const session = await getStudentSession();
+  const { ctx, terms } = session;
   const branding = printBrandingOf((await getResolvedTheme("student")).branding);
 
   if (slug === "my-timetable") {
@@ -30,9 +33,15 @@ export async function StudentSection({ slug }: { slug: string }) {
   }
 
   if (slug === "results-and-grades") {
-    const [report, tt] = await Promise.all([student.getResults(ctx), student.getTimetable(ctx)]);
+    const [report, tt, fees] = await Promise.all([student.getResults(ctx), student.getTimetable(ctx), getStudentFeeView(session)]);
     const who = STUDENT_SEED[ctx.institutionType];
-    return <ResultsView report={report} studentName={who.name} studentNumber={who.number} group={tt.group} terms={terms} branding={branding} />;
+    return <ResultsView report={report} studentName={who.name} studentNumber={who.number} group={tt.group} terms={terms} branding={branding} slipWithheld={fees.withheld.results} fee={fees.fee} />;
+  }
+
+  if (slug === "exam-card") {
+    const [report, tt, fees] = await Promise.all([student.getResults(ctx), student.getTimetable(ctx), getStudentFeeView(session)]);
+    const who = STUDENT_SEED[ctx.institutionType];
+    return <ExamCardView report={report} withheld={fees.withheld.examCard} fee={fees.fee} studentName={who.name} studentNumber={who.number} group={tt.group} terms={terms} branding={branding} />;
   }
 
   if (slug === "attendance") {

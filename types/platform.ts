@@ -1,4 +1,5 @@
 import type { Division } from "@/config/institution";
+import type { FeePolicy } from "@/lib/fee-policy";
 import type { Kpi } from "./dashboard";
 import type { ProcessSpec } from "./process";
 import type { ScreenForms } from "./forms";
@@ -13,6 +14,8 @@ export type TenantSummary = {
   learners: number;
   plan: "Starter" | "Growth" | "Enterprise";
   status: "Active" | "Trial" | "Suspended";
+  /** What happens when a student owes fees. Missing means information only. */
+  feePolicy?: FeePolicy;
 };
 
 export type TableSection = {

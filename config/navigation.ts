@@ -388,6 +388,7 @@ export const ROLES: Record<RoleKey, RoleConfig> = {
       "My timetable",
       "Assignments",
       "Results & grades",
+      "Exam card",
       "Attendance",
       "Learning resources",
       "School notices",

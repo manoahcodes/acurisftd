@@ -141,7 +141,7 @@ describe("Staff, division access and divisions", () => {
 
   const school = (id: string) => tenantDirectory.list().then((l) => l.find((t) => t.id === id)!);
   const tenantForm = (name: string, types: string[], extra: Record<string, string> = {}) =>
-    edit("tenants-and-schools", "tenant", name, { name, types, plan: "Growth", campuses: "2", status: "Active", ...extra });
+    edit("tenants-and-schools", "tenant", name, { name, types, plan: "Growth", campuses: "2", feePolicy: "Information only", status: "Active", ...extra });
 
   it("adds a division to a school, keeping existing ones and one academic system", async () => {
     const before = await school("chilenje");
@@ -166,6 +166,18 @@ describe("Staff, division access and divisions", () => {
     const ok = await tenantForm("Tiny School", ["Primary School"], { plan: "Starter", campuses: "1", status: "Trial" });
     expect(ok.status, ok.message).toBe("success");
     expect((await school("tiny-school")).divisions.map((d) => d.id)).toEqual(["primary"]);
+  });
+
+  it("sets the unpaid-fees policy per school, audits it, and rejects an unknown one", async () => {
+    const r = await tenantForm("Mukuba Learning Centre", ["College"], { feePolicy: "Withhold exam card" });
+    expect(r.status, r.message).toBe("success");
+    expect((await school("mukuba")).feePolicy).toBe("withhold_exam_card");
+    expect((await school("northview")).feePolicy ?? "inform").toBe("inform");
+    expect(audit.list().some((e) => e.action === "Fee policy changed")).toBe(true);
+    const bad = await tenantForm("Mukuba Learning Centre", ["College"], { feePolicy: "Delete everything" });
+    expect(bad.status).toBe("error");
+    expect((await school("mukuba")).feePolicy).toBe("withhold_exam_card");
+    expect((await table("tenants-and-schools", "tenants", null).then((t) => cell(t, "Mukuba Learning Centre", "Fee policy")))).toBe("Withhold exam card");
   });
 
   it("the edit form opens with the school's current divisions", async () => {

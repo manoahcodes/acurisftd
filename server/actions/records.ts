@@ -3,6 +3,7 @@
 import { isMultiTenant } from "@/config/deployment";
 import { revalidatePath } from "next/cache";
 import { INSTITUTIONS, INSTITUTION_TYPES, divisionsShareSystem, type InstitutionType } from "@/config/institution";
+import { DEFAULT_FEE_POLICY, FEE_POLICY_LABELS, labelToPolicy } from "@/lib/fee-policy";
 import { askedFields, keyForRow } from "@/lib/forms/spec";
 import { normaliseKey } from "@/lib/forms/overlay";
 import { readFormData, validateForm } from "@/lib/forms/validate";
@@ -87,6 +88,7 @@ export async function submitRecord(_prev: FormState, formData: FormData): Promis
         plan: values.plan as "Starter" | "Growth" | "Enterprise",
         status: values.status as "Active" | "Trial" | "Suspended",
         campuses: Number(values.campuses),
+        feePolicy: labelToPolicy(String(values.feePolicy)) ?? DEFAULT_FEE_POLICY,
       });
       await log("School added", `Tenants & schools: ${name}`, "platform", "Platform");
       revalidatePath("/platform", "layout");
@@ -115,13 +117,18 @@ export async function submitRecord(_prev: FormState, formData: FormData): Promis
         });
       }
     }
+    const newPolicy = labelToPolicy(String(values.feePolicy)) ?? current.feePolicy ?? DEFAULT_FEE_POLICY;
     await tenantDirectory.update(current.id, {
       name,
       plan: values.plan as "Starter" | "Growth" | "Enterprise",
       status: values.status as "Active" | "Trial" | "Suspended",
       campuses: Number(values.campuses),
+      feePolicy: newPolicy,
       ...(changed ? { types: picked } : {}),
     });
+    if (newPolicy !== (current.feePolicy ?? DEFAULT_FEE_POLICY)) {
+      await log("Fee policy changed", `Tenants & schools: ${name} (${FEE_POLICY_LABELS[newPolicy]})`, "platform", "Platform");
+    }
     if (changed) {
       await log("Divisions changed", `Tenants & schools: ${name} (${picked.map((t) => INSTITUTIONS[t].label).join(" + ")})`, "platform", "Platform");
     }

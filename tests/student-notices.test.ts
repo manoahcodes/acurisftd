@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { INSTITUTION_TYPES } from "@/config/institution";
+import { studentTermsFor } from "@/lib/student/terms";
 import { NOTICES_READ_BEFORE, noticesFor } from "@/lib/student/seed";
 import { mockStudentRepository as repo, resetMockStudent } from "@/server/repositories/student-mock";
 import type { StudentContext } from "@/server/repositories/student-types";
 import { NOTICE_CATEGORIES } from "@/types/student";
 
 const ctx: StudentContext = { tenantId: "t1", studentId: "s1", institutionType: "high_school" };
+const session = { ctx, feePolicy: "inform" as const, terms: studentTermsFor("high_school") };
 beforeEach(() => resetMockStudent());
 
 describe("Notice seed", () => {
@@ -59,16 +61,16 @@ describe("Notice repository", () => {
 });
 
 describe("Student bell and search", () => {
-  it("counts unread notices and assignments with nothing handed in", async () => {
+  it("counts unread notices, assignments with nothing handed in, and a fee balance", async () => {
     const { studentNotifications } = await import("@/server/queries/student-notifications");
-    const first = await studentNotifications(ctx);
-    expect(first.unreadCount).toBe(3 + 3);
+    const first = await studentNotifications(session);
+    expect(first.unreadCount).toBe(3 + 3 + 1);
     expect(first.items.length).toBeLessThanOrEqual(6);
     expect(first.items.every((i) => i.unread && i.href.startsWith("/student/"))).toBe(true);
     await repo.markAllNoticesRead(ctx);
-    expect((await studentNotifications(ctx)).unreadCount).toBe(3);
+    expect((await studentNotifications(session)).unreadCount).toBe(3 + 1);
     await repo.submitWork(ctx, "asg-1", { text: "done" }, "2026-11-15T08:00:00.000Z", "2026-11-15");
-    expect((await studentNotifications(ctx)).unreadCount).toBe(2);
+    expect((await studentNotifications(session)).unreadCount).toBe(2 + 1);
   });
   it("searches only this student's records", async () => {
     const { searchStudent } = await import("@/server/queries/student-search");

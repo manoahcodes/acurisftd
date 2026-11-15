@@ -1,3 +1,4 @@
+import type { FeeBalance } from "@/lib/fee-policy";
 import type { InstitutionType } from "@/config/institution";
 import type { AttendanceReport, ContactDetails, Outcome, ProfilePhoto, ResultsReport, StudentAssignmentRow, StudentNoticeRow, StudentProfile, StudentResourceRow, Timetable } from "@/types/student";
 
@@ -72,6 +73,8 @@ export interface StudentRepository {
 
   // My profile
   getProfile(ctx: StudentContext): Promise<StudentProfile>;
+  /** The student's own fee position (read-only). SWAP POINT: comes from the Bursar's records. */
+  getFees(ctx: StudentContext): Promise<FeeBalance>;
   /** Saves what the student may change. Name, number, class and the rest are set by the school and cannot be changed here. */
   saveContact(ctx: StudentContext, contact: ContactDetails, now: string): Promise<Outcome>;
   /** Replaces the profile photo. The caller has already checked the file. */

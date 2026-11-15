@@ -144,6 +144,7 @@ const LABEL_ICONS: Record<string, IconName> = {
   "My home": "House",
   "My timetable": "CalendarClock",
   "Results & grades": "Award",
+  "Exam card": "IdCard",
   "School notices": "Megaphone",
   "My profile": "UserRound",
 };

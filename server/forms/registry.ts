@@ -1,4 +1,5 @@
 import { INSTITUTIONS, INSTITUTION_TYPES, type Division } from "@/config/institution";
+import { DEFAULT_FEE_POLICY, FEE_POLICIES, FEE_POLICY_LABELS } from "@/lib/fee-policy";
 import { parseMoney } from "@/lib/forms/validate";
 import type { FieldDef, FormSpec, FormValues } from "@/types/forms";
 import type { PlatformContext } from "../repositories/platform-types";
@@ -453,6 +454,10 @@ const MAKERS: Record<string, Maker> = {
         },
         select("plan", "Plan", "Plan", ["Starter", "Growth", "Enterprise"], { defaultValue: "Starter" }),
         num("campuses", "Campuses", "Campuses", { min: 1, max: 50, defaultValue: "1" }),
+        select("feePolicy", "Unpaid fees policy", "Fee policy", FEE_POLICIES.map((p) => FEE_POLICY_LABELS[p]), {
+          defaultValue: FEE_POLICY_LABELS[DEFAULT_FEE_POLICY],
+          help: "What students see when they owe fees. Every option shows the balance and why; the withheld page says \"Available once your balance is cleared\".",
+        }),
         status(["Active", "Trial", "Suspended"], "Trial"),
       ], { target: "tenant" }),
     },

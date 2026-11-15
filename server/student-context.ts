@@ -2,10 +2,11 @@ import { cache } from "react";
 import { studentTermsFor, type StudentTerms } from "@/lib/student/terms";
 import { getDashboardSchool } from "./queries/dashboard";
 import { getResolvedTheme } from "./queries/theme";
-import { session } from "./repositories";
+import { DEFAULT_FEE_POLICY, isFeePolicy, type FeePolicy } from "@/lib/fee-policy";
+import { session, tenantDirectory } from "./repositories";
 import type { StudentContext } from "./repositories/student-types";
 
-export type StudentSession = { ctx: StudentContext; terms: StudentTerms; timezone: string; schoolName: string; campus: string };
+export type StudentSession = { ctx: StudentContext; terms: StudentTerms; timezone: string; schoolName: string; campus: string; feePolicy: FeePolicy };
 
 /**
  * The signed-in student, the school they study in, and the wording for it.
@@ -19,11 +20,15 @@ export const getStudentSession = cache(async (): Promise<StudentSession> => {
   if (!user) throw new Error("Not signed in.");
   const school = (await getDashboardSchool("student")) ?? user.tenant;
   const { branding } = await getResolvedTheme("student");
+  // The school's own policy, set by the Platform Admin. Unknown or missing means information only.
+  const tenant = (await tenantDirectory.list()).find((t) => t.id === school.tenantId);
+  const feePolicy = isFeePolicy(tenant?.feePolicy) ? tenant.feePolicy : DEFAULT_FEE_POLICY;
   return {
     ctx: { tenantId: school.tenantId, studentId: user.id, institutionType: school.institutionType },
     terms: studentTermsFor(school.institutionType),
     timezone: branding.timezone,
     schoolName: school.tenantName,
     campus: school.campus,
+    feePolicy,
   };
 });
