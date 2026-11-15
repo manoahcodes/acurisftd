@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { todayIn } from "@/lib/format";
 import { readSubmissionFile } from "@/lib/student/files";
+import { checkAbsenceNote } from "@/lib/student/attendance";
 import { checkSubmission } from "@/lib/student/validate";
 import type { Outcome } from "@/types/student";
 import { student } from "../repositories";
@@ -50,6 +51,27 @@ export async function withdrawAssignment(id: string): Promise<ActionResult> {
   const { ctx } = await getStudentSession();
   if (typeof id !== "string" || !ID.test(id)) return bad("That assignment is not available.");
   const r = await student.withdrawWork(ctx, id);
+  if (r.ok) refresh();
+  return r;
+}
+
+// ---- Attendance
+
+/** Sends the reason for an absence. The date must be a day the student was marked absent, and recent enough. */
+export async function sendAbsenceReason(raw: { date: unknown; reason: unknown }): Promise<ActionResult> {
+  const { ctx, timezone } = await getStudentSession();
+  const checked = checkAbsenceNote(raw ?? {});
+  if (!checked.ok) return { ok: false, error: checked.error, fields: checked.fields };
+  const now = new Date();
+  const r = await student.saveAbsenceNote(ctx, checked.value.date, checked.value.reason, now.toISOString(), todayIn(timezone, now).iso);
+  if (r.ok) refresh();
+  return r;
+}
+
+export async function takeBackAbsenceReason(date: unknown): Promise<ActionResult> {
+  const { ctx } = await getStudentSession();
+  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return bad("Choose a valid date.");
+  const r = await student.removeAbsenceNote(ctx, date);
   if (r.ok) refresh();
   return r;
 }

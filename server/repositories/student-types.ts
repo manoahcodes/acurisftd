@@ -1,5 +1,5 @@
 import type { InstitutionType } from "@/config/institution";
-import type { Outcome, ResultsReport, StudentAssignmentRow, Timetable } from "@/types/student";
+import type { AttendanceReport, Outcome, ResultsReport, StudentAssignmentRow, Timetable } from "@/types/student";
 
 /**
  * Who is asking. Every method reads and writes only this student's own records
@@ -43,4 +43,14 @@ export interface StudentRepository {
    * as coursework toward each course's figure.
    */
   getResults(ctx: StudentContext): Promise<ResultsReport>;
+
+  // Attendance
+  getAttendance(ctx: StudentContext): Promise<AttendanceReport>;
+  /**
+   * Sends (or replaces, while still pending) the reason for an absence. Only a
+   * day the student was marked absent, within the allowed window.
+   */
+  saveAbsenceNote(ctx: StudentContext, date: string, reason: string, now: string, today: string): Promise<Outcome>;
+  /** Takes back a reason that has not been reviewed yet. */
+  removeAbsenceNote(ctx: StudentContext, date: string): Promise<Outcome>;
 }

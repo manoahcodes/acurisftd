@@ -177,3 +177,39 @@ export type ResultsReport = {
   /** True while any course still has results to come. */
   provisional: boolean;
 };
+
+// ---- Attendance
+
+export type AttendanceMark = "present" | "absent" | "late" | "excused";
+
+/** What happened at one sitting on one day. */
+export type AttendanceEntry = {
+  date: string;
+  slotId: string;
+  courseId: string;
+  courseName: string;
+  start: string;
+  end: string;
+  status: AttendanceMark;
+};
+
+/** The student's reason for being away, sent for the school to review. */
+export type AbsenceNote = {
+  date: string;
+  reason: string;
+  submittedAt: string;
+  state: "pending" | "approved";
+};
+
+export type AttendanceReport = {
+  periodLabel: string;
+  /** First and last school day covered. */
+  from: string;
+  to: string;
+  entries: AttendanceEntry[];
+  notes: AbsenceNote[];
+  /** Days with no sittings because the school is closed. */
+  closures: Array<{ from: string; to: string; label: string }>;
+  /** The share (0-100) the school expects. */
+  required: number;
+};

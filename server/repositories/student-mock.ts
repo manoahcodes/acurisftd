@@ -2,7 +2,8 @@ import { assessmentsFor, assignmentsFor, CURRENT_PERIOD_NO, HISTORY, timetableFo
 import { buildReport } from "@/lib/student/results";
 import { studentTermsFor } from "@/lib/student/terms";
 import { canSubmit, canWithdraw } from "@/lib/student/assignments";
-import type { StudentAssignment, StudentSubmission } from "@/types/student";
+import { buildAttendance, canExplain, generateEntries, PERIOD_START, SAMPLE_END } from "@/lib/student/attendance";
+import type { AbsenceNote, StudentAssignment, StudentSubmission } from "@/types/student";
 import { loadSnapshot, saveSnapshot } from "../persistence/store";
 import type { StudentContext, StudentRepository } from "./student-types";
 
@@ -16,6 +17,8 @@ type Stored = StudentSubmission & { fileData?: string };
 type State = {
   /** Key: assignment id. */
   submissions: Record<string, Stored>;
+  /** Key: date. */
+  notes?: Record<string, AbsenceNote>;
 };
 
 const g = globalThis as unknown as { __acurisStudent?: Map<string, State> };
@@ -35,11 +38,27 @@ function seed(ctx: StudentContext): State {
   return s;
 }
 
+const isTertiaryType = (ctx: StudentContext) => studentTermsFor(ctx.institutionType).tertiary;
+const seedKeyOf = (ctx: StudentContext) => `${ctx.institutionType}|${ctx.studentId}`;
+
+/** One reason already sent and approved, so the page shows every state. */
+function seedNotes(ctx: StudentContext): Record<string, AbsenceNote> {
+  const tt = timetableFor(ctx.institutionType);
+  const from = isTertiaryType(ctx) ? PERIOD_START.tertiary : PERIOD_START.school;
+  const first = generateEntries(tt, seedKeyOf(ctx), from, SAMPLE_END).find((e) => e.status === "absent");
+  return first ? { [first.date]: { date: first.date, reason: "Clinic appointment; a note from the clinic was handed to the office.", submittedAt: `${first.date}T12:00:00.000Z`, state: "approved" } } : {};
+}
+
 function stateOf(ctx: StudentContext): State {
   let s = data.get(scopeOf(ctx));
   if (!s) {
     s = seed(ctx);
+    s.notes = seedNotes(ctx);
     data.set(scopeOf(ctx), s);
+    save();
+  } else if (!s.notes) {
+    // Saved before attendance existed: add the sample note and keep everything else.
+    s.notes = seedNotes(ctx);
     save();
   }
   return s;
@@ -123,6 +142,40 @@ export const mockStudentRepository: StudentRepository = {
       coursework,
       history: HISTORY[type],
     });
+  },
+
+  async getAttendance(ctx) {
+    const s = stateOf(ctx);
+    const type = ctx.institutionType;
+    const terms = studentTermsFor(type);
+    return buildAttendance({
+      tt: timetableFor(type),
+      seedKey: seedKeyOf(ctx),
+      tertiary: terms.tertiary,
+      periodLabel: `${terms.period} ${CURRENT_PERIOD_NO[type]} 2026`,
+      notes: Object.values(s.notes ?? {}).sort((a, b) => b.date.localeCompare(a.date)),
+    });
+  },
+
+  async saveAbsenceNote(ctx, date, reason, now, today) {
+    const s = stateOf(ctx);
+    const report = await mockStudentRepository.getAttendance(ctx);
+    const can = canExplain(report.entries, date, today);
+    if (!can.ok) return bad(can.error);
+    if (s.notes![date]?.state === "approved") return bad("The school has already accepted a reason for that day.");
+    s.notes![date] = { date, reason, submittedAt: now, state: "pending" };
+    save();
+    return { ok: true, id: date };
+  },
+
+  async removeAbsenceNote(ctx, date) {
+    const s = stateOf(ctx);
+    const note = s.notes![date];
+    if (!note) return bad("There is no reason to take back for that day.");
+    if (note.state !== "pending") return bad("The school has already accepted that reason, so it cannot be taken back.");
+    delete s.notes![date];
+    save();
+    return { ok: true, id: date };
   },
 
   async getSubmissionFile(ctx, assignmentId) {
