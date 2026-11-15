@@ -1,6 +1,6 @@
 /** Shared shapes for the Student pages. Dates are "YYYY-MM-DD" in the school's zone, times "HH:MM". */
 
-import type { GradeBand } from "./teacher";
+import type { GradeBand, ResourceKind } from "./teacher";
 
 /** What a repository write returns: it worked (with the new id, if any), or why not. */
 export type Outcome = { ok: true; id?: string } | { ok: false; error: string };
@@ -212,4 +212,28 @@ export type AttendanceReport = {
   closures: Array<{ from: string; to: string; label: string }>;
   /** The share (0-100) the school expects. */
   required: number;
+};
+
+// ---- Learning resources
+
+/** A link or note a teacher has shared with this student's class. Files are not uploaded. */
+export type StudentResource = {
+  id: string;
+  courseId: string;
+  title: string;
+  kind: ResourceKind;
+  /** An https link, or empty for a note. */
+  url: string;
+  body: string;
+  topic: string;
+  postedOn: string;
+};
+
+export type StudentResourceRow = StudentResource & {
+  courseName: string;
+  teacher: string;
+  /** The student bookmarked it. */
+  saved: boolean;
+  /** The student has opened it. */
+  opened: boolean;
 };

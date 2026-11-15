@@ -1,4 +1,4 @@
-import { assessmentsFor, assignmentsFor, CURRENT_PERIOD_NO, HISTORY, timetableFor } from "@/lib/student/seed";
+import { assessmentsFor, assignmentsFor, CURRENT_PERIOD_NO, HISTORY, OPENED_BEFORE, resourcesFor, timetableFor } from "@/lib/student/seed";
 import { buildReport } from "@/lib/student/results";
 import { studentTermsFor } from "@/lib/student/terms";
 import { canSubmit, canWithdraw } from "@/lib/student/assignments";
@@ -19,6 +19,8 @@ type State = {
   submissions: Record<string, Stored>;
   /** Key: date. */
   notes?: Record<string, AbsenceNote>;
+  /** Resource ids bookmarked and opened. */
+  resources?: { saved: string[]; opened: string[] };
 };
 
 const g = globalThis as unknown as { __acurisStudent?: Map<string, State> };
@@ -49,16 +51,20 @@ function seedNotes(ctx: StudentContext): Record<string, AbsenceNote> {
   return first ? { [first.date]: { date: first.date, reason: "Clinic appointment; a note from the clinic was handed to the office.", submittedAt: `${first.date}T12:00:00.000Z`, state: "approved" } } : {};
 }
 
+const seedResources = (ctx: StudentContext) => ({ saved: [] as string[], opened: resourcesFor(ctx.institutionType).filter((r) => r.postedOn < OPENED_BEFORE).map((r) => r.id) });
+
 function stateOf(ctx: StudentContext): State {
   let s = data.get(scopeOf(ctx));
   if (!s) {
     s = seed(ctx);
     s.notes = seedNotes(ctx);
+    s.resources = seedResources(ctx);
     data.set(scopeOf(ctx), s);
     save();
-  } else if (!s.notes) {
-    // Saved before attendance existed: add the sample note and keep everything else.
-    s.notes = seedNotes(ctx);
+  } else if (!s.notes || !s.resources) {
+    // Saved before these pages existed: add what is missing and keep everything else.
+    s.notes ??= seedNotes(ctx);
+    s.resources ??= seedResources(ctx);
     save();
   }
   return s;
@@ -176,6 +182,32 @@ export const mockStudentRepository: StudentRepository = {
     delete s.notes![date];
     save();
     return { ok: true, id: date };
+  },
+
+  async listResources(ctx) {
+    const s = stateOf(ctx);
+    const courses = new Map(timetableFor(ctx.institutionType).courses.map((c) => [c.id, c]));
+    return resourcesFor(ctx.institutionType)
+      .map((r) => ({ ...r, courseName: courses.get(r.courseId)?.name ?? "", teacher: courses.get(r.courseId)?.teacher ?? "", saved: s.resources!.saved.includes(r.id), opened: s.resources!.opened.includes(r.id) }))
+      .sort((a, b) => b.postedOn.localeCompare(a.postedOn) || a.title.localeCompare(b.title));
+  },
+
+  async setResourceSaved(ctx, resourceId, saved) {
+    if (!resourcesFor(ctx.institutionType).some((r) => r.id === resourceId)) return bad("That resource is not available to you.");
+    const list = stateOf(ctx).resources!;
+    list.saved = saved ? [...new Set([...list.saved, resourceId])] : list.saved.filter((x) => x !== resourceId);
+    save();
+    return { ok: true, id: resourceId };
+  },
+
+  async markResourceOpened(ctx, resourceId) {
+    if (!resourcesFor(ctx.institutionType).some((r) => r.id === resourceId)) return bad("That resource is not available to you.");
+    const list = stateOf(ctx).resources!;
+    if (!list.opened.includes(resourceId)) {
+      list.opened.push(resourceId);
+      save();
+    }
+    return { ok: true, id: resourceId };
   },
 
   async getSubmissionFile(ctx, assignmentId) {

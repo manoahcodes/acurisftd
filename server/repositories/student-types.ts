@@ -1,5 +1,5 @@
 import type { InstitutionType } from "@/config/institution";
-import type { AttendanceReport, Outcome, ResultsReport, StudentAssignmentRow, Timetable } from "@/types/student";
+import type { AttendanceReport, Outcome, ResultsReport, StudentAssignmentRow, StudentResourceRow, Timetable } from "@/types/student";
 
 /**
  * Who is asking. Every method reads and writes only this student's own records
@@ -53,4 +53,12 @@ export interface StudentRepository {
   saveAbsenceNote(ctx: StudentContext, date: string, reason: string, now: string, today: string): Promise<Outcome>;
   /** Takes back a reason that has not been reviewed yet. */
   removeAbsenceNote(ctx: StudentContext, date: string): Promise<Outcome>;
+
+  // Learning resources
+  /** Resources shared with this student's class, newest first, with their own saved and opened marks. */
+  listResources(ctx: StudentContext): Promise<StudentResourceRow[]>;
+  /** Bookmarks or un-bookmarks a resource. */
+  setResourceSaved(ctx: StudentContext, resourceId: string, saved: boolean): Promise<Outcome>;
+  /** Records that the student opened a resource. */
+  markResourceOpened(ctx: StudentContext, resourceId: string): Promise<Outcome>;
 }

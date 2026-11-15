@@ -5,11 +5,12 @@ import { getResolvedTheme } from "@/server/queries/theme";
 import { getStudentSession } from "@/server/student-context";
 import { AssignmentsView } from "./assignments-view";
 import { AttendanceView } from "./attendance-view";
+import { ResourcesView } from "./resources-view";
 import { ResultsView } from "./results-view";
 import { TimetableView } from "./timetable-view";
 
 /** Slugs of the Student pages that are built. */
-export const STUDENT_PAGES = ["my-timetable", "assignments", "results-and-grades", "attendance"];
+export const STUDENT_PAGES = ["my-timetable", "assignments", "results-and-grades", "attendance", "learning-resources"];
 
 /** One Student page. Reads cookies and the session, so render it inside <Suspense>. */
 export async function StudentSection({ slug }: { slug: string }) {
@@ -36,6 +37,11 @@ export async function StudentSection({ slug }: { slug: string }) {
     const [report, tt] = await Promise.all([student.getAttendance(ctx), student.getTimetable(ctx)]);
     const who = STUDENT_SEED[ctx.institutionType];
     return <AttendanceView report={report} terms={terms} branding={branding} studentName={who.name} studentNumber={who.number} group={tt.group} />;
+  }
+
+  if (slug === "learning-resources") {
+    const rows = await student.listResources(ctx);
+    return <ResourcesView rows={rows} terms={terms} branding={branding} />;
   }
 
   return null;

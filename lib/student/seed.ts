@@ -1,5 +1,5 @@
 import type { InstitutionType } from "@/config/institution";
-import { WEEKDAYS, type AssignmentKind, type StudentAssignment, type StudentCourse, type Timetable, type TimetableChange, type TimetableSlot } from "@/types/student";
+import { WEEKDAYS, type AssignmentKind, type StudentAssignment, type StudentCourse, type StudentResource, type Timetable, type TimetableChange, type TimetableSlot } from "@/types/student";
 
 /**
  * Sample student, courses and weekly timetable for the mock. The subjects and
@@ -272,3 +272,69 @@ export const HISTORY: Record<InstitutionType, PastSeed[]> = {
 
 /** The period now under way: Term 3 or Semester 2 of 2026. */
 export const CURRENT_PERIOD_NO: Record<InstitutionType, number> = { primary: 3, high_school: 3, college: 2, university: 2 };
+
+// ---- Learning resources
+
+type ResourceSeed = { course: number; title: string; kind: StudentResource["kind"]; topic: string; url?: string; body?: string; on: string };
+
+const RESOURCES: Record<InstitutionType, ResourceSeed[]> = {
+  primary: [
+    { course: 0, title: "Number bonds to 20: practice games", kind: "Link", topic: "Number bonds", url: "https://www.bbc.co.uk/bitesize/primary", on: "2026-11-09" },
+    { course: 0, title: "Times tables song sheet", kind: "Worksheet", topic: "Times tables", body: "Sing along and fill in the missing numbers. Hand it back on Friday.", on: "2026-10-26" },
+    { course: 1, title: "Reading list for this term", kind: "Reading", topic: "Reading", body: "Pick one book from the class shelf each week and tell a friend what happened.", on: "2026-10-05" },
+    { course: 1, title: "Story starters", kind: "Notes", topic: "Writing", body: "One day, I found a door in the garden...\nThe market was very busy because...\nWhen the rain stopped, we saw...", on: "2026-11-11" },
+    { course: 2, title: "How plants grow", kind: "Video", topic: "Plants", url: "https://www.bbc.co.uk/bitesize/primary", on: "2026-11-03" },
+    { course: 3, title: "Our community: places and people", kind: "Reading", topic: "Community", body: "A short reading about the clinic, the school, the market and the church.", on: "2026-10-19" },
+    { course: 4, title: "Colour mixing ideas", kind: "Link", topic: "Colour", url: "https://www.bbc.co.uk/bitesize/primary", on: "2026-10-12" },
+    { course: 5, title: "Stories of kindness", kind: "Reading", topic: "Kindness", body: "Read the story of the good neighbour and talk about what you would do.", on: "2026-11-10" },
+  ],
+  high_school: [
+    { course: 0, title: "Algebra: solving linear equations", kind: "Video", topic: "Algebra", url: "https://www.khanacademy.org/math/algebra", on: "2026-11-10" },
+    { course: 0, title: "Quadratics revision sheet", kind: "Worksheet", topic: "Quadratics", body: "Twelve graded questions on factorising. Answers are on the back page; try first before you look.", on: "2026-10-27" },
+    { course: 1, title: "Writing a descriptive essay", kind: "Notes", topic: "Writing", body: "1. Plan five senses.\n2. Open with a strong image.\n3. Use varied sentence lengths.\n4. End with a reflection, not a summary.", on: "2026-11-12" },
+    { course: 1, title: "Poetry anthology", kind: "Reading", topic: "Poetry", url: "https://www.poetryfoundation.org/", on: "2026-10-14" },
+    { course: 2, title: "Simple pendulum explained", kind: "Video", topic: "Oscillations", url: "https://www.khanacademy.org/science/physics", on: "2026-11-05" },
+    { course: 2, title: "Practical report checklist", kind: "Notes", topic: "Practicals", body: "Aim, apparatus, method, results table, graph, conclusion, sources of error.", on: "2026-11-02" },
+    { course: 3, title: "Cells: animal and plant", kind: "Reading", topic: "Cells", url: "https://www.bbc.co.uk/bitesize/subjects/zpgvwmn", on: "2026-10-21" },
+    { course: 4, title: "Spreadsheet formulas cheat sheet", kind: "Worksheet", topic: "Spreadsheets", body: "SUM, AVERAGE, IF, COUNTIF and absolute references with examples.", on: "2026-10-09" },
+    { course: 5, title: "Causes of the First World War", kind: "Link", topic: "Twentieth century", url: "https://www.britannica.com/event/World-War-I", on: "2026-10-16" },
+    { course: 5, title: "Timeline template", kind: "Worksheet", topic: "Skills", body: "Fill in the key dates in order and add one line on why each mattered.", on: "2026-11-09" },
+  ],
+  college: [
+    { course: 0, title: "SQL joins explained", kind: "Video", topic: "SQL", url: "https://www.w3schools.com/sql/sql_join.asp", on: "2026-11-09" },
+    { course: 0, title: "ER diagram notation", kind: "Notes", topic: "Modelling", body: "Entities are rectangles, relationships diamonds. Mark the key with an underline and show cardinality at both ends.", on: "2026-10-28" },
+    { course: 1, title: "CSS flexbox guide", kind: "Reading", topic: "Layout", url: "https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Flexbox", on: "2026-11-11" },
+    { course: 1, title: "Portfolio brief", kind: "Notes", topic: "Project", body: "One page. Your name, a short bio, three projects, and a contact link. Keep it accessible: headings, alt text, contrast.", on: "2026-11-04" },
+    { course: 2, title: "Formal letter layout", kind: "Worksheet", topic: "Letters", body: "Sender, date, recipient, salutation, subject line, body, sign-off.", on: "2026-10-20" },
+    { course: 3, title: "Descriptive statistics revision", kind: "Reading", topic: "Statistics", url: "https://www.khanacademy.org/math/statistics-probability", on: "2026-10-15" },
+    { course: 4, title: "Subnetting practice set", kind: "Worksheet", topic: "Subnetting", body: "Twenty subnet problems of increasing difficulty with answers.", on: "2026-10-07" },
+    { course: 4, title: "How the Internet works", kind: "Video", topic: "Networks", url: "https://www.khanacademy.org/computing/computers-and-internet", on: "2026-11-12" },
+  ],
+  university: [
+    { course: 0, title: "Big-O cheat sheet", kind: "Notes", topic: "Complexity", body: "O(1) < O(log n) < O(n) < O(n log n) < O(n^2) < O(2^n). Drop constants and lower-order terms.", on: "2026-11-10" },
+    { course: 0, title: "Introduction to Algorithms (open course)", kind: "Link", topic: "Course text", url: "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/", on: "2026-09-02" },
+    { course: 1, title: "Proof techniques", kind: "Reading", topic: "Proofs", url: "https://ocw.mit.edu/courses/6-042j-mathematics-for-computer-science-fall-2010/", on: "2026-10-22" },
+    { course: 2, title: "CPU scheduling lecture", kind: "Video", topic: "Scheduling", url: "https://ocw.mit.edu/courses/6-004-computation-structures-spring-2017/", on: "2026-11-04" },
+    { course: 2, title: "Lab 5 handout", kind: "Notes", topic: "Labs", body: "Implement round-robin and priority scheduling and compare average waiting time on the three sample workloads.", on: "2026-11-11" },
+    { course: 3, title: "Writing a research proposal", kind: "Reading", topic: "Proposals", body: "A proposal states the question, why it matters, the method and what you expect to find. Keep it to two pages.", on: "2026-10-13" },
+    { course: 4, title: "Normal forms worksheet", kind: "Worksheet", topic: "Normalisation", body: "Decompose the five relations to BCNF and justify each step.", on: "2026-10-30" },
+    { course: 4, title: "SQL Zoo", kind: "Link", topic: "SQL", url: "https://sqlzoo.net/", on: "2026-09-14" },
+  ],
+};
+
+export function resourcesFor(type: InstitutionType): StudentResource[] {
+  const courses = coursesFor(type);
+  return RESOURCES[type].map((r, i) => ({
+    id: `res-${i + 1}`,
+    courseId: courses[r.course % courses.length].id,
+    title: r.title,
+    kind: r.kind,
+    url: r.url ?? "",
+    body: r.body ?? "",
+    topic: r.topic,
+    postedOn: r.on,
+  }));
+}
+
+/** Resources the student has already opened: everything posted before November. */
+export const OPENED_BEFORE = "2026-11-01";

@@ -75,3 +75,21 @@ export async function takeBackAbsenceReason(date: unknown): Promise<ActionResult
   if (r.ok) refresh();
   return r;
 }
+
+// ---- Learning resources
+
+export async function saveResourceForLater(id: unknown, saved: unknown): Promise<ActionResult> {
+  const { ctx } = await getStudentSession();
+  if (typeof id !== "string" || !ID.test(id) || typeof saved !== "boolean") return bad("That resource is not available.");
+  const r = await student.setResourceSaved(ctx, id, saved);
+  if (r.ok) refresh();
+  return r;
+}
+
+export async function noteResourceOpened(id: unknown): Promise<ActionResult> {
+  const { ctx } = await getStudentSession();
+  if (typeof id !== "string" || !ID.test(id)) return bad("That resource is not available.");
+  const r = await student.markResourceOpened(ctx, id);
+  if (r.ok) refresh();
+  return r;
+}
