@@ -1,5 +1,5 @@
 import type { InstitutionType } from "@/config/institution";
-import type { AttendanceReport, Outcome, ResultsReport, StudentAssignmentRow, StudentResourceRow, Timetable } from "@/types/student";
+import type { AttendanceReport, Outcome, ResultsReport, StudentAssignmentRow, StudentNoticeRow, StudentResourceRow, Timetable } from "@/types/student";
 
 /**
  * Who is asking. Every method reads and writes only this student's own records
@@ -61,4 +61,12 @@ export interface StudentRepository {
   setResourceSaved(ctx: StudentContext, resourceId: string, saved: boolean): Promise<Outcome>;
   /** Records that the student opened a resource. */
   markResourceOpened(ctx: StudentContext, resourceId: string): Promise<Outcome>;
+
+  // School notices
+  /** Notices for this student's school, pinned first then newest first, with this student's read mark. */
+  listNotices(ctx: StudentContext): Promise<StudentNoticeRow[]>;
+  /** How many notices this student has not read (the sidebar badge and the bell). */
+  countUnreadNotices(ctx: StudentContext): Promise<number>;
+  setNoticeRead(ctx: StudentContext, noticeId: string, read: boolean): Promise<Outcome>;
+  markAllNoticesRead(ctx: StudentContext): Promise<Outcome>;
 }

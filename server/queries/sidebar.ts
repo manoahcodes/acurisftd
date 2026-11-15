@@ -21,9 +21,10 @@ export const getNavBadges = cache(
       raw = { ...raw, "Class register": overview.draftRegisters, Assignments: overview.toMark, Assessments: overview.assessmentsToMark };
     }
     if (role === "student") {
-      // Assignments with nothing handed in come from the student's own work.
-      const pending = await student.countPending((await getStudentSession()).ctx);
-      raw = { ...raw, Assignments: pending };
+      // Assignments with nothing handed in and unread notices come from the student's own records.
+      const { ctx } = await getStudentSession();
+      const [pending, unread] = await Promise.all([student.countPending(ctx), student.countUnreadNotices(ctx)]);
+      raw = { ...raw, Assignments: pending, "School notices": unread };
     }
     const labels = new Set(ROLES[role].nav.map((n) => n.label));
 

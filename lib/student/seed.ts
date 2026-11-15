@@ -1,5 +1,6 @@
 import type { InstitutionType } from "@/config/institution";
-import { WEEKDAYS, type AssignmentKind, type StudentAssignment, type StudentCourse, type StudentResource, type Timetable, type TimetableChange, type TimetableSlot } from "@/types/student";
+import { studentTermsFor } from "./terms";
+import { WEEKDAYS, type AssignmentKind, type StudentAssignment, type StudentCourse, type StudentNotice, type StudentResource, type Timetable, type TimetableChange, type TimetableSlot } from "@/types/student";
 
 /**
  * Sample student, courses and weekly timetable for the mock. The subjects and
@@ -338,3 +339,28 @@ export function resourcesFor(type: InstitutionType): StudentResource[] {
 
 /** Resources the student has already opened: everything posted before November. */
 export const OPENED_BEFORE = "2026-11-01";
+
+// ---- School notices
+
+
+/** Notices for the school, with the wording of the school's level filled in. */
+export function noticesFor(type: InstitutionType): StudentNotice[] {
+  const t = studentTermsFor(type);
+  const period = t.period.toLowerCase();
+  const group = STUDENT_SEED[type].group;
+  const head = t.tertiary ? "Registrar's Office" : "Head Teacher's Office";
+  const n = (o: Omit<StudentNotice, "postedBy" | "pinned" | "important"> & Partial<Pick<StudentNotice, "postedBy" | "pinned" | "important">>): StudentNotice => ({ postedBy: head, pinned: false, important: false, ...o });
+  return [
+    n({ id: "ntc-1", title: "Road safety at the main gate", body: "Use the pedestrian crossing at the main gate. Vehicle drop-offs are only at the lay-by on the east side. Please do not walk between moving vehicles.", category: "Safety", postedOn: "2026-11-12", pinned: true, important: true, postedBy: "Safety Committee" }),
+    n({ id: "ntc-2", title: `${group} revision session`, body: `Revision for the end-of-${period} exams starts on Thursday 19 November in the library, straight after classes. Bring your past papers and a pen. Questions to your ${t.tertiary ? "lecturers" : "class teacher"}.`, category: "Academic", postedOn: "2026-11-13", postedBy: t.tertiary ? "Academic Office" : "Class Teacher" }),
+    n({ id: "ntc-3", title: "Sports day sign-ups are open", body: "Register for the 100 m, relay, long jump or tug of war with your house captain. Names close on Friday 27 November. Bring your kit on the day.", category: "Events", postedOn: "2026-11-11", actionBy: "2026-11-27", postedBy: "Sports Department" }),
+    n({ id: "ntc-4", title: "Library books due back", body: "All borrowed books must be returned by Friday 20 November. A fine of K 2 per day applies afterwards. You can renew once at the desk.", category: "Reminders", postedOn: "2026-11-10", actionBy: "2026-11-20", postedBy: "Library" }),
+    n({ id: "ntc-5", title: `End-of-${period} exam timetable published`, body: "Exams begin on Friday 4 December. Check your dates in Results & grades. Arrive 20 minutes early and bring your own pens, ruler and calculator where allowed.", category: "Academic", postedOn: "2026-11-09", postedBy: t.tertiary ? "Examinations Office" : "Examinations Committee" }),
+    n({ id: "ntc-6", title: `${t.period} fees`, body: t.tertiary ? "Fee balances must be cleared before exam cards are issued. Visit the bursary with your student number if you need a statement or a payment plan." : "Fee statements have been sent to parents and guardians. Balances are due by Friday 27 November. Please speak to the bursar if you need help.", category: "General", postedOn: "2026-11-06", actionBy: "2026-11-27", postedBy: "Bursar's Office" }),
+    n({ id: "ntc-7", title: "Cultural evening", body: "Join us in the main hall on Friday 28 November at 17:30 for music, drama and dance by our clubs. Everyone is welcome and entry is free.", category: "Events", postedOn: "2026-11-04", postedBy: "Clubs and Societies" }),
+    n({ id: "ntc-8", title: "Calendar for the end of the year", body: `The ${period} closes on Friday 11 December. Reports are collected from the office the following week. The school reopens in January.`, category: "General", postedOn: "2026-11-02" }),
+  ];
+}
+
+/** Notices already read: everything posted before this date. The newest three start unread. */
+export const NOTICES_READ_BEFORE = "2026-11-11";

@@ -237,3 +237,25 @@ export type StudentResourceRow = StudentResource & {
   /** The student has opened it. */
   opened: boolean;
 };
+
+// ---- School notices
+
+export const NOTICE_CATEGORIES = ["General", "Academic", "Events", "Reminders", "Safety"] as const;
+export type NoticeCategory = (typeof NOTICE_CATEGORIES)[number];
+
+export type StudentNotice = {
+  id: string;
+  title: string;
+  body: string;
+  category: NoticeCategory;
+  postedOn: string;
+  postedBy: string;
+  /** Kept at the top of the list. */
+  pinned: boolean;
+  /** Shown with a warning mark. */
+  important: boolean;
+  /** A date the notice asks the student to act by, if any. */
+  actionBy?: string;
+};
+
+export type StudentNoticeRow = StudentNotice & { read: boolean };

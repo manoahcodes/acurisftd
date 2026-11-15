@@ -1,4 +1,4 @@
-import { assessmentsFor, assignmentsFor, CURRENT_PERIOD_NO, HISTORY, OPENED_BEFORE, resourcesFor, timetableFor } from "@/lib/student/seed";
+import { assessmentsFor, assignmentsFor, CURRENT_PERIOD_NO, HISTORY, NOTICES_READ_BEFORE, noticesFor, OPENED_BEFORE, resourcesFor, timetableFor } from "@/lib/student/seed";
 import { buildReport } from "@/lib/student/results";
 import { studentTermsFor } from "@/lib/student/terms";
 import { canSubmit, canWithdraw } from "@/lib/student/assignments";
@@ -21,6 +21,8 @@ type State = {
   notes?: Record<string, AbsenceNote>;
   /** Resource ids bookmarked and opened. */
   resources?: { saved: string[]; opened: string[] };
+  /** Notice ids read. */
+  readNotices?: string[];
 };
 
 const g = globalThis as unknown as { __acurisStudent?: Map<string, State> };
@@ -53,18 +55,22 @@ function seedNotes(ctx: StudentContext): Record<string, AbsenceNote> {
 
 const seedResources = (ctx: StudentContext) => ({ saved: [] as string[], opened: resourcesFor(ctx.institutionType).filter((r) => r.postedOn < OPENED_BEFORE).map((r) => r.id) });
 
+const seedReadNotices = (ctx: StudentContext) => noticesFor(ctx.institutionType).filter((n) => n.postedOn < NOTICES_READ_BEFORE).map((n) => n.id);
+
 function stateOf(ctx: StudentContext): State {
   let s = data.get(scopeOf(ctx));
   if (!s) {
     s = seed(ctx);
     s.notes = seedNotes(ctx);
     s.resources = seedResources(ctx);
+    s.readNotices = seedReadNotices(ctx);
     data.set(scopeOf(ctx), s);
     save();
-  } else if (!s.notes || !s.resources) {
+  } else if (!s.notes || !s.resources || !s.readNotices) {
     // Saved before these pages existed: add what is missing and keep everything else.
     s.notes ??= seedNotes(ctx);
     s.resources ??= seedResources(ctx);
+    s.readNotices ??= seedReadNotices(ctx);
     save();
   }
   return s;
@@ -208,6 +214,32 @@ export const mockStudentRepository: StudentRepository = {
       save();
     }
     return { ok: true, id: resourceId };
+  },
+
+  async listNotices(ctx) {
+    const read = stateOf(ctx).readNotices!;
+    return noticesFor(ctx.institutionType)
+      .map((n) => ({ ...n, read: read.includes(n.id) }))
+      .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.postedOn.localeCompare(a.postedOn) || a.title.localeCompare(b.title));
+  },
+
+  async countUnreadNotices(ctx) {
+    const read = stateOf(ctx).readNotices!;
+    return noticesFor(ctx.institutionType).filter((n) => !read.includes(n.id)).length;
+  },
+
+  async setNoticeRead(ctx, noticeId, isRead) {
+    if (!noticesFor(ctx.institutionType).some((n) => n.id === noticeId)) return bad("That notice is not available to you.");
+    const s = stateOf(ctx);
+    s.readNotices = isRead ? [...new Set([...s.readNotices!, noticeId])] : s.readNotices!.filter((x) => x !== noticeId);
+    save();
+    return { ok: true, id: noticeId };
+  },
+
+  async markAllNoticesRead(ctx) {
+    stateOf(ctx).readNotices = noticesFor(ctx.institutionType).map((n) => n.id);
+    save();
+    return { ok: true };
   },
 
   async getSubmissionFile(ctx, assignmentId) {

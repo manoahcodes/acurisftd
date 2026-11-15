@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isRoleKey } from "@/config/navigation";
 import { searchIndex } from "@/server/repositories";
+import { searchStudent } from "@/server/queries/student-search";
 import { getTenantContext } from "@/server/request-context";
+import { getStudentSession } from "@/server/student-context";
 
 const MIN_CHARS = 2;
 const MAX_QUERY_LENGTH = 80;
@@ -22,8 +24,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ results: [] });
   }
 
-  const ctx = await getTenantContext();
-  const results = await searchIndex.search(ctx, role, query);
+  // Students search their own assignments, results, notices and resources.
+  const results =
+    role === "student"
+      ? await searchStudent((await getStudentSession()).ctx, query)
+      : await searchIndex.search(await getTenantContext(), role, query);
 
   return NextResponse.json(
     { results },

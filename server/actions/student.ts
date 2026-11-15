@@ -93,3 +93,20 @@ export async function noteResourceOpened(id: unknown): Promise<ActionResult> {
   if (r.ok) refresh();
   return r;
 }
+
+// ---- School notices
+
+export async function setNoticeRead(id: unknown, read: unknown): Promise<ActionResult> {
+  const { ctx } = await getStudentSession();
+  if (typeof id !== "string" || !ID.test(id) || typeof read !== "boolean") return bad("That notice is not available.");
+  const r = await student.setNoticeRead(ctx, id, read);
+  if (r.ok) refresh();
+  return r;
+}
+
+export async function markEveryNoticeRead(): Promise<ActionResult> {
+  const { ctx } = await getStudentSession();
+  const r = await student.markAllNoticesRead(ctx);
+  if (r.ok) refresh();
+  return r;
+}
