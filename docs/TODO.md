@@ -46,7 +46,8 @@ All work on mock data now (CSV files up to 1 MB, 500 rows; every run is written 
 - [ ] Browser (end-to-end) tests in the repo, and CI to run lint, typecheck and tests
 
 ## Out of scope for Platform Admin (separate work)
-- Bursar, Cashier, Parent and Student pages are still "hasn't been built yet" placeholders
+- Bursar, Cashier and Parent pages are still "hasn't been built yet" placeholders
+- Student pages: see section 8
 - Teacher / Lecturer pages: see section 7
 
 ## 6. Branding and theme (added with the theme editor)
@@ -69,6 +70,25 @@ Data is the in-memory mock saved through the SQLite store (key `teaching`), scop
 
 - [x] Phase 1: My classes (cards, roster, watch list, class note, CSV, print), Class register (take, draft, submit, history, CSV, print), Assignments (create, edit, publish, close, delete, links and notes, marks entry, CSV, print)
 - [x] Phase 2: Assessments (schedule, open for marking, marks entry with absent/excused, publish, stats, grade spread, CSV, print) and Gradebook (weighted finals, coursework weight, rank, grade, remarks, CSV, print). Grading scales and the 50% pass mark are samples in `lib/teacher/grading.ts`; a school replaces them
-- [x] Phase 3: Lesson planner / Course outline (plans by week, draft, ready, taught with reflection, copy to another date, links and notes, CSV, print) and Learning resources / Course materials (links and notes only, by class, type and topic, share with learners, CSV, print). Learners cannot see shared items until the Learner/Student role has pages
+- [x] Phase 3: Lesson planner / Course outline (plans by week, draft, ready, taught with reflection, copy to another date, links and notes, CSV, print) and Learning resources / Course materials (links and notes only, by class, type and topic, share with learners, CSV, print). The Student role now has its own Learning resources page (section 8), but it is sample data of its own: items a teacher shares are not yet linked to what the student sees
 - [ ] Swap `TeachingRepository` for a real one; `getTeacherSession` (`server/teacher-context.ts`) must verify the Teacher/Lecturer role and fail closed
 - [x] Sidebar badges (Class register, Assignments, Assessments) and the dashboard "To mark" KPI come from the teacher's own data
+
+## 8. Student role
+Primary and High School get a **Learner** (subjects, terms, percentages); College and University get a **Student** (courses, semesters, GPA). Wording lives in `lib/student/terms.ts`, and follows the school selected in the demo. Pages: My timetable, Assignments, Results & grades, Attendance, Learning resources, School notices, My profile (My home is the dashboard).
+
+Data is the in-memory mock saved through the SQLite store (key `student`), scoped per school and per student (`server/repositories/student-mock.ts`, interface in `student-types.ts`). What the school sets (timetable, assignments, assessments, notices, resources) is sample data in `lib/student/seed.ts`; what the student does (hand-ins, reasons for absence, bookmarks, read marks, contact details, photo) is saved. Server actions in `server/actions/student.ts` re-validate everything with `lib/student/*`. `getStudentSession` (`server/student-context.ts`) must verify the Student role and fail closed.
+
+- [x] My timetable: week and day views, week navigation, one-off changes (cancelled, room), course filter, next-lesson card, CSV, print
+- [x] Assignments: status tabs, search, course filter; hand in by typed answer and/or file (PDF, Word, PNG, JPEG, text; checked by bytes, 2 MB), hand in again, take back, late detection, locked once marked; files download as attachments only (`/api/student/submission`)
+- [x] Results & grades: per-course breakdown with class averages, marked assignments count as coursework (20%), average and grade at schools, GPA, cumulative GPA and credits at colleges and universities, earlier periods, grading scale, printable result slip
+- [x] Attendance: rate against the required 85%, per-course bars, month calendar, filterable log, CSV, print, and sending a reason for a recent absence (14-day window, reviewed by the school)
+- [x] Learning resources: search, course and type filters, All / New / Saved, bookmarks, opened marks, notes download as text
+- [x] School notices: pinned first, category filter, search, unread only, read on open, mark read or unread, mark all read
+- [x] My profile: identity read-only; edit phone, email, address, required emergency contact; profile photo (PNG or JPEG by bytes, 1 MB, `/api/student/photo`)
+- [x] Sidebar badges (Assignments, School notices), the bell and the top bar search come from the student's own data
+- [ ] Link the student's data to the Teacher module: assignments, marks, attendance and shared resources a teacher enters should be what the student sees (today the two mocks are separate)
+- [ ] Swap `StudentRepository` for a real one; the school's timetable, notices and the review of absence reasons need an owner role (Teacher, Registrar or Parent)
+- [ ] Move submission files and photos from base64 in the saved snapshot to file storage when a real backend exists
+- [ ] Dark mode and phone layout check of the seven Student pages (not run in the sandbox); add them to the contrast scan
+- [ ] `next build` could not be run in the sandbox (Google Fonts unreachable); dev server and 639 tests pass
