@@ -1,3 +1,6 @@
+import { CALENDAR_OPENS } from "@/lib/parent/seed";
+import { CalendarView } from "./calendar-view";
+import { parent } from "@/server/repositories";
 import { buildStatement } from "@/lib/parent/fees";
 import { FeesView } from "./fees-view";
 import { withheldFor } from "@/lib/fee-policy";
@@ -13,7 +16,7 @@ import { childContext, getParentSession } from "@/server/parent-context";
 import { ChildrenView } from "./children-view";
 
 /** Slugs of the Parent pages that are built. */
-export const PARENT_PAGES = ["my-children", "attendance", "academic-progress", "fee-statements"];
+export const PARENT_PAGES = ["my-children", "attendance", "academic-progress", "fee-statements", "school-calendar"];
 
 /** One Parent page. Reads cookies and the session, so render it inside <Suspense>. */
 export async function ParentSection({ slug }: { slug: string }) {
@@ -23,6 +26,14 @@ export async function ParentSection({ slug }: { slug: string }) {
   if (slug === "my-children") {
     const rows = await getChildOverviews(session);
     return <ChildrenView rows={rows} terms={terms} selectedId={session.selected?.id} />;
+  }
+
+  if (slug === "school-calendar") {
+    const [events, meetings] = await Promise.all([parent.listEvents(session.ctx), parent.listMeetings(session.ctx)]);
+    const staff = await Promise.all(session.children.map(async (c) => [c.id, await parent.listStaff(session.ctx, c.id)] as const));
+    // The month the sample calendar opens on; the server never reads the clock while prerendering.
+    const initialMonth = CALENDAR_OPENS;
+    return <CalendarView events={events} meetings={meetings} kids={session.children} staffByChild={Object.fromEntries(staff)} timezone={session.timezone} initialMonth={initialMonth} />;
   }
 
   const child = session.selected;

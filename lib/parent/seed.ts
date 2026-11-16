@@ -11,6 +11,9 @@ export function staffFor(type: InstitutionType): StaffMember[] {
   return [...teachers, { id: "bursar", name: "Bursar's office", title: "Fees and payments" }, { id: "office", name: tertiary ? "Registry" : "Head teacher's office", title: tertiary ? "Records and registration" : "School administration" }];
 }
 
+/** The month the sample calendar opens on (YYYY-MM). */
+export const CALENDAR_OPENS = "2026-11";
+
 export function eventsFor(type: InstitutionType): SchoolEvent[] {
   const t = studentTermsFor(type);
   return [
