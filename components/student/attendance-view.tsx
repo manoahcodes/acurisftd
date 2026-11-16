@@ -42,7 +42,7 @@ function monthCells(year: number, month: number): Array<string | null> {
   return cells;
 }
 
-export function AttendanceView({ report, terms, branding, studentName, studentNumber, group }: { report: AttendanceReport; terms: StudentTerms; branding: PrintBranding; studentName: string; studentNumber: string; group: string }) {
+export function AttendanceView({ report, terms, branding, studentName, studentNumber, group, viewerChild }: { viewerChild?: string; report: AttendanceReport; terms: StudentTerms; branding: PrintBranding; studentName: string; studentNumber: string; group: string }) {
   const today = useToday(branding.timezone);
   const all = figures(report.entries);
   const courses = useMemo(() => byCourse(report.entries), [report.entries]);
@@ -87,7 +87,7 @@ export function AttendanceView({ report, terms, branding, studentName, studentNu
       {below && (
         <p role="status" className="flex items-start gap-2 rounded-xl bg-warning-soft px-4 py-3 text-[15px] text-warning">
           <AlertTriangle size={18} aria-hidden className="mt-0.5 shrink-0" />
-          <span>Your attendance is below the {report.required}% the school expects. Attending your next {need} {terms.sittings.toLowerCase()} in a row would bring it back up. Talk to your {terms.tertiary ? "lecturer" : "teacher"} if something is getting in the way.</span>
+          <span>{viewerChild ? `${viewerChild}'s` : "Your"} attendance is below the {report.required}% the school expects. Attending the next {need} {terms.sittings.toLowerCase()} in a row would bring it back up. {viewerChild ? "Consider talking to" : "Talk to"} {viewerChild ? "their" : "your"} {terms.tertiary ? "lecturer" : "teacher"} if something is getting in the way.</span>
         </p>
       )}
 
@@ -152,6 +152,7 @@ export function AttendanceView({ report, terms, branding, studentName, studentNu
               note={note(picked)}
               today={today}
               timezone={branding.timezone}
+              readOnly={viewerChild !== undefined}
               onDone={(text, error) => setMessage({ text, error })}
             />
           )}
@@ -209,7 +210,7 @@ export function AttendanceView({ report, terms, branding, studentName, studentNu
   );
 }
 
-function DayPanel({ date, rows, entries, note, today, timezone, onDone }: { date: string; rows: AttendanceEntry[]; entries: AttendanceEntry[]; note: AttendanceReport["notes"][number] | undefined; today: string; timezone: string; onDone: (text: string, error: boolean) => void }) {
+function DayPanel({ date, rows, entries, note, today, timezone, onDone, readOnly = false }: { readOnly?: boolean; date: string; rows: AttendanceEntry[]; entries: AttendanceEntry[]; note: AttendanceReport["notes"][number] | undefined; today: string; timezone: string; onDone: (text: string, error: boolean) => void }) {
   const [reason, setReason] = useState(note?.reason ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -230,10 +231,10 @@ function DayPanel({ date, rows, entries, note, today, timezone, onDone }: { date
       </ul>
 
       {absent && note && (
-        <p className="mt-3 text-[15px] text-ink"><span className="font-medium">Your reason ({note.state === "approved" ? "accepted by the school" : "waiting for review"}): </span>{note.reason}<span className="block text-sm text-muted">Sent {formatStamp(note.submittedAt, timezone)}</span></p>
+        <p className="mt-3 text-[15px] text-ink"><span className="font-medium">{readOnly ? "Reason" : "Your reason"} ({note.state === "approved" ? "accepted by the school" : "waiting for review"}): </span>{note.reason}<span className="block text-sm text-muted">Sent {formatStamp(note.submittedAt, timezone)}</span></p>
       )}
 
-      {absent && editable && can.ok && (
+      {!readOnly && absent && editable && can.ok && (
         <form
           className="mt-3 space-y-3"
           onSubmit={(e) => {
@@ -260,7 +261,7 @@ function DayPanel({ date, rows, entries, note, today, timezone, onDone }: { date
           </div>
         </form>
       )}
-      {absent && editable && !can.ok && can.error && <p className="mt-3 text-sm text-muted">{can.error}</p>}
+      {!readOnly && absent && editable && !can.ok && can.error && <p className="mt-3 text-sm text-muted">{can.error}</p>}
     </div>
   );
 }
