@@ -1,4 +1,5 @@
 import { CALENDAR_OPENS } from "@/lib/parent/seed";
+import { MessagesView } from "./messages-view";
 import { CalendarView } from "./calendar-view";
 import { parent } from "@/server/repositories";
 import { buildStatement } from "@/lib/parent/fees";
@@ -16,7 +17,7 @@ import { childContext, getParentSession } from "@/server/parent-context";
 import { ChildrenView } from "./children-view";
 
 /** Slugs of the Parent pages that are built. */
-export const PARENT_PAGES = ["my-children", "attendance", "academic-progress", "fee-statements", "school-calendar"];
+export const PARENT_PAGES = ["my-children", "attendance", "academic-progress", "fee-statements", "school-calendar", "messages"];
 
 /** One Parent page. Reads cookies and the session, so render it inside <Suspense>. */
 export async function ParentSection({ slug }: { slug: string }) {
@@ -34,6 +35,13 @@ export async function ParentSection({ slug }: { slug: string }) {
     // The month the sample calendar opens on; the server never reads the clock while prerendering.
     const initialMonth = CALENDAR_OPENS;
     return <CalendarView events={events} meetings={meetings} kids={session.children} staffByChild={Object.fromEntries(staff)} timezone={session.timezone} initialMonth={initialMonth} />;
+  }
+
+  if (slug === "messages") {
+    // Staff are the people who teach or serve the guardian's linked children.
+    const first = session.children[0];
+    const [threads, staff] = await Promise.all([parent.listThreads(session.ctx), first ? parent.listStaff(session.ctx, first.id) : Promise.resolve([])]);
+    return <MessagesView threads={threads} kids={session.children} staff={staff} timezone={session.timezone} />;
   }
 
   const child = session.selected;
