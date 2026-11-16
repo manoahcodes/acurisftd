@@ -1,3 +1,5 @@
+import { buildStatement } from "@/lib/parent/fees";
+import { FeesView } from "./fees-view";
 import { withheldFor } from "@/lib/fee-policy";
 import { ResultsView } from "@/components/student/results-view";
 import { STUDENT_SEED } from "@/lib/student/seed";
@@ -11,7 +13,7 @@ import { childContext, getParentSession } from "@/server/parent-context";
 import { ChildrenView } from "./children-view";
 
 /** Slugs of the Parent pages that are built. */
-export const PARENT_PAGES = ["my-children", "attendance", "academic-progress"];
+export const PARENT_PAGES = ["my-children", "attendance", "academic-progress", "fee-statements"];
 
 /** One Parent page. Reads cookies and the session, so render it inside <Suspense>. */
 export async function ParentSection({ slug }: { slug: string }) {
@@ -46,6 +48,18 @@ export async function ParentSection({ slug }: { slug: string }) {
       <>
         <ChildBanner name={child.name} />
         <ResultsView report={report} studentName={child.name} studentNumber={STUDENT_SEED[session.ctx.institutionType].number} group={tt.group} terms={terms} branding={branding} fee={fee} slipWithheld={withheldFor(session.feePolicy, fee).results} slipName="Report card" printPast forParent />
+      </>
+    );
+  }
+
+  if (slug === "fee-statements") {
+    // SWAP POINT: the Bursar's invoices and receipts replace buildStatement.
+    const [fee, tt, results] = await Promise.all([student.getFees(ctx), student.getTimetable(ctx), student.getResults(ctx)]);
+    const statement = buildStatement(session.ctx.institutionType, child.id, fee, results.periodLabel);
+    return (
+      <>
+        <ChildBanner name={child.name} />
+        <FeesView statement={statement} childName={child.name} studentNumber={STUDENT_SEED[session.ctx.institutionType].number} group={tt.group} periodLabel={results.periodLabel} policy={session.feePolicy} withheld={withheldFor(session.feePolicy, fee)} terms={terms} branding={branding} />
       </>
     );
   }
