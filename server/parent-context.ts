@@ -1,20 +1,15 @@
 import { cache } from "react";
 import { studentTermsFor, type StudentTerms } from "@/lib/student/terms";
 import { DEFAULT_FEE_POLICY, isFeePolicy, type FeePolicy } from "@/lib/fee-policy";
-import type { InstitutionType } from "@/config/institution";
 import type { Child } from "@/types/topbar";
 import { getDashboardSchool } from "./queries/dashboard";
 import { getChildState } from "./queries/topbar";
 import { getResolvedTheme } from "./queries/theme";
 import { session, tenantDirectory } from "./repositories";
+import type { ParentContext } from "./repositories/parent-types";
 import type { StudentContext } from "./repositories/student-types";
 
-/**
- * Who is asking. `childIds` are the children linked to this guardian, already
- * checked against the school's records. A real repository must still enforce
- * the link in its own queries, not only here.
- */
-export type ParentContext = { tenantId: string; guardianId: string; institutionType: InstitutionType; childIds: string[] };
+export type { ParentContext };
 
 export type ParentSession = {
   ctx: ParentContext;
