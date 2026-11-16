@@ -25,7 +25,13 @@ export const showsAmount = (terms: StudentTerms) => terms.tertiary;
 const owed = (fee: FeeBalance) => formatKwacha(fee.balance);
 
 /** The line shown in place of a withheld document. */
-export function withheldMessage(terms: StudentTerms, fee: FeeBalance): { title: string; detail: string } {
+export function withheldMessage(terms: StudentTerms, fee: FeeBalance, forParent = false): { title: string; detail: string } {
+  if (forParent) {
+    return {
+      title: "Available once the balance is cleared",
+      detail: `Outstanding balance: ${owed(fee)}. Please visit the bursar's office to pay or ask about a payment plan.`,
+    };
+  }
   return {
     title: "Available once your balance is cleared",
     detail: showsAmount(terms)

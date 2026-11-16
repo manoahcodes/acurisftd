@@ -1,3 +1,5 @@
+import { withheldFor } from "@/lib/fee-policy";
+import { ResultsView } from "@/components/student/results-view";
 import { STUDENT_SEED } from "@/lib/student/seed";
 import { printBrandingOf } from "@/lib/print";
 import { AttendanceView } from "@/components/student/attendance-view";
@@ -9,7 +11,7 @@ import { childContext, getParentSession } from "@/server/parent-context";
 import { ChildrenView } from "./children-view";
 
 /** Slugs of the Parent pages that are built. */
-export const PARENT_PAGES = ["my-children", "attendance"];
+export const PARENT_PAGES = ["my-children", "attendance", "academic-progress"];
 
 /** One Parent page. Reads cookies and the session, so render it inside <Suspense>. */
 export async function ParentSection({ slug }: { slug: string }) {
@@ -34,6 +36,16 @@ export async function ParentSection({ slug }: { slug: string }) {
       <>
         <ChildBanner name={child.name} />
         <AttendanceView viewerChild={child.name.split(" ")[0]} report={report} terms={terms} branding={branding} studentName={child.name} studentNumber={STUDENT_SEED[session.ctx.institutionType].number} group={tt.group} />
+      </>
+    );
+  }
+
+  if (slug === "academic-progress") {
+    const [report, tt, fee] = await Promise.all([student.getResults(ctx), student.getTimetable(ctx), student.getFees(ctx)]);
+    return (
+      <>
+        <ChildBanner name={child.name} />
+        <ResultsView report={report} studentName={child.name} studentNumber={STUDENT_SEED[session.ctx.institutionType].number} group={tt.group} terms={terms} branding={branding} fee={fee} slipWithheld={withheldFor(session.feePolicy, fee).results} slipName="Report card" printPast forParent />
       </>
     );
   }

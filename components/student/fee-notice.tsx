@@ -22,8 +22,8 @@ export function FeeNotice({ view, terms }: { view: StudentFeeView; terms: Studen
 }
 
 /** Shown in place of a document the school withholds until the balance is cleared. Never a blank screen. */
-export function WithheldCard({ what, fee, terms }: { what: string; fee: FeeBalance; terms: StudentTerms }) {
-  const m = withheldMessage(terms, fee);
+export function WithheldCard({ what, fee, terms, forParent = false }: { what: string; fee: FeeBalance; terms: StudentTerms; forParent?: boolean }) {
+  const m = withheldMessage(terms, fee, forParent);
   return (
     <section aria-label={`${what} withheld`} className="rounded-2xl border border-line bg-surface p-5">
       <p className="text-sm font-medium text-muted">{what}</p>

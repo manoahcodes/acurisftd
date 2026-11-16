@@ -11,17 +11,18 @@ import { csvFilename } from "@/lib/table-tools";
 import { prettyDate } from "@/lib/teacher/dates";
 import type { StudentTerms } from "@/lib/student/terms";
 import { WithheldCard } from "./fee-notice";
-import type { CourseResult, ResultItem, ResultsReport } from "@/types/student";
+import type { CourseResult, PastPeriod, ResultItem, ResultsReport } from "@/types/student";
 
 const fmt = (n: number | null, suffix = "%") => (n === null ? "—" : `${n}${suffix}`);
 const gradeTone = (r: Pick<CourseResult, "final" | "passed">) => (r.final === null ? "info" : r.passed ? "good" : "bad");
 
 const STATE_LABEL: Record<ResultItem["state"], string> = { marked: "", absent: "Absent", excused: "Excused", pending: "Being marked", upcoming: "Not sat yet" };
 
-export function ResultsView({ report, studentName, studentNumber, group, terms, branding, slipWithheld = false, fee }: { slipWithheld?: boolean; fee: FeeBalance; report: ResultsReport; studentName: string; studentNumber: string; group: string; terms: StudentTerms; branding: PrintBranding }) {
+export function ResultsView({ report, studentName, studentNumber, group, terms, branding, slipWithheld = false, fee, slipName = "Result slip", printPast = false, forParent = false }: { forParent?: boolean; slipName?: string; printPast?: boolean; slipWithheld?: boolean; fee: FeeBalance; report: ResultsReport; studentName: string; studentNumber: string; group: string; terms: StudentTerms; branding: PrintBranding }) {
   const today = useToday(branding.timezone);
   const [open, setOpen] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
+  const [past, setPast] = useState<PastPeriod | null>(null);
   const tertiary = terms.tertiary;
   const passed = report.courses.filter((c) => c.passed).length;
   const best = report.courses.filter((c) => c.final !== null).sort((a, b) => b.final! - a.final!)[0];
@@ -59,7 +60,7 @@ export function ResultsView({ report, studentName, studentNumber, group, terms, 
         </div>
       </Card>
 
-      {slipWithheld && <WithheldCard what="Result slip" fee={fee} terms={terms} />}
+      {slipWithheld && <WithheldCard what={slipName} fee={fee} terms={terms} forParent={forParent} />}
 
       <ul className="space-y-3">
         {report.courses.map((c) => {
@@ -139,7 +140,7 @@ export function ResultsView({ report, studentName, studentNumber, group, terms, 
               <div key={h.label} className="overflow-x-auto">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <h3 className="text-[16px] font-semibold text-ink">{h.label}</h3>
-                  <p className="text-sm text-muted">{h.gpa !== null ? `GPA ${h.gpa.toFixed(2)} · ${h.credits} credits · ` : ""}Average {h.average}%</p>
+                  <p className="flex flex-wrap items-center gap-3 text-sm text-muted">{h.gpa !== null ? `GPA ${h.gpa.toFixed(2)} · ${h.credits} credits · ` : ""}Average {h.average}%{printPast && !slipWithheld && <button type="button" onClick={() => setPast(h)} className={buttonClass}>Print {slipName.toLowerCase()}</button>}</p>
                 </div>
                 <table className="mt-2 w-full min-w-[28rem] text-left text-[15px]">
                   <caption className="sr-only">{h.label} results</caption>
@@ -178,14 +179,20 @@ export function ResultsView({ report, studentName, studentNumber, group, terms, 
               {report.bands.map((b) => <tr key={b.grade}><td className="py-1.5 pr-3 text-muted">{b.min}%</td><th scope="row" className="py-1.5 pr-3 font-medium text-ink">{b.grade}</th>{tertiary && <td className="py-1.5 pr-3 text-ink">{b.points.toFixed(1)}</td>}<td className="py-1.5 text-ink">{b.remark}</td></tr>)}
             </tbody>
           </table>
-          {!slipWithheld && <button type="button" onClick={() => setPrinting(true)} className={`${buttonClass} mt-4`}>Print result slip</button>}
+          {!slipWithheld && <button type="button" onClick={() => setPrinting(true)} className={`${buttonClass} mt-4`}>Print {slipName.toLowerCase()}</button>}
         </details>
       </Card>
 
       {printing && !slipWithheld && (
-        <PrintSheet branding={branding} title={`Result slip, ${report.periodLabel}`} signature lines={[report.provisional ? "Provisional: some results are still to come." : "Final results."]} onClose={() => setPrinting(false)}>
+        <PrintSheet branding={branding} title={`${slipName}, ${report.periodLabel}`} signature lines={[report.provisional ? "Provisional: some results are still to come." : "Final results."]} onClose={() => setPrinting(false)}>
           <DetailsList details={[[terms.member, studentName], [`${terms.member} number`, studentNumber], [terms.group, group], [terms.period, report.periodLabel], ...(tertiary ? ([["GPA", report.gpa === null ? "—" : report.gpa.toFixed(2)], ["Cumulative GPA", report.cumulativeGpa === null ? "—" : report.cumulativeGpa.toFixed(2)]] as Array<[string, string]>) : ([["Average", fmt(report.average)], ["Overall grade", report.overallGrade]] as Array<[string, string]>))]} />
           <div className="mt-6"><PrintTable columns={columns} rows={table} /></div>
+        </PrintSheet>
+      )}
+      {past && !slipWithheld && (
+        <PrintSheet branding={branding} title={`${slipName}, ${past.label}`} signature lines={["Final results."]} onClose={() => setPast(null)}>
+          <DetailsList details={[[terms.member, studentName], [`${terms.member} number`, studentNumber], [terms.group, group], [terms.period, past.label], ...(tertiary ? ([["GPA", past.gpa === null ? "—" : past.gpa.toFixed(2)], ["Credits", String(past.credits)]] as Array<[string, string]>) : ([["Average", `${past.average}%`]] as Array<[string, string]>))]} />
+          <div className="mt-6"><PrintTable columns={[terms.course, ...(tertiary ? ["Credits"] : []), "Final %", "Grade"]} rows={past.courses.map((c) => [c.name, ...(tertiary ? [String(c.credits ?? "")] : []), `${c.pct}%`, c.grade])} /></div>
         </PrintSheet>
       )}
     </div>

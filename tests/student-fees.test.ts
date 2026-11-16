@@ -71,3 +71,13 @@ describe("Per-school policy", () => {
     await mockTenantDirectory.update(first.id, { feePolicy: before });
   });
 });
+
+describe("withheldMessage for a parent", () => {
+  it("shows the amount and sends the parent to the bursar, not back to themselves", async () => {
+    const { withheldMessage } = await import("@/lib/student/fees");
+    const { studentTermsFor } = await import("@/lib/student/terms");
+    const m = withheldMessage(studentTermsFor("high_school"), { balance: 240_000, dueOn: "2026-11-27", status: "due" }, true);
+    expect(m.detail).toContain("2,400");
+    expect(m.detail).not.toContain("parent or guardian");
+  });
+});
