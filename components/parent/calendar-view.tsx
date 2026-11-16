@@ -51,7 +51,7 @@ export function CalendarView({ events, meetings, kids, staffByChild, timezone, i
     });
 
   return (
-    <div className="mt-6 grid gap-6 xl:grid-cols-[2fr_3fr]">
+    <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
       <Card>
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-ink" aria-live="polite">{MONTHS[month]} {year}</h2>

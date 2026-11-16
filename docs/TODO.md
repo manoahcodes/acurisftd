@@ -46,7 +46,7 @@ All work on mock data now (CSV files up to 1 MB, 500 rows; every run is written 
 - [ ] Browser (end-to-end) tests in the repo, and CI to run lint, typecheck and tests
 
 ## Out of scope for Platform Admin (separate work)
-- Bursar, Cashier and Parent pages are still "hasn't been built yet" placeholders
+- Bursar and Cashier pages are still "hasn't been built yet" placeholders
 - Student pages: see section 8
 - Teacher / Lecturer pages: see section 7
 
@@ -95,3 +95,23 @@ Data is the in-memory mock saved through the SQLite store (key `student`), scope
 - [ ] Move submission files and photos from base64 in the saved snapshot to file storage when a real backend exists
 - [ ] Dark mode and phone layout check of the seven Student pages (not run in the sandbox); add them to the contrast scan
 - [ ] `next build` could not be run in the sandbox (Google Fonts unreachable); dev server and 647 tests pass
+
+## Parent role
+
+Built on the Student module's records: every child page reads the selected child (top bar switcher, cookie `stecia_child`) through `childContext`, which refuses a child who is not linked to the signed-in guardian (`server/parent-context.ts`). Wording follows the school (Learner or Student, Term or Semester). No payments are taken and absences cannot be reported from here.
+
+- [x] My children: a card per linked child with attendance, average or GPA, work to hand in, fee balance and policy flags
+- [x] Attendance: the Student view, read-only for parents (rate, calendar, log, CSV, print; no absence-reason form)
+- [x] Academic progress: the Student results view with a printable report card for the current and each earlier period, CSV, and the school's withheld-results policy (worded for a parent)
+- [x] Fee statements: invoice, receipts and a running statement of account that agree with the Student fee position; print (statement, invoice, each receipt) and CSV; shows the unpaid-fees policy
+- [x] School calendar: month view, coming-up list, RSVP (going, can't make it, take it back) on events that ask, request a meeting with a teacher or office linked to the child, cancel a request
+- [x] Messages: conversations, unread marks, search, unread filter, reply, new message to linked staff (optionally about one child), mark read or unread, mark all read
+- [x] Profile: edit contact details (school-set details read-only), notification choices by channel and topic, request to link another child (the school approves; withdraw while pending)
+- [x] Sidebar Messages badge, the bell (unread messages, events awaiting a reply, each child's fee balance; honours the parent's notification choices) and top bar search come from the guardian's own data
+- [x] `ParentRepository` (`server/repositories/parent-types.ts`, swap point in `index.ts`) with a SQLite-backed mock; pure validation in `lib/parent/validate.ts`; server actions in `server/actions/parent.ts` re-check everything
+- [ ] Swap `ParentRepository` for a real one, and have the school side answer meeting requests and review link requests (today they stay "waiting for the school")
+- [ ] Fee statements are built from the Student fee position (`lib/parent/fees.ts`); replace with the Bursar's invoices and receipts
+- [ ] The bell lists an event until the parent replies, even after its date, because the server cannot read the clock while prerendering; filter past events once the date is available there
+- [ ] Notification preferences are saved and the bell honours them; email and text delivery need a sending service
+- [ ] A child's class label comes from the guardian's child record (`ChildRepository`), while the timetable and results come from the Student module's sample data, so both children show the same courses
+- [ ] Dark mode check of the seven Parent pages was not run in the sandbox (the pages use the theme tokens); phone width and light mode were checked with no overflow or console errors

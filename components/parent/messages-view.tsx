@@ -50,7 +50,7 @@ export function MessagesView({ threads, kids, staff, timezone }: { threads: Mess
 
       {message && <p role="status" className="rounded-lg bg-positive-soft px-3 py-2 text-sm text-positive">{message.text}</p>}
 
-      <div className="grid gap-6 lg:grid-cols-[2fr_3fr]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <Card className={cn("p-0", open && "max-lg:hidden")}>
           {rows.length === 0 ? (
             <p className="px-5 py-6 text-[15px] text-muted">{threads.length === 0 ? "No messages yet. Use New message to write to a teacher or the office." : "Nothing matches."}</p>

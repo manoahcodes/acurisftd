@@ -18,7 +18,7 @@ const Banner = ({ note }: { note: Note }) => note && <p role={note.error ? "aler
 
 export function ProfileView({ profile, prefs, links, kids, terms, timezone }: { profile: GuardianProfile; prefs: NotificationPrefs; links: LinkRequest[]; kids: Array<{ id: string; name: string; grade: string }>; terms: StudentTerms; timezone: string }) {
   return (
-    <div className="mt-6 grid gap-6 xl:grid-cols-[2fr_3fr]">
+    <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
       <div className="space-y-6">
         <Card>
           <h2 className="text-lg font-semibold text-ink">About you</h2>

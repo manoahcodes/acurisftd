@@ -1,11 +1,14 @@
 import Link from "next/link";
-import { Card, Chip, Stat, rateText, rateTone } from "@/components/teacher/shared";
+import { Card, Chip, Stat } from "@/components/teacher/shared";
 import { hrefFor } from "@/config/navigation";
 import { formatKwacha } from "@/lib/money";
 import { prettyDate } from "@/lib/teacher/dates";
 import type { StudentTerms } from "@/lib/student/terms";
 import type { ChildOverview } from "@/server/queries/parent-children";
 
+// Local copies: this is a Server Component, so it cannot call functions exported from a client module.
+const rateText = (rate: number | null) => (rate === null ? "—" : `${rate}%`);
+const rateTone = (rate: number | null) => (rate === null ? "info" : rate >= 90 ? "good" : rate >= 75 ? "warn" : "bad") as "good" | "warn" | "bad" | "info";
 const initials = (name: string) => name.split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
 
 /** One card per linked child: who they are, how they are doing, and what is owed. */
@@ -27,7 +30,7 @@ export function ChildrenView({ rows, terms, selectedId }: { rows: ChildOverview[
               <span aria-hidden className="grid size-14 shrink-0 place-items-center rounded-full bg-brand text-lg font-bold text-on-brand">{initials(r.child.name)}</span>
               <div className="min-w-0">
                 <h2 className="truncate text-xl font-semibold text-ink">{r.child.name}</h2>
-                <p className="text-[15px] text-muted">{r.group}</p>
+                <p className="text-[15px] text-muted">{r.child.grade}</p>
               </div>
               {r.child.id === selectedId && <span className="ml-auto"><Chip tone="info">Selected</Chip></span>}
             </div>
