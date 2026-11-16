@@ -8,7 +8,8 @@ const DATA: Record<RoleKey, Record<string, number>> = {
   teacher: {},
   bursar: { "Student accounts": 3, Debtors: 24, Reconciliation: 1 },
   cashier: { "Today's transactions": 2 },
-  parent: { Messages: 3 },
+  // The parent's Messages badge comes from their own conversations in server/queries/sidebar.ts.
+  parent: {},
   student: { Assignments: 3, "School notices": 2 },
 };
 

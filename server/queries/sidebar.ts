@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { ROLES, type RoleKey } from "@/config/navigation";
-import { navBadges, student, teaching } from "@/server/repositories";
+import { navBadges, parent, student, teaching } from "@/server/repositories";
+import { getParentSession } from "@/server/parent-context";
 import { getStudentSession } from "@/server/student-context";
 import { getTeacherSession } from "@/server/teacher-context";
 import { getTenantContext } from "@/server/request-context";
@@ -25,6 +26,10 @@ export const getNavBadges = cache(
       const { ctx } = await getStudentSession();
       const [pending, unread] = await Promise.all([student.countPending(ctx), student.countUnreadNotices(ctx)]);
       raw = { ...raw, Assignments: pending, "School notices": unread };
+    }
+    if (role === "parent") {
+      // Unread conversations come from the guardian's own messages.
+      raw = { ...raw, Messages: await parent.countUnread((await getParentSession()).ctx) };
     }
     const labels = new Set(ROLES[role].nav.map((n) => n.label));
 

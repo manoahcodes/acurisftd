@@ -4,6 +4,8 @@ import { searchIndex } from "@/server/repositories";
 import { searchStudent } from "@/server/queries/student-search";
 import { getTenantContext } from "@/server/request-context";
 import { getStudentSession } from "@/server/student-context";
+import { getParentSession } from "@/server/parent-context";
+import { searchParent } from "@/server/queries/parent-search";
 
 const MIN_CHARS = 2;
 const MAX_QUERY_LENGTH = 80;
@@ -25,10 +27,13 @@ export async function GET(request: NextRequest) {
   }
 
   // Students search their own assignments, results, notices and resources.
+  // Parents search only their own children, events and conversations.
   const results =
     role === "student"
       ? await searchStudent((await getStudentSession()).ctx, query)
-      : await searchIndex.search(await getTenantContext(), role, query);
+      : role === "parent"
+        ? await searchParent(await getParentSession(), query)
+        : await searchIndex.search(await getTenantContext(), role, query);
 
   return NextResponse.json(
     { results },
