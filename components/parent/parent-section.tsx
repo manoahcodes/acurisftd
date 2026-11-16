@@ -1,4 +1,5 @@
 import { CALENDAR_OPENS } from "@/lib/parent/seed";
+import { ProfileView } from "./profile-view";
 import { MessagesView } from "./messages-view";
 import { CalendarView } from "./calendar-view";
 import { parent } from "@/server/repositories";
@@ -17,7 +18,7 @@ import { childContext, getParentSession } from "@/server/parent-context";
 import { ChildrenView } from "./children-view";
 
 /** Slugs of the Parent pages that are built. */
-export const PARENT_PAGES = ["my-children", "attendance", "academic-progress", "fee-statements", "school-calendar", "messages"];
+export const PARENT_PAGES = ["my-children", "attendance", "academic-progress", "fee-statements", "school-calendar", "messages", "profile"];
 
 /** One Parent page. Reads cookies and the session, so render it inside <Suspense>. */
 export async function ParentSection({ slug }: { slug: string }) {
@@ -42,6 +43,11 @@ export async function ParentSection({ slug }: { slug: string }) {
     const first = session.children[0];
     const [threads, staff] = await Promise.all([parent.listThreads(session.ctx), first ? parent.listStaff(session.ctx, first.id) : Promise.resolve([])]);
     return <MessagesView threads={threads} kids={session.children} staff={staff} timezone={session.timezone} />;
+  }
+
+  if (slug === "profile") {
+    const [profile, prefs, links] = await Promise.all([parent.getProfile(session.ctx), parent.getPrefs(session.ctx), parent.listLinkRequests(session.ctx)]);
+    return <ProfileView profile={profile} prefs={prefs} links={links} kids={session.children} terms={terms} timezone={session.timezone} />;
   }
 
   const child = session.selected;
