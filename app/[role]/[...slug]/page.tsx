@@ -22,6 +22,8 @@ import { TEACHER_PAGES, TeacherSection } from "@/components/teacher/teacher-sect
 import { getTeacherSession } from "@/server/teacher-context";
 import { STUDENT_PAGES, StudentSection } from "@/components/student/student-section";
 import { getStudentSession } from "@/server/student-context";
+import { PARENT_PAGES, ParentSection } from "@/components/parent/parent-section";
+import { getParentSession } from "@/server/parent-context";
 import { INSTITUTIONS } from "@/config/institution";
 
 type Params = Promise<{ role: string; slug: string[] }>;
@@ -47,6 +49,10 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   }
   if (role === "student") {
     const { ctx } = await getStudentSession();
+    return { title: resolveLabel(item.label, termsFor(ctx.institutionType)) };
+  }
+  if (role === "parent") {
+    const { ctx } = await getParentSession();
     return { title: resolveLabel(item.label, termsFor(ctx.institutionType)) };
   }
   if (role !== "platform") return { title: item.label };
@@ -78,6 +84,8 @@ async function Section({ params }: { params: Params }) {
   if (role === "teacher") return <TeacherPage item={item} />;
 
   if (role === "student") return <StudentPage item={item} />;
+
+  if (role === "parent") return <ParentPage item={item} />;
 
   // Other roles: placeholder for every sidebar page that isn't built yet.
   return (
@@ -180,6 +188,30 @@ async function StudentPage({ item }: { item: NavItem }) {
         subtitle={built ? `${schoolName} • ${campus} • ${INSTITUTIONS[ctx.institutionType].label}` : "This section hasn't been built yet."}
       />
       {built && <StudentSection slug={item.slug} />}
+    </>
+  );
+}
+
+/**
+ * A Parent page. Wording follows the school's level (Learner or Student, Term
+ * or Semester) and every page reads only the guardian's linked children.
+ */
+async function ParentPage({ item }: { item: NavItem }) {
+  const { ctx, schoolName, campus } = await getParentSession();
+  const title = resolveLabel(item.label, termsFor(ctx.institutionType));
+  const built = PARENT_PAGES.includes(item.slug);
+  return (
+    <>
+      <PageHeader
+        crumbs={[
+          { label: "Dashboard", href: "/parent" },
+          { label: "Parent", href: hrefFor("parent", "") },
+          { label: title, href: hrefFor("parent", item.slug) },
+        ]}
+        title={title}
+        subtitle={built ? `${schoolName} • ${campus} • ${INSTITUTIONS[ctx.institutionType].label}` : "This section hasn't been built yet."}
+      />
+      {built && <ParentSection slug={item.slug} />}
     </>
   );
 }
