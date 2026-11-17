@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["jqm5236t-3000.inc1.devtunnels.ms"],
 
   experimental: {
+    // Remember the security upgrade policy so future upgrades can suggest safe releases.
+    agentUpgrade: "security",
     serverActions: {
       // Logo uploads are validated at 3 MB; the default 1 MB body limit would reject them first.
       bodySizeLimit: "4mb",
