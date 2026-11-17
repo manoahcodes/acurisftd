@@ -4,6 +4,8 @@ import { navBadges, parent, student, teaching } from "@/server/repositories";
 import { getParentSession } from "@/server/parent-context";
 import { getStudentSession } from "@/server/student-context";
 import { getTeacherSession } from "@/server/teacher-context";
+import { getCashierSession } from "@/server/cashier-context";
+import { cashierToday } from "./cashier-queries";
 import { getTenantContext } from "@/server/request-context";
 
 /**
@@ -26,6 +28,10 @@ export const getNavBadges = cache(
       const { ctx } = await getStudentSession();
       const [pending, unread] = await Promise.all([student.countPending(ctx), student.countUnreadNotices(ctx)]);
       raw = { ...raw, Assignments: pending, "School notices": unread };
+    }
+    if (role === "cashier") {
+      // Receipts still pending confirmation come from the cashier's own ledger.
+      raw = { ...raw, "Today's transactions": (await cashierToday(await getCashierSession())).pending };
     }
     if (role === "parent") {
       // Unread conversations come from the guardian's own messages.

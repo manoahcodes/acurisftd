@@ -8,6 +8,8 @@ import { TodayDate } from "@/components/dashboard/today-date";
 import { StudentFeeBanner } from "@/components/student/student-fee-banner";
 import { dashboards, teaching } from "@/server/repositories";
 import { getTeacherSession } from "@/server/teacher-context";
+import { getCashierSession } from "@/server/cashier-context";
+import { cashierDashboard } from "@/server/queries/cashier-queries";
 import { getDashboardSchool } from "@/server/queries/dashboard";
 import { getResolvedTheme } from "@/server/queries/theme";
 
@@ -46,6 +48,10 @@ async function RoleDashboard({ params }: { params: Params }) {
       kpis: data.kpis.map((k) => (k.title === "To mark" ? { ...k, value: String(o.assessmentsToMark), note: `${plural(o.toMark)} to mark too` } : k)),
       sections: data.sections.map((sec) => ({ ...sec, rows: sec.rows.map((row) => (row.cells[0] === "Enter assessment marks" ? { ...row, cells: [row.cells[0], `${o.assessmentsToMark} pending`] } : row)) })),
     };
+  }
+  if (role === "cashier") {
+    // Today's figures come from the cashier's own receipts and cash-up.
+    data = await cashierDashboard(data, await getCashierSession());
   }
   const { branding } = await getResolvedTheme(role);
   const subtitleName = school

@@ -115,3 +115,25 @@ Built on the Student module's records: every child page reads the selected child
 - [ ] Notification preferences are saved and the bell honours them; email and text delivery need a sending service
 - [ ] A child's class label comes from the guardian's child record (`ChildRepository`), while the timetable and results come from the Student module's sample data, so both children show the same courses
 - [ ] Dark mode check of the seven Parent pages was not run in the sandbox (the pages use the theme tokens); phone width and light mode were checked with no overflow or console errors
+
+## Cashier role
+
+Own ledger, like the Student and Teacher modules: every page reads and writes only this cashier's receipts inside this school (`server/cashier-context.ts`, `CashierRepository` in `server/repositories/cashier-types.ts`, swap point in `index.ts`, SQLite-backed mock). Wording follows the school (Learner or Student, Class or Programme; accounts are tuition, transport, meals and other at schools, and tuition, accommodation, registration and other at colleges and universities). Money is integer ngwee. Pure rules are in `lib/cashier/validate.ts` and `totals.ts`; server actions in `server/actions/cashier.ts` re-check everything and write to the audit log.
+
+- [x] Collect payment: find a student, choose the account and method, amount (cannot exceed what is owed on that account; "Full balance" shortcut), reference required for mobile money and bank, review step, receipt issued, print it from the success screen
+- [x] Cash is a successful receipt at once; mobile money (Airtel, MTN, Zamtel) and bank payments are **pending** until the cashier confirms the money arrived, and only then lower the balance and count as collected
+- [x] Find student: search by number, name or class/programme, fee accounts with due dates, overdue/owing/cleared, recent payments, jump to Collect payment
+- [x] Print receipt: every receipt, search and status filter, printable with the school's branding and signature; a voided receipt prints marked VOID with its reason; pending ones cannot be printed yet
+- [x] Today's transactions: totals, search, method and status filters, CSV and print, confirm a pending receipt, **void** a receipt taken today (reason required, audited, stays listed, left out of the totals, balance restored). Earlier days, refunds and later changes are for the Bursar
+- [x] Cash-up: count the drawer by denomination (K 200 down to 5 ngwee), expected cash against counted, a reason is required when they differ, cannot be submitted while receipts are pending, **submitting locks the day** (no more payments, confirmations or voids), printable, history with each difference and reason
+- [x] Payment methods: read-only list of what the school accepts, merchant and bank details, today's confirmed total per method, what to check before issuing a receipt
+- [x] Sidebar badge (pending receipts), the bell (pending receipts, cash-up not submitted), the top bar search (students and receipts) and the dashboard figures come from the cashier's own records
+- [x] `tests/cashier-*.test.ts`: validation, money parsing, cash-up counting, repository rules (void, confirm, lock, separation by cashier and school), dashboard, bell and search
+- [ ] Link the ledger to the rest of the platform: payments should lower the **Student** fee balance (`lib/student/fees.ts`), show on the **Parent** fee statements and the **Platform Admin** Student payments table, and clear the Student withholding of the exam card and result slip (today each module has its own sample numbers)
+- [ ] Swap `CashierRepository` for a real one, and move the student list and fee balances to the Bursar's records. A real ledger should be shared across cashiers at one school; the mock keeps one per cashier
+- [ ] Payment methods (merchant numbers, bank account) are sample data in `lib/cashier/methods.ts`; the school should set them (Bursar or Platform Admin) and be able to switch a method off
+- [ ] Mobile money confirmation is manual; connect it to the provider's callback or the bank statement import when those exist
+- [ ] Advance payments (more than is owed) and refunds are refused at the desk; the Bursar role needs screens for them
+- [ ] The cash-up has no opening float and no per-cashier handover; add them if the school needs them
+- [ ] Phone width and dark mode of the six Cashier pages were not checked; the desktop pages, the full payment, void and cash-up flow and the pending/closed rules were run in a browser with no console errors
+- [ ] `next build` could not be run in the sandbox (Google Fonts unreachable); dev server, typecheck, lint and tests pass

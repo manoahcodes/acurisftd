@@ -6,6 +6,8 @@ import { guardianChildren, notifications } from "@/server/repositories";
 import { getTenantContext } from "@/server/request-context";
 import { getStudentSession } from "@/server/student-context";
 import { getParentSession } from "@/server/parent-context";
+import { getCashierSession } from "@/server/cashier-context";
+import { cashierNotifications } from "./cashier-queries";
 import { parentNotifications } from "./parent-notifications";
 import { studentNotifications } from "./student-notifications";
 import type { Child, NotificationSummary } from "@/types/topbar";
@@ -14,6 +16,7 @@ import type { Child, NotificationSummary } from "@/types/topbar";
 export const getNotifications = cache(
   async (role: RoleKey): Promise<NotificationSummary> => {
     if (role === "student") return studentNotifications(await getStudentSession());
+    if (role === "cashier") return cashierNotifications(await getCashierSession());
     if (role === "parent") return parentNotifications(await getParentSession());
     const ctx = await getTenantContext();
     return notifications.list(ctx, role);

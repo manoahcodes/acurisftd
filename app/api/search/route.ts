@@ -6,6 +6,8 @@ import { getTenantContext } from "@/server/request-context";
 import { getStudentSession } from "@/server/student-context";
 import { getParentSession } from "@/server/parent-context";
 import { searchParent } from "@/server/queries/parent-search";
+import { getCashierSession } from "@/server/cashier-context";
+import { searchCashier } from "@/server/queries/cashier-queries";
 
 const MIN_CHARS = 2;
 const MAX_QUERY_LENGTH = 80;
@@ -28,12 +30,15 @@ export async function GET(request: NextRequest) {
 
   // Students search their own assignments, results, notices and resources.
   // Parents search only their own children, events and conversations.
+  // Cashiers search their own desk: students and receipts.
   const results =
     role === "student"
       ? await searchStudent((await getStudentSession()).ctx, query)
       : role === "parent"
         ? await searchParent(await getParentSession(), query)
-        : await searchIndex.search(await getTenantContext(), role, query);
+        : role === "cashier"
+          ? await searchCashier(await getCashierSession(), query)
+          : await searchIndex.search(await getTenantContext(), role, query);
 
   return NextResponse.json(
     { results },

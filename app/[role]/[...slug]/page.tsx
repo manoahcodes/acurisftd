@@ -24,6 +24,8 @@ import { STUDENT_PAGES, StudentSection } from "@/components/student/student-sect
 import { getStudentSession } from "@/server/student-context";
 import { PARENT_PAGES, ParentSection } from "@/components/parent/parent-section";
 import { getParentSession } from "@/server/parent-context";
+import { CASHIER_PAGES, CashierSection } from "@/components/cashier/cashier-section";
+import { getCashierSession } from "@/server/cashier-context";
 import { INSTITUTIONS } from "@/config/institution";
 
 type Params = Promise<{ role: string; slug: string[] }>;
@@ -86,6 +88,8 @@ async function Section({ params }: { params: Params }) {
   if (role === "student") return <StudentPage item={item} />;
 
   if (role === "parent") return <ParentPage item={item} />;
+
+  if (role === "cashier") return <CashierPage item={item} />;
 
   // Other roles: placeholder for every sidebar page that isn't built yet.
   return (
@@ -212,6 +216,30 @@ async function ParentPage({ item }: { item: NavItem }) {
         subtitle={built ? `${schoolName} • ${campus} • ${INSTITUTIONS[ctx.institutionType].label}` : "This section hasn't been built yet."}
       />
       {built && <ParentSection slug={item.slug} />}
+    </>
+  );
+}
+
+/**
+ * A Cashier page. Wording follows the school's level (Learner or Student,
+ * Class or Programme) and every page reads only this cashier's own receipts.
+ */
+async function CashierPage({ item }: { item: NavItem }) {
+  const { ctx, schoolName, campus } = await getCashierSession();
+  const title = resolveLabel(item.label, termsFor(ctx.institutionType));
+  const built = CASHIER_PAGES.includes(item.slug);
+  return (
+    <>
+      <PageHeader
+        crumbs={[
+          { label: "Dashboard", href: "/cashier" },
+          { label: "Cashier", href: hrefFor("cashier", "") },
+          { label: title, href: hrefFor("cashier", item.slug) },
+        ]}
+        title={title}
+        subtitle={built ? `${schoolName} • ${campus} • ${INSTITUTIONS[ctx.institutionType].label}` : "This section hasn't been built yet."}
+      />
+      {built && <CashierSection slug={item.slug} />}
     </>
   );
 }
