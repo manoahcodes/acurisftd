@@ -26,6 +26,8 @@ import { PARENT_PAGES, ParentSection } from "@/components/parent/parent-section"
 import { getParentSession } from "@/server/parent-context";
 import { CASHIER_PAGES, CashierSection } from "@/components/cashier/cashier-section";
 import { getCashierSession } from "@/server/cashier-context";
+import { BURSAR_PAGES, BursarSection } from "@/components/bursar/bursar-section";
+import { getBursarSession } from "@/server/bursar-context";
 import { INSTITUTIONS } from "@/config/institution";
 
 type Params = Promise<{ role: string; slug: string[] }>;
@@ -55,6 +57,10 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   }
   if (role === "parent") {
     const { ctx } = await getParentSession();
+    return { title: resolveLabel(item.label, termsFor(ctx.institutionType)) };
+  }
+  if (role === "bursar") {
+    const { ctx } = await getBursarSession();
     return { title: resolveLabel(item.label, termsFor(ctx.institutionType)) };
   }
   if (role !== "platform") return { title: item.label };
@@ -91,18 +97,7 @@ async function Section({ params }: { params: Params }) {
 
   if (role === "cashier") return <CashierPage item={item} />;
 
-  // Other roles: placeholder for every sidebar page that isn't built yet.
-  return (
-    <PageHeader
-      crumbs={[
-        { label: "Dashboard", href: `/${role}` },
-        { label: ROLES[role].label, href: hrefFor(role, "") },
-        { label: item.label, href: hrefFor(role, item.slug) },
-      ]}
-      title={item.label}
-      subtitle="This section hasn't been built yet."
-    />
-  );
+  return <BursarPage item={item} />;
 }
 
 /**
@@ -240,6 +235,31 @@ async function CashierPage({ item }: { item: NavItem }) {
         subtitle={built ? `${schoolName} • ${campus} • ${INSTITUTIONS[ctx.institutionType].label}` : "This section hasn't been built yet."}
       />
       {built && <CashierSection slug={item.slug} />}
+    </>
+  );
+}
+
+/**
+ * A Bursar page. Wording follows the school's level (Learner or Student, Term
+ * or Semester, Parent or Sponsor). The Bursar owns the school's fee ledger, so
+ * these pages read and change it for the whole school.
+ */
+async function BursarPage({ item }: { item: NavItem }) {
+  const { ctx, schoolName, campus } = await getBursarSession();
+  const title = resolveLabel(item.label, termsFor(ctx.institutionType));
+  const built = BURSAR_PAGES.includes(item.slug);
+  return (
+    <>
+      <PageHeader
+        crumbs={[
+          { label: "Dashboard", href: "/bursar" },
+          { label: "Bursar", href: hrefFor("bursar", "") },
+          { label: title, href: hrefFor("bursar", item.slug) },
+        ]}
+        title={title}
+        subtitle={built ? `${schoolName} • ${campus} • ${INSTITUTIONS[ctx.institutionType].label}` : "This section hasn't been built yet."}
+      />
+      {built && <BursarSection slug={item.slug} />}
     </>
   );
 }

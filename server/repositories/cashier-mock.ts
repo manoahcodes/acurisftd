@@ -4,18 +4,18 @@ import { RECEIPT_SEED, seedDay, studentsFor } from "@/lib/cashier/seed";
 import { startsPending } from "@/lib/cashier/methods";
 import type { CashUp, Receipt, StudentAccount } from "@/types/cashier";
 import { loadSnapshot, saveSnapshot } from "../persistence/store";
+import { addOwed, dueOf, owedOf, resetLedger, type LedgerScope } from "./ledger-store";
 import type { CashierContext, CashierRepository } from "./cashier-types";
 
 /**
  * Cashier data per school and per cashier, kept in memory and saved to the
- * SQLite file like the Student pages. The student list and what each owes are
- * sample data; the receipts, balances changed by payments and cash-ups are
- * what gets saved.
+ * SQLite file like the Student pages. What each student owes lives in the
+ * Bursar's ledger (./ledger-store), so a payment taken here moves the balance
+ * the Bursar, Student and Parent pages show. The receipts and cash-ups are what
+ * this file saves.
  */
 type State = {
   receipts: Receipt[];
-  /** What is still owed, by "studentNo|kind". Starts from the seed and moves with every payment and void. */
-  owed: Record<string, number>;
   /** Key: date. */
   cashUps: Record<string, CashUp>;
   nextNo: number;
@@ -28,13 +28,12 @@ const save = () => saveSnapshot(KEY, [...data]);
 
 const scopeOf = (c: CashierContext) => `${c.tenantId}:${c.cashierId}:${c.institutionType}`;
 const bad = (error: string) => ({ ok: false as const, error });
-const owedKey = (no: string, kind: string) => `${no}|${kind}`;
+const ledgerOf = (c: CashierContext): LedgerScope => ({ tenantId: c.tenantId, institutionType: c.institutionType });
 const stamp = (date: string, time: string) => `${date}T${time}:00+02:00`;
 
 function seed(ctx: CashierContext): State {
   const students = studentsFor(ctx.institutionType);
-  const s: State = { receipts: [], owed: {}, cashUps: {}, nextNo: 2630 };
-  for (const st of students) for (const l of st.lines) s.owed[owedKey(st.no, l.kind)] = l.owed;
+  const s: State = { receipts: [], cashUps: {}, nextNo: 2630 };
   RECEIPT_SEED.forEach((r, i) => {
     const st = students[r.student];
     const date = seedDay(ctx.today, r.daysAgo);
@@ -63,12 +62,9 @@ function stateOf(ctx: CashierContext): State {
   return s;
 }
 
-const accountsOf = (ctx: CashierContext, s: State): StudentAccount[] =>
+const accountsOf = (ctx: CashierContext): StudentAccount[] =>
   studentsFor(ctx.institutionType).map((st) => {
-    const lines = st.lines.map((l) => {
-      const owed = s.owed[owedKey(st.no, l.kind)] ?? l.owed;
-      return { kind: l.kind, owed, dueOn: owed > 0 ? l.dueOn : null };
-    });
+    const lines = st.lines.map((l) => ({ kind: l.kind, owed: owedOf(ledgerOf(ctx), st.no, l.kind), dueOn: dueOf(ledgerOf(ctx), st.no, l.kind) }));
     const due = lines.filter((l) => l.owed > 0 && l.dueOn).map((l) => l.dueOn as string).sort();
     return { no: st.no, name: st.name, group: st.group, lines, total: lines.reduce((n, l) => n + l.owed, 0), dueOn: due[0] ?? null };
   });
@@ -77,7 +73,7 @@ const closed = (s: State, date: string) => Boolean(s.cashUps[date]);
 
 export const mockCashierRepository: CashierRepository = {
   async listStudents(ctx) {
-    return accountsOf(ctx, stateOf(ctx));
+    return accountsOf(ctx);
   },
 
   async listReceipts(ctx) {
@@ -87,7 +83,7 @@ export const mockCashierRepository: CashierRepository = {
   async recordPayment(ctx, input, now) {
     const s = stateOf(ctx);
     if (closed(s, ctx.today)) return bad("Today's cash-up has been submitted, so no more payments can be taken today.");
-    const student = accountsOf(ctx, s).find((a) => a.no === input.studentNo);
+    const student = accountsOf(ctx).find((a) => a.no === input.studentNo);
     if (!student) return bad("That student is not in this school's records.");
     const line = student.lines.find((l) => l.kind === input.account);
     if (!line || line.owed <= 0) return bad("Nothing is owed on that account.");
@@ -99,7 +95,7 @@ export const mockCashierRepository: CashierRepository = {
       reference: input.reference, note: input.note, status: pending ? "pending" : "success", at: now, date: ctx.today, cashier: ctx.cashierName,
     };
     s.receipts.push(receipt);
-    if (!pending) s.owed[owedKey(student.no, input.account)] = line.owed - input.amount;
+    if (!pending) addOwed(ledgerOf(ctx), student.no, input.account, -input.amount);
     save();
     return { ok: true, id: receipt.id };
   },
@@ -110,10 +106,8 @@ export const mockCashierRepository: CashierRepository = {
     if (!r) return bad("That receipt is not one of yours.");
     if (r.status !== "pending") return bad("Only a pending receipt can be confirmed.");
     if (closed(s, r.date)) return bad("That day's cash-up has been submitted, so the receipt can no longer be changed.");
-    const key = owedKey(r.studentNo, r.account);
-    const owed = s.owed[key] ?? 0;
-    if (r.amount > owed) return bad("The account no longer owes this much, so the receipt cannot be confirmed. Void it instead.");
-    s.owed[key] = owed - r.amount;
+    if (r.amount > owedOf(ledgerOf(ctx), r.studentNo, r.account)) return bad("The account no longer owes this much, so the receipt cannot be confirmed. Void it instead.");
+    addOwed(ledgerOf(ctx), r.studentNo, r.account, -r.amount);
     r.status = "success";
     save();
     return { ok: true, id: r.id };
@@ -126,10 +120,7 @@ export const mockCashierRepository: CashierRepository = {
     if (r.status === "voided") return bad("That receipt is already voided.");
     if (r.date !== ctx.today) return bad("Only today's receipts can be voided here. Ask the Bursar for earlier ones.");
     if (closed(s, r.date)) return bad("Today's cash-up has been submitted, so the receipt can no longer be voided.");
-    if (r.status === "success") {
-      const key = owedKey(r.studentNo, r.account);
-      s.owed[key] = (s.owed[key] ?? 0) + r.amount;
-    }
+    if (r.status === "success") addOwed(ledgerOf(ctx), r.studentNo, r.account, r.amount);
     r.status = "voided";
     r.void = { reason, at: now, by: ctx.cashierName };
     save();
@@ -160,6 +151,7 @@ export const mockCashierRepository: CashierRepository = {
 
 /** Test helper: forget everything. */
 export const resetMockCashier = () => {
+  resetLedger();
   data.clear();
   saveSnapshot(KEY, []);
 };

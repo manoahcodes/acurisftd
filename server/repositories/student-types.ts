@@ -7,7 +7,13 @@ import type { AttendanceReport, ContactDetails, Outcome, ProfilePhoto, ResultsRe
  * inside this school. A real implementation must enforce that in its queries,
  * not in the UI.
  */
-export type StudentContext = { tenantId: string; studentId: string; institutionType: InstitutionType };
+export type StudentContext = {
+  tenantId: string;
+  studentId: string;
+  institutionType: InstitutionType;
+  /** "YYYY-MM-DD" in the school's zone, from the caller. Only needed to tell an overdue fee balance from a due one. */
+  today?: string;
+};
 
 /** A checked file ready to store. `data` is the file's bytes as base64. */
 export type SubmissionUpload = { name: string; size: number; type: string; data: string };
@@ -73,7 +79,7 @@ export interface StudentRepository {
 
   // My profile
   getProfile(ctx: StudentContext): Promise<StudentProfile>;
-  /** The student's own fee position (read-only). SWAP POINT: comes from the Bursar's records. */
+  /** The student's own fee position (read-only). Read from the Bursar's ledger (see ledger-store.ts). */
   getFees(ctx: StudentContext): Promise<FeeBalance>;
   /** Saves what the student may change. Name, number, class and the rest are set by the school and cannot be changed here. */
   saveContact(ctx: StudentContext, contact: ContactDetails, now: string): Promise<Outcome>;

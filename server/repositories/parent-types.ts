@@ -5,7 +5,14 @@ import type { EventRow, GuardianContact, GuardianProfile, LinkRelationship, Link
  * Who is asking. `childIds` are the children linked to this guardian. A real
  * implementation must enforce the link in its own queries, not in the UI.
  */
-export type ParentContext = { tenantId: string; guardianId: string; institutionType: InstitutionType; childIds: string[] };
+export type ParentContext = {
+  tenantId: string;
+  guardianId: string;
+  institutionType: InstitutionType;
+  childIds: string[];
+  /** "YYYY-MM-DD" in the school's zone, from the caller. Passed on to the child's fee position. */
+  today?: string;
+};
 
 /**
  * Everything the Parent pages read and write that belongs to the guardian:

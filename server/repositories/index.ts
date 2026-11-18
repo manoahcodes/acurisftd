@@ -23,6 +23,8 @@ import { mockParentRepository } from "./parent-mock";
 import type { ParentRepository } from "./parent-types";
 import { mockCashierRepository } from "./cashier-mock";
 import type { CashierRepository } from "./cashier-types";
+import { mockBursarRepository } from "./bursar-mock";
+import type { BursarRepository } from "./bursar-types";
 import type { ThemeRepository } from "./theme-types";
 import type { AuditLog } from "./audit-types";
 import type { RecordStore } from "./records-types";
@@ -66,3 +68,6 @@ export const student: StudentRepository = mockStudentRepository;
 export const parent: ParentRepository = mockParentRepository;
 
 export const cashier: CashierRepository = mockCashierRepository;
+
+
+export const bursar: BursarRepository = mockBursarRepository;

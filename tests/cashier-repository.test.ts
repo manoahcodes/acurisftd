@@ -38,7 +38,8 @@ describe("seed", () => {
   it("keeps each cashier's ledger and each school's apart", async () => {
     await repo.recordPayment(ctx(), pay(), NOW);
     expect((await repo.listReceipts(ctx({ cashierId: "c2" }))).length).toBe((await repo.listReceipts(ctx())).length - 1);
-    expect(await owedOf(ctx({ tenantId: "t2" }), "UNI-1048", "tuition")).toBe(await owedOf(ctx({ cashierId: "c2" }), "UNI-1048", "tuition"));
+    // Balances belong to the school's ledger: every cashier in the school sees the payment, another school does not.
+    expect(await owedOf(ctx({ cashierId: "c2" }), "UNI-1048", "tuition")).toBe((await owedOf(ctx({ tenantId: "t2" }), "UNI-1048", "tuition")) - 100_000);
   });
   it("words nothing but numbers by school type", async () => {
     expect((await repo.listStudents(ctx({ institutionType: "primary" })))[0].no.startsWith("PRI-")).toBe(true);

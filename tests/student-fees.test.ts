@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { INSTITUTION_TYPES } from "@/config/institution";
 import { FEE_POLICIES, FEE_POLICY_LABELS, isFeePolicy, labelToPolicy, statusOf, withheldFor } from "@/lib/fee-policy";
-import { FEE_SEED, feeNotice, showsAmount, withheldMessage } from "@/lib/student/fees";
+import { feeNotice, showsAmount, withheldMessage } from "@/lib/student/fees";
 import { studentTermsFor } from "@/lib/student/terms";
+import { studentNoFor } from "@/lib/bursar/link";
+import { mockBursarRepository, resetMockBursar } from "@/server/repositories/bursar-mock";
 import { mockStudentRepository as repo } from "@/server/repositories/student-mock";
 import { mockTenantDirectory } from "@/server/repositories/tenants-mock";
 
@@ -50,13 +52,24 @@ describe("Student fee wording", () => {
     expect(n.detail).toContain("exam card and result slip");
     expect(feeNotice(t, owing, "inform", withheldFor("inform", owing))!.detail).not.toContain("available once");
   });
-  it("has a sound sample for every school type", async () => {
+  it("reads the balance from the Bursar's ledger for every school type", async () => {
     for (const type of INSTITUTION_TYPES) {
-      const fee = FEE_SEED[type];
+      resetMockBursar();
+      const ctx = { tenantId: "t", studentId: "s", institutionType: type };
+      const fee = await repo.getFees(ctx);
+      const book = await mockBursarRepository.balanceOf({ tenantId: "t", bursarId: "b", bursarName: "B", institutionType: type, today: "2026-11-17" }, studentNoFor(type, "s"));
       expect(Number.isInteger(fee.balance) && fee.balance >= 0).toBe(true);
+      expect(fee.balance).toBe(book!.balance);
+      expect(fee.dueOn).toBe(book!.dueOn);
       expect(fee.status === "paid").toBe(fee.balance === 0);
-      expect((await repo.getFees({ tenantId: "t", studentId: "s", institutionType: type })).balance).toBe(fee.balance);
     }
+  });
+  it("tells overdue from due only when it knows today's date", async () => {
+    resetMockBursar();
+    const base = { tenantId: "t", studentId: "mwamba", institutionType: "high_school" as const };
+    expect((await repo.getFees(base)).status).toBe("due");
+    expect((await repo.getFees({ ...base, today: "2026-11-17" })).status).toBe("overdue");
+    expect((await repo.getFees({ ...base, today: "2026-11-01" })).status).toBe("due");
   });
 });
 

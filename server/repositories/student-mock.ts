@@ -1,4 +1,6 @@
-import { FEE_SEED } from "@/lib/student/fees";
+import { statusOf } from "@/lib/fee-policy";
+import { studentNoFor } from "@/lib/bursar/link";
+import { positionOf } from "./ledger-store";
 import { CONTACT_SEED, identityFor, assessmentsFor, assignmentsFor, CURRENT_PERIOD_NO, HISTORY, NOTICES_READ_BEFORE, noticesFor, OPENED_BEFORE, resourcesFor, timetableFor } from "@/lib/student/seed";
 import { buildReport } from "@/lib/student/results";
 import { studentTermsFor } from "@/lib/student/terms";
@@ -143,7 +145,10 @@ export const mockStudentRepository: StudentRepository = {
   },
 
   async getFees(ctx) {
-    return { ...FEE_SEED[ctx.institutionType] };
+    // The Bursar's ledger is the source: what this student owes and when it falls due (a payment plan moves the date).
+    const { balance, dueOn } = positionOf({ tenantId: ctx.tenantId, institutionType: ctx.institutionType }, studentNoFor(ctx.institutionType, ctx.studentId));
+    // Without a date from the caller a balance is simply due; overdue needs today.
+    return { balance, dueOn, status: ctx.today ? statusOf(balance, dueOn, ctx.today) : balance > 0 ? "due" : "paid" };
   },
 
   async getResults(ctx) {
