@@ -4,6 +4,7 @@ import { bursar } from "@/server/repositories";
 import { getBursarSession } from "@/server/bursar-context";
 import { getResolvedTheme } from "@/server/queries/theme";
 import { FeeStructuresView } from "./fee-structures-view";
+import { StudentAccountsView } from "./student-accounts-view";
 
 export { BURSAR_PAGES };
 
@@ -15,6 +16,11 @@ export async function BursarSection({ slug }: { slug: string }) {
   if (slug === "fee-structures") {
     const [fees, groups] = await Promise.all([bursar.listFees(ctx), bursar.listGroups(ctx)]);
     return <FeeStructuresView fees={fees} groups={groups} terms={terms} today={ctx.today} branding={branding} />;
+  }
+
+  if (slug === "student-accounts") {
+    const [accounts, unallocated, waivers] = await Promise.all([bursar.listAccounts(ctx), bursar.listUnallocated(ctx), bursar.listWaivers(ctx)]);
+    return <StudentAccountsView accounts={accounts} unallocated={unallocated} waivers={waivers} terms={terms} today={ctx.today} branding={branding} />;
   }
 
   return null;

@@ -1,7 +1,7 @@
 import type { InstitutionType } from "@/config/institution";
 import { studentsFor } from "@/lib/cashier/seed";
 import { planDue } from "@/lib/bursar/plans";
-import type { PaymentPlan } from "@/types/bursar";
+import type { PaymentPlan, Reversal } from "@/types/bursar";
 import type { AccountKind } from "@/types/cashier";
 import { loadSnapshot, saveSnapshot } from "./../persistence/store";
 
@@ -22,6 +22,8 @@ type Ledger = {
   /** When each account falls due, by "studentNo|kind", before any payment plan. */
   dues: Record<string, string | null>;
   plans: PaymentPlan[];
+  /** Payments the Bursar has reversed, by payment id. The Cashier checks this so a reversed receipt cannot also be voided. */
+  reversed: Record<string, Reversal>;
 };
 
 const g = globalThis as unknown as { __acurisLedger?: Map<string, Ledger> };
@@ -33,7 +35,7 @@ const scopeKey = (s: LedgerScope) => `${s.tenantId}:${s.institutionType}`;
 const keyOf = (no: string, kind: AccountKind) => `${no}|${kind}`;
 
 function seed(type: InstitutionType): Ledger {
-  const l: Ledger = { owed: {}, dues: {}, plans: [] };
+  const l: Ledger = { owed: {}, dues: {}, plans: [], reversed: {} };
   for (const st of studentsFor(type)) {
     for (const line of st.lines) {
       l.owed[keyOf(st.no, line.kind)] = line.owed;
@@ -50,6 +52,7 @@ function ledgerOf(scope: LedgerScope): Ledger {
     data.set(scopeKey(scope), l);
     save();
   }
+  l.reversed ??= {};
   return l;
 }
 
@@ -101,6 +104,13 @@ export function savePlan(scope: LedgerScope, plan: PaymentPlan): void {
   const i = l.plans.findIndex((p) => p.id === plan.id);
   if (i >= 0) l.plans[i] = plan;
   else l.plans.push(plan);
+  save();
+}
+
+export const reversalOf = (scope: LedgerScope, paymentId: string): Reversal | undefined => ledgerOf(scope).reversed[paymentId];
+
+export function markReversed(scope: LedgerScope, paymentId: string, reversal: Reversal): void {
+  ledgerOf(scope).reversed[paymentId] = reversal;
   save();
 }
 

@@ -4,7 +4,7 @@ import { RECEIPT_SEED, seedDay, studentsFor } from "@/lib/cashier/seed";
 import { startsPending } from "@/lib/cashier/methods";
 import type { CashUp, Receipt, StudentAccount } from "@/types/cashier";
 import { loadSnapshot, saveSnapshot } from "../persistence/store";
-import { addOwed, dueOf, owedOf, resetLedger, type LedgerScope } from "./ledger-store";
+import { addOwed, dueOf, owedOf, resetLedger, reversalOf, type LedgerScope } from "./ledger-store";
 import type { CashierContext, CashierRepository } from "./cashier-types";
 
 /**
@@ -80,6 +80,13 @@ export const mockCashierRepository: CashierRepository = {
     return [...stateOf(ctx).receipts].sort(newestFirst);
   },
 
+  async listSchoolReceipts(ctx) {
+    stateOf(ctx);
+    const prefix = `${ctx.tenantId}:`;
+    const suffix = `:${ctx.institutionType}`;
+    return [...data].filter(([k]) => k.startsWith(prefix) && k.endsWith(suffix)).flatMap(([, st]) => st.receipts).sort(newestFirst);
+  },
+
   async recordPayment(ctx, input, now) {
     const s = stateOf(ctx);
     if (closed(s, ctx.today)) return bad("Today's cash-up has been submitted, so no more payments can be taken today.");
@@ -118,6 +125,7 @@ export const mockCashierRepository: CashierRepository = {
     const r = s.receipts.find((x) => x.id === receiptId);
     if (!r) return bad("That receipt is not one of yours.");
     if (r.status === "voided") return bad("That receipt is already voided.");
+    if (reversalOf(ledgerOf(ctx), r.id)) return bad("The Bursar has already reversed that receipt.");
     if (r.date !== ctx.today) return bad("Only today's receipts can be voided here. Ask the Bursar for earlier ones.");
     if (closed(s, r.date)) return bad("Today's cash-up has been submitted, so the receipt can no longer be voided.");
     if (r.status === "success") addOwed(ledgerOf(ctx), r.studentNo, r.account, r.amount);

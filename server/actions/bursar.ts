@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { checkFeeItem, type RawFee } from "@/lib/bursar/validate";
+import { checkAllocation, checkDecision, checkFeeItem, checkReason, checkWaiver, type RawFee } from "@/lib/bursar/validate";
 import { scopeLabel } from "@/lib/bursar/fees";
 import { formatKwacha } from "@/lib/money";
-import type { Outcome } from "@/types/bursar";
+import type { AccountKind, Outcome, Statement } from "@/types/bursar";
 import { audit, bursar } from "../repositories";
 import { getBursarSession } from "../bursar-context";
 
@@ -44,6 +44,79 @@ export async function setFeeActive(id: unknown, active: unknown): Promise<Action
   const r = await bursar.setFeeActive(ctx, id, active, new Date().toISOString());
   if (r.ok && fee) {
     audit.record({ user: ctx.bursarName, action: active ? "Fee turned on" : "Fee turned off", entity: `${fee.name} (${scopeLabel(fee.scope)})`, scope: ctx.tenantId, school: schoolName });
+    refresh();
+  }
+  return r;
+}
+
+const owedByKind = async (ctx: Parameters<typeof bursar.listAccounts>[0], studentNo: string) => {
+  const row = (await bursar.listAccounts(ctx)).find((a) => a.no === studentNo);
+  return Object.fromEntries((row?.lines ?? []).map((l) => [l.kind, l.owed])) as Partial<Record<AccountKind, number>>;
+};
+
+/** One student's statement for the Bursar's own school, or null. A read, but it goes through the session like everything else. */
+export async function loadStatement(studentNo: unknown): Promise<Statement | null> {
+  const { ctx } = await getBursarSession();
+  if (typeof studentNo !== "string" || !/^[A-Za-z0-9-]{1,40}$/.test(studentNo)) return null;
+  return (await bursar.getStatement(ctx, studentNo)) ?? null;
+}
+
+/** Reverses a payment (the desk's or the Bursar's) with a required reason. The payment stays listed. */
+export async function reversePayment(id: unknown, reason: unknown): Promise<ActionResult> {
+  const { ctx, schoolName } = await getBursarSession();
+  if (typeof id !== "string" || !ID.test(id)) return bad("That payment is not available.");
+  const why = checkReason(reason, "this payment is being reversed");
+  if (!why.ok) return { ok: false, error: why.error, fields: why.fields };
+  const p = (await bursar.listPayments(ctx)).find((x) => x.id === id);
+  const r = await bursar.reversePayment(ctx, id, why.value, new Date().toISOString());
+  if (r.ok && p) {
+    audit.record({ user: ctx.bursarName, action: "Payment reversed", entity: `${p.no}, ${p.studentName}, ${formatKwacha(p.amount)}: ${why.value}`, scope: ctx.tenantId, school: schoolName });
+    refresh();
+  }
+  return r;
+}
+
+/** Gives all or part of an unallocated payment to one student's account. */
+export async function allocatePayment(id: unknown, raw: { studentNo?: unknown; account?: unknown; amount?: unknown }): Promise<ActionResult> {
+  const { ctx, schoolName } = await getBursarSession();
+  if (typeof id !== "string" || !ID.test(id)) return bad("That payment is not available.");
+  const u = (await bursar.listUnallocated(ctx)).find((x) => x.id === id);
+  if (!u || u.status !== "open") return bad("That payment is not waiting to be allocated.");
+  const studentNo = typeof raw?.studentNo === "string" ? raw.studentNo.trim() : "";
+  const checked = checkAllocation(raw ?? {}, { remaining: u.remaining, owed: await owedByKind(ctx, studentNo) });
+  if (!checked.ok) return { ok: false, error: checked.error, fields: checked.fields };
+  const r = await bursar.allocatePayment(ctx, id, checked.value, new Date().toISOString());
+  if (r.ok) {
+    audit.record({ user: ctx.bursarName, action: "Payment allocated", entity: `${u.no} ${formatKwacha(checked.value.amount)} to ${checked.value.studentNo}`, scope: ctx.tenantId, school: schoolName });
+    refresh();
+  }
+  return r;
+}
+
+/** Records a bursary, waiver or discount request. Nothing changes on the account until it is approved. */
+export async function requestWaiver(raw: { studentNo?: unknown; kind?: unknown; account?: unknown; amount?: unknown; source?: unknown; reason?: unknown; requestedBy?: unknown }): Promise<ActionResult> {
+  const { ctx, terms, schoolName } = await getBursarSession();
+  const studentNo = typeof raw?.studentNo === "string" ? raw.studentNo.trim() : "";
+  const checked = checkWaiver(raw ?? {}, { kinds: terms.accountKinds, owed: await owedByKind(ctx, studentNo) });
+  if (!checked.ok) return { ok: false, error: checked.error, fields: checked.fields };
+  const r = await bursar.requestWaiver(ctx, checked.value, new Date().toISOString());
+  if (r.ok) {
+    audit.record({ user: ctx.bursarName, action: "Waiver requested", entity: `${checked.value.kind} ${formatKwacha(checked.value.amount)} for ${checked.value.studentNo}`, scope: ctx.tenantId, school: schoolName });
+    refresh();
+  }
+  return r;
+}
+
+/** Approves or declines a pending request. Approving takes the amount off the account. */
+export async function decideWaiver(id: unknown, decision: unknown, note: unknown): Promise<ActionResult> {
+  const { ctx, schoolName } = await getBursarSession();
+  if (typeof id !== "string" || !ID.test(id)) return bad("That request is not available.");
+  const checked = checkDecision(decision, note);
+  if (!checked.ok) return { ok: false, error: checked.error, fields: "fields" in checked ? checked.fields : undefined };
+  const w = (await bursar.listWaivers(ctx)).find((x) => x.id === id);
+  const r = await bursar.decideWaiver(ctx, id, checked.value.decision, checked.value.note, new Date().toISOString());
+  if (r.ok && w) {
+    audit.record({ user: ctx.bursarName, action: checked.value.decision === "approve" ? "Waiver approved" : "Waiver declined", entity: `${w.no}, ${w.studentName}, ${formatKwacha(w.amount)}${checked.value.note ? `: ${checked.value.note}` : ""}`, scope: ctx.tenantId, school: schoolName });
     refresh();
   }
   return r;

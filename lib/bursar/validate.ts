@@ -2,7 +2,7 @@ import type { InstitutionType } from "@/config/institution";
 import { parseKwacha, type Checked } from "@/lib/cashier/validate";
 import { bursarTermsFor } from "@/lib/bursar/terms";
 import { ACCOUNT_KINDS, type AccountKind } from "@/types/cashier";
-import { FEE_BILLINGS, FEE_FREQUENCIES, type FeeItemInput, type FeeScope } from "@/types/bursar";
+import { FEE_BILLINGS, FEE_FREQUENCIES, WAIVER_KINDS, type FeeItemInput, type FeeScope, type WaiverInput } from "@/types/bursar";
 
 /** Checks shared by the Bursar's server actions (which must not trust the browser) and its forms. Pure, so they are easy to test. */
 
@@ -76,4 +76,68 @@ export function checkFeeItem(raw: RawFee, env: FeeEnv): Checked<FeeItemInput> {
   const id = typeof raw.id === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(raw.id) ? raw.id : undefined;
   if (raw.id !== undefined && raw.id !== "" && !id) return fail("That fee is not available.", "id");
   return { ok: true, value: { ...(id ? { id } : {}), name, kind, amount, scope: scope.value, frequency, billing, dueOn: raw.dueOn, effectiveFrom: raw.effectiveFrom, active: raw.active !== false } };
+}
+
+/** A reason that is kept with a reversal, a decision or a cancellation, so the audit trail says why. */
+export function checkReason(raw: unknown, what: string, required = true): Checked<string> {
+  const reason = clean(raw, BURSAR_LIMITS.reason);
+  if (required && !reason) return { ok: false, error: `Say why ${what}.`, fields: { reason: "A reason is required." } };
+  if (reason.length > BURSAR_LIMITS.reason) return { ok: false, error: `The reason can be at most ${BURSAR_LIMITS.reason} characters.`, fields: { reason: `At most ${BURSAR_LIMITS.reason} characters.` } };
+  return { ok: true, value: reason };
+}
+
+const STUDENT_NO = /^[A-Za-z0-9-]{1,40}$/;
+const kindOf = (v: unknown, kinds: AccountKind[]) => ACCOUNT_KINDS.find((k): k is AccountKind => k === v && kinds.includes(k));
+
+export type Allocate = { studentNo: string; account: AccountKind; amount: number };
+
+/**
+ * Part or all of an unallocated payment given to one student account. It cannot
+ * be more than is left to allocate, or more than the account owes: money for a
+ * student who owes nothing is an advance payment, which is not handled here.
+ */
+export function checkAllocation(raw: { studentNo?: unknown; account?: unknown; amount?: unknown }, ctx: { remaining: number; owed: Partial<Record<AccountKind, number>> }): Checked<Allocate> {
+  const studentNo = typeof raw.studentNo === "string" ? raw.studentNo.trim() : "";
+  if (!STUDENT_NO.test(studentNo)) return { ok: false, error: "Choose who this payment is for.", fields: { student: "Choose a student." } };
+  const account = ACCOUNT_KINDS.find((k): k is AccountKind => k === raw.account && ctx.owed[k] !== undefined);
+  if (!account) return { ok: false, error: "Choose an account to put it on.", fields: { account: "Choose an account." } };
+  const amount = parseKwacha(raw.amount);
+  if (amount === undefined) return { ok: false, error: "Enter the amount to allocate in kwacha, for example 650 or 650.50.", fields: { amount: "Enter a valid amount." } };
+  if (amount > ctx.remaining) return { ok: false, error: "That is more than is left to allocate from this payment.", fields: { amount: "More than is left." } };
+  const owed = ctx.owed[account] ?? 0;
+  if (owed <= 0) return { ok: false, error: "Nothing is owed on that account.", fields: { account: "Nothing owed on this account." } };
+  if (amount > owed) return { ok: false, error: "That is more than is owed on that account.", fields: { amount: "More than is owed." } };
+  return { ok: true, value: { studentNo, account, amount } };
+}
+
+/** A bursary, waiver or discount request. It cannot be for more than the account owes. */
+export function checkWaiver(raw: { studentNo?: unknown; kind?: unknown; account?: unknown; amount?: unknown; source?: unknown; reason?: unknown; requestedBy?: unknown }, ctx: { kinds: AccountKind[]; owed: Partial<Record<AccountKind, number>> }): Checked<WaiverInput> {
+  const studentNo = typeof raw.studentNo === "string" ? raw.studentNo.trim() : "";
+  if (!STUDENT_NO.test(studentNo)) return { ok: false, error: "Choose the student.", fields: { student: "Choose a student." } };
+  const kind = WAIVER_KINDS.find((k) => k === raw.kind);
+  if (!kind) return { ok: false, error: "Choose a bursary, waiver or discount.", fields: { kind: "Choose one." } };
+  const account = kindOf(raw.account, ctx.kinds);
+  if (!account) return { ok: false, error: "Choose which account it reduces.", fields: { account: "Choose an account." } };
+  const amount = parseKwacha(raw.amount);
+  if (amount === undefined) return { ok: false, error: "Enter the amount in kwacha, for example 500.", fields: { amount: "Enter a valid amount." } };
+  const owed = ctx.owed[account] ?? 0;
+  if (owed <= 0) return { ok: false, error: "Nothing is owed on that account.", fields: { account: "Nothing owed on this account." } };
+  if (amount > owed) return { ok: false, error: "That is more than is owed on that account.", fields: { amount: "More than is owed." } };
+  const source = clean(raw.source, BURSAR_LIMITS.name);
+  if (!source) return { ok: false, error: kind === "bursary" ? "Say who funds the bursary." : "Say who is asking for it.", fields: { source: "Required." } };
+  if (source.length > BURSAR_LIMITS.name) return { ok: false, error: `That can be at most ${BURSAR_LIMITS.name} characters.`, fields: { source: `At most ${BURSAR_LIMITS.name} characters.` } };
+  const requestedBy = clean(raw.requestedBy, BURSAR_LIMITS.name);
+  if (!requestedBy) return { ok: false, error: "Say who requested it.", fields: { requestedBy: "Required." } };
+  if (requestedBy.length > BURSAR_LIMITS.name) return { ok: false, error: `That can be at most ${BURSAR_LIMITS.name} characters.`, fields: { requestedBy: `At most ${BURSAR_LIMITS.name} characters.` } };
+  const reason = checkReason(raw.reason, "it is being given");
+  if (!reason.ok) return reason;
+  return { ok: true, value: { studentNo, kind, account, amount, source, reason: reason.value, requestedBy } };
+}
+
+/** Approving or declining a request. Declining needs a note so the person who asked knows why. */
+export function checkDecision(decision: unknown, note: unknown): Checked<{ decision: "approve" | "decline"; note: string }> {
+  if (decision !== "approve" && decision !== "decline") return { ok: false, error: "Choose approve or decline." };
+  const n = checkReason(note, "it is being declined", decision === "decline");
+  if (!n.ok) return n;
+  return { ok: true, value: { decision, note: n.value } };
 }

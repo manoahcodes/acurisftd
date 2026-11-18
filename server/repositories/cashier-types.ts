@@ -29,6 +29,12 @@ export interface CashierRepository {
 
   /** Every receipt, newest first, voided ones included. */
   listReceipts(ctx: CashierContext): Promise<Receipt[]>;
+  /**
+   * Every cashier's receipts in this school, newest first, for the Bursar's
+   * pages. `ctx` says who is asking so a real implementation can authorise it;
+   * the mock also makes sure the caller's own desk exists.
+   */
+  listSchoolReceipts(ctx: CashierContext): Promise<Receipt[]>;
   /** Takes a payment today and returns the new receipt's id. */
   recordPayment(ctx: CashierContext, input: PaymentInput, now: string): Promise<Outcome>;
   /** Marks a pending mobile money or bank receipt as received. */

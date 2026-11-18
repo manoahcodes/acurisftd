@@ -1,5 +1,5 @@
 import type { InstitutionType } from "@/config/institution";
-import type { FeeItem, FeeItemInput, Outcome } from "@/types/bursar";
+import type { AccountRow, AccountKind, FeeItem, FeeItemInput, Invoice, Outcome, Payment, Statement, UnallocatedPayment, Waiver, WaiverInput } from "@/types/bursar";
 
 /**
  * Who is asking, and which school day it is. The Bursar works on the whole
@@ -38,4 +38,30 @@ export interface BursarRepository {
   saveFee(ctx: BursarContext, input: FeeItemInput, now: string): Promise<Outcome>;
   /** Turns a fee on or off without deleting it. */
   setFeeActive(ctx: BursarContext, id: string, active: boolean, now: string): Promise<Outcome>;
+
+  // Student accounts
+  /** Every student's account, in roll order. */
+  listAccounts(ctx: BursarContext): Promise<AccountRow[]>;
+  /** One student's statement, or undefined for a number that is not on the school's roll. */
+  getStatement(ctx: BursarContext, studentNo: string): Promise<Statement | undefined>;
+  /** Every payment in the school, whoever took it (the desk, the Bursar, or an allocation), newest first. Reversed ones stay listed; voided receipts do not. */
+  listPayments(ctx: BursarContext): Promise<Payment[]>;
+  listInvoices(ctx: BursarContext): Promise<Invoice[]>;
+  /**
+   * Puts a payment back on the account with a reason. It stays listed as
+   * reversed and a second line on the statement shows the money returning. A
+   * payment that was allocated from an unallocated one goes back to
+   * unallocated, so it can be given to the right student.
+   */
+  reversePayment(ctx: BursarContext, paymentId: string, reason: string, now: string): Promise<Outcome>;
+  /** Money received without a student number: open ones first, then allocated, newest first. */
+  listUnallocated(ctx: BursarContext): Promise<UnallocatedPayment[]>;
+  /** Gives all or part of an unallocated payment to one student's account. It cannot exceed what is left or what the account owes. */
+  allocatePayment(ctx: BursarContext, id: string, to: { studentNo: string; account: AccountKind; amount: number }, now: string): Promise<Outcome>;
+  /** Bursaries, waivers and discounts: pending first, then decided, newest first. */
+  listWaivers(ctx: BursarContext): Promise<Waiver[]>;
+  /** Records a request. Nothing changes on the account until it is approved. */
+  requestWaiver(ctx: BursarContext, input: WaiverInput, now: string): Promise<Outcome>;
+  /** Approves (takes the amount off the account, if it still owes that much) or declines a pending request. */
+  decideWaiver(ctx: BursarContext, id: string, decision: "approve" | "decline", note: string, now: string): Promise<Outcome>;
 }
