@@ -1,8 +1,10 @@
 import type { InstitutionType } from "@/config/institution";
 import { parseKwacha, type Checked } from "@/lib/cashier/validate";
+import { enabledMethods } from "@/lib/cashier/methods";
+import { addDays } from "@/lib/teacher/dates";
 import { bursarTermsFor } from "@/lib/bursar/terms";
 import { ACCOUNT_KINDS, type AccountKind } from "@/types/cashier";
-import { FEE_BILLINGS, FEE_FREQUENCIES, WAIVER_KINDS, type FeeItemInput, type FeeScope, type WaiverInput } from "@/types/bursar";
+import { FEE_BILLINGS, FEE_FREQUENCIES, WAIVER_KINDS, type FeeItemInput, type FeeScope, type RecordPaymentInput, type WaiverInput } from "@/types/bursar";
 
 /** Checks shared by the Bursar's server actions (which must not trust the browser) and its forms. Pure, so they are easy to test. */
 
@@ -140,4 +142,47 @@ export function checkDecision(decision: unknown, note: unknown): Checked<{ decis
   const n = checkReason(note, "it is being declined", decision === "decline");
   if (!n.ok) return n;
   return { ok: true, value: { decision, note: n.value } };
+}
+
+export type RecordContext = {
+  owed: Partial<Record<AccountKind, number>>;
+  today: string;
+  /** References already on a payment or waiting in unallocated payments, lower case, mapped to where (for the message). */
+  taken: Map<string, string>;
+};
+
+/** How far back a payment can be dated. Older than this is a correction for the books, not a payment. */
+export const BACKDATE_DAYS = 120;
+
+/**
+ * A payment as the Bursar types it. Unlike the desk, the Bursar can record
+ * bank deposits and back-date them to the day they arrived. It still cannot be
+ * more than the account owes, a mobile money or bank payment needs a reference,
+ * and a reference can only be used once, so the same deposit is not counted twice.
+ */
+export function checkRecordPayment(raw: { studentNo?: unknown; account?: unknown; method?: unknown; amount?: unknown; date?: unknown; reference?: unknown; note?: unknown }, ctx: RecordContext): Checked<RecordPaymentInput> {
+  const studentNo = typeof raw.studentNo === "string" ? raw.studentNo.trim() : "";
+  if (!STUDENT_NO.test(studentNo)) return { ok: false, error: "Choose who is paying.", fields: { student: "Choose a student." } };
+  const account = ACCOUNT_KINDS.find((k): k is AccountKind => k === raw.account && ctx.owed[k] !== undefined);
+  if (!account) return { ok: false, error: "Choose an account to pay into.", fields: { account: "Choose an account." } };
+  const method = enabledMethods().find((m) => m.id === raw.method);
+  if (!method) return { ok: false, error: "Choose how the money was paid.", fields: { method: "Choose a payment method." } };
+  const amount = parseKwacha(raw.amount);
+  if (amount === undefined) return { ok: false, error: "Enter the amount received in kwacha, for example 850 or 850.50.", fields: { amount: "Enter a valid amount." } };
+  const owed = ctx.owed[account] ?? 0;
+  if (owed <= 0) return { ok: false, error: "Nothing is owed on that account.", fields: { account: "Nothing owed on this account." } };
+  if (amount > owed) return { ok: false, error: "That is more than is owed on that account. Advance payments are not handled here.", fields: { amount: "More than is owed." } };
+  if (!isIsoDate(raw.date)) return { ok: false, error: "Enter the day the money was received.", fields: { date: "Enter a valid date." } };
+  if (raw.date > ctx.today) return { ok: false, error: "A payment cannot be dated in the future.", fields: { date: "Not in the future." } };
+  if (raw.date < addDays(ctx.today, -BACKDATE_DAYS)) return { ok: false, error: `A payment can be dated up to ${BACKDATE_DAYS} days back.`, fields: { date: `At most ${BACKDATE_DAYS} days back.` } };
+  const reference = clean(raw.reference, BURSAR_LIMITS.name);
+  if (reference.length > BURSAR_LIMITS.name) return { ok: false, error: `The reference can be at most ${BURSAR_LIMITS.name} characters.`, fields: { reference: `At most ${BURSAR_LIMITS.name} characters.` } };
+  if (method.group !== "cash") {
+    if (!reference) return { ok: false, error: "Enter the transaction or deposit reference.", fields: { reference: "Required for this method." } };
+    const where = ctx.taken.get(reference.toLowerCase());
+    if (where) return { ok: false, error: `That reference is already on ${where}.`, fields: { reference: `Already used on ${where}.` } };
+  }
+  const note = clean(raw.note, BURSAR_LIMITS.note);
+  if (note.length > BURSAR_LIMITS.note) return { ok: false, error: `The note can be at most ${BURSAR_LIMITS.note} characters.`, fields: { note: `At most ${BURSAR_LIMITS.note} characters.` } };
+  return { ok: true, value: { studentNo, account, method: method.id, amount, date: raw.date, reference: method.group === "cash" ? "" : reference, note } };
 }

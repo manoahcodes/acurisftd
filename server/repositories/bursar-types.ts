@@ -1,5 +1,5 @@
 import type { InstitutionType } from "@/config/institution";
-import type { AccountRow, AccountKind, FeeItem, FeeItemInput, Invoice, Outcome, Payment, Statement, UnallocatedPayment, Waiver, WaiverInput } from "@/types/bursar";
+import type { AccountRow, AccountKind, FeeItem, FeeItemInput, Invoice, Outcome, Payment, RecordPaymentInput, Statement, UnallocatedPayment, Waiver, WaiverInput } from "@/types/bursar";
 
 /**
  * Who is asking, and which school day it is. The Bursar works on the whole
@@ -47,6 +47,13 @@ export interface BursarRepository {
   /** Every payment in the school, whoever took it (the desk, the Bursar, or an allocation), newest first. Reversed ones stay listed; voided receipts do not. */
   listPayments(ctx: BursarContext): Promise<Payment[]>;
   listInvoices(ctx: BursarContext): Promise<Invoice[]>;
+  /**
+   * Records a payment the Bursar received (a bank deposit, a transfer, cash at
+   * the office), dated the day it arrived. It is counted straight away. Not
+   * more than the account owes, and a reference cannot be used twice, nor can
+   * one that is waiting in unallocated payments. Returns the payment's id.
+   */
+  recordPayment(ctx: BursarContext, input: RecordPaymentInput, now: string): Promise<Outcome>;
   /**
    * Puts a payment back on the account with a reason. It stays listed as
    * reversed and a second line on the statement shows the money returning. A

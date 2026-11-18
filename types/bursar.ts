@@ -90,6 +90,9 @@ export type Payment = {
   reversal?: Reversal;
 };
 
+/** A payment the Bursar records. Amount is ngwee; date is the day it was received ("YYYY-MM-DD"). */
+export type RecordPaymentInput = { studentNo: string; account: AccountKind; method: MethodId; amount: number; date: string; reference: string; note: string };
+
 export type InvoiceLine = { kind: AccountKind; name: string; amount: number };
 
 export type Invoice = {

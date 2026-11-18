@@ -1,10 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { checkAllocation, checkDecision, checkFeeItem, checkReason, checkWaiver, type RawFee } from "@/lib/bursar/validate";
+import { checkAllocation, checkDecision, checkFeeItem, checkReason, checkRecordPayment, checkWaiver, type RawFee } from "@/lib/bursar/validate";
 import { scopeLabel } from "@/lib/bursar/fees";
 import { formatKwacha } from "@/lib/money";
-import type { AccountKind, Outcome, Statement } from "@/types/bursar";
+import { METHOD_LABELS } from "@/lib/cashier/methods";
+import type { AccountKind, Outcome, Payment, Statement } from "@/types/bursar";
 import { audit, bursar } from "../repositories";
 import { getBursarSession } from "../bursar-context";
 
@@ -120,4 +121,24 @@ export async function decideWaiver(id: unknown, decision: unknown, note: unknown
     refresh();
   }
   return r;
+}
+
+export type RecordResult = ActionResult & { payment?: Payment };
+
+/** Records a payment the Bursar received. Returns the payment so its receipt can be shown at once. */
+export async function recordPayment(raw: { studentNo?: unknown; account?: unknown; method?: unknown; amount?: unknown; date?: unknown; reference?: unknown; note?: unknown }): Promise<RecordResult> {
+  const { ctx, schoolName } = await getBursarSession();
+  const studentNo = typeof raw?.studentNo === "string" ? raw.studentNo.trim() : "";
+  const [owed, existing, waiting] = await Promise.all([owedByKind(ctx, studentNo), bursar.listPayments(ctx), bursar.listUnallocated(ctx)]);
+  const taken = new Map<string, string>();
+  for (const u of waiting) if (u.status === "open") taken.set(u.reference.toLowerCase(), `unallocated payment ${u.no}`);
+  for (const p of existing) if (p.reference && p.status !== "reversed") taken.set(p.reference.toLowerCase(), p.no);
+  const checked = checkRecordPayment(raw ?? {}, { owed, today: ctx.today, taken });
+  if (!checked.ok) return { ok: false, error: checked.error, fields: checked.fields };
+  const r = await bursar.recordPayment(ctx, checked.value, new Date().toISOString());
+  if (!r.ok) return r;
+  const payment = (await bursar.listPayments(ctx)).find((p) => p.id === r.id);
+  audit.record({ user: ctx.bursarName, action: "Payment recorded", entity: `${payment?.no ?? r.id}, ${formatKwacha(checked.value.amount)} via ${METHOD_LABELS[checked.value.method]} for ${checked.value.studentNo}`, scope: ctx.tenantId, school: schoolName });
+  refresh();
+  return { ...r, payment };
 }

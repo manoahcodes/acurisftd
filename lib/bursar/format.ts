@@ -44,3 +44,9 @@ export const unallocatedRows = (rows: UnallocatedPayment[]): string[][] =>
 
 export const WAIVER_COLUMNS = ["Number", "Student number", "Student", "Type", "Account", "Amount", "From", "Requested by", "Status"];
 export const waiverRows = (rows: Waiver[]): string[][] => rows.map((w) => [w.no, w.studentNo, w.studentName, waiverKindLabel(w.kind), ACCOUNT_LABELS[w.account], formatKwacha(w.amount), w.source, w.requestedBy, waiverStatusLabel(w.status)]);
+
+export const sourceLabel = (s: Payment["source"]) => (s === "cashier" ? "Cashier desk" : s === "bursar" ? "Bursar" : "Allocated");
+
+export const PAYMENT_COLUMNS = ["Receipt", "Date", "Student number", "Student", "Account", "Method", "Reference", "Amount", "Taken by", "Status"];
+export const paymentRows = (rows: Payment[]): string[][] =>
+  rows.map((p) => [p.no, prettyDate(p.date), p.studentNo, p.studentName, ACCOUNT_LABELS[p.account], METHOD_LABELS[p.method], p.reference, formatKwacha(p.amount), `${sourceLabel(p.source)}, ${p.by}`, paymentStatusLabel(p.status)]);

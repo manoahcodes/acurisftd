@@ -3,6 +3,7 @@ import { groupsFor, sameScope, seedFeeItems } from "@/lib/bursar/fees";
 import { seedInvoices, seedPayments, seedUnallocated, seedWaivers } from "@/lib/bursar/seed";
 import { studentsFor } from "@/lib/cashier/seed";
 import type { AccountKind, FeeItem, Invoice, Payment, UnallocatedPayment, Waiver } from "@/types/bursar";
+import { methodOf } from "@/lib/cashier/methods";
 import { loadSnapshot, saveSnapshot } from "../persistence/store";
 import type { BursarContext, BursarRepository } from "./bursar-types";
 import type { CashierRepository } from "./cashier-types";
@@ -146,6 +147,31 @@ export function createMockBursarRepository(cashier: CashierRepository): BursarRe
 
     async listInvoices(ctx) {
       return stateOf(ctx).invoices.map((i) => ({ ...i, lines: i.lines.map((l) => ({ ...l })) }));
+    },
+
+    async recordPayment(ctx, input, now) {
+      const s = stateOf(ctx);
+      const st = roll(ctx).find((x) => x.no === input.studentNo);
+      if (!st) return bad("That student is not on this school's roll.");
+      if (!st.lines.some((l) => l.kind === input.account)) return bad("That account does not exist for this school.");
+      if (!methodOf(input.method)?.enabled) return bad("The school does not take payment that way.");
+      const owed = owedOf(ledgerOf(ctx), st.no, input.account);
+      if (owed <= 0) return bad("Nothing is owed on that account.");
+      if (input.amount > owed) return bad("That is more than is owed on that account.");
+      if (input.reference) {
+        const ref = input.reference.toLowerCase();
+        const used = (await payments(ctx)).find((p) => p.reference.toLowerCase() === ref && p.status !== "reversed");
+        if (used) return bad(`That reference is already on ${used.no}.`);
+        const waiting = s.unallocated.find((u) => u.reference.toLowerCase() === ref && u.status === "open");
+        if (waiting) return bad(`That reference is waiting in unallocated payments (${waiting.no}). Allocate it there instead.`);
+      }
+      const n = s.nextPayment++;
+      const at = input.date === ctx.today ? now : `${input.date}T10:00:00.000Z`;
+      const p: Payment = { id: `bp-${pad(n, 5)}`, no: `BP-${pad(n, 5)}`, source: "bursar", studentNo: st.no, studentName: st.name, group: st.group, account: input.account, method: input.method, amount: input.amount, reference: input.reference, note: input.note, status: "success", at, date: input.date, by: ctx.bursarName };
+      s.payments.push(p);
+      addOwed(ledgerOf(ctx), st.no, input.account, -input.amount);
+      save();
+      return { ok: true, id: p.id };
     },
 
     async reversePayment(ctx, paymentId, reason, now) {
