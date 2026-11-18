@@ -1,4 +1,5 @@
 import type { InstitutionType } from "@/config/institution";
+import type { FeeItem, FeeItemInput, Outcome } from "@/types/bursar";
 
 /**
  * Who is asking, and which school day it is. The Bursar works on the whole
@@ -19,10 +20,22 @@ export type BursarContext = { tenantId: string; bursarId: string; bursarName: st
  *   Cashier, Student and Parent pages also read, so every change here moves the
  *   balance everywhere.
  * - Money is never deleted. A payment is reversed with a reason and stays listed.
+ * - A fee is never deleted either: it is made inactive, so old invoices still
+ *   point at something. Two fees cannot share a name, account and scope.
  *
  * Methods are added page by page as each Bursar page is built.
  */
 export interface BursarRepository {
   /** One student's total owed and earliest due date, or undefined for a number that is not on the school's roll. */
   balanceOf(ctx: BursarContext, studentNo: string): Promise<{ balance: number; dueOn: string | null } | undefined>;
+
+  // Fee structures
+  /** The school's fee structure, in the order it was set up. Inactive fees included. */
+  listFees(ctx: BursarContext): Promise<FeeItem[]>;
+  /** The classes or programmes on the school's roll (what a fee can apply to). */
+  listGroups(ctx: BursarContext): Promise<string[]>;
+  /** Adds a fee, or changes the one named by `input.id`. Returns the fee's id. */
+  saveFee(ctx: BursarContext, input: FeeItemInput, now: string): Promise<Outcome>;
+  /** Turns a fee on or off without deleting it. */
+  setFeeActive(ctx: BursarContext, id: string, active: boolean, now: string): Promise<Outcome>;
 }
