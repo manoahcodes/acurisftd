@@ -87,6 +87,13 @@ export const mockCashierRepository: CashierRepository = {
     return [...data].filter(([k]) => k.startsWith(prefix) && k.endsWith(suffix)).flatMap(([, st]) => st.receipts).sort(newestFirst);
   },
 
+  async listSchoolCashUps(ctx) {
+    stateOf(ctx);
+    const prefix = `${ctx.tenantId}:`;
+    const suffix = `:${ctx.institutionType}`;
+    return [...data].filter(([k]) => k.startsWith(prefix) && k.endsWith(suffix)).flatMap(([, st]) => Object.values(st.cashUps)).sort((a, b) => b.date.localeCompare(a.date) || a.submittedBy.localeCompare(b.submittedBy));
+  },
+
   async recordPayment(ctx, input, now) {
     const s = stateOf(ctx);
     if (closed(s, ctx.today)) return bad("Today's cash-up has been submitted, so no more payments can be taken today.");

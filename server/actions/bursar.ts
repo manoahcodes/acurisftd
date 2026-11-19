@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { checkAllocation, checkCharge, checkDecision, checkFeeItem, checkGenerate, checkPlan, checkReason, checkReminder, checkRecordPayment, checkWaiver, type RawFee } from "@/lib/bursar/validate";
+import { checkAllocation, checkCharge, checkDecision, checkFeeItem, checkCashUpReview, checkGenerate, checkMatchTarget, checkPlan, checkReason, checkReceiveLine, checkReminder, checkRecordPayment, checkWaiver, type RawFee } from "@/lib/bursar/validate";
 import { scopeLabel } from "@/lib/bursar/fees";
+import { MAX_STATEMENT_LINES, parseStatement } from "@/lib/bursar/reconcile";
 import { formatKwacha } from "@/lib/money";
 import { METHOD_LABELS } from "@/lib/cashier/methods";
 import type { AccountKind, Outcome, Payment, Statement } from "@/types/bursar";
@@ -224,6 +225,89 @@ export async function recordReminder(raw: { studentNo?: unknown; channel?: unkno
   const r = await bursar.recordReminder(ctx, checked.value, new Date().toISOString());
   if (r.ok) {
     audit.record({ user: ctx.bursarName, action: "Reminder recorded", entity: `${checked.value.studentNo} by ${checked.value.channel}`, scope: ctx.tenantId, school: schoolName });
+    refresh();
+  }
+  return r;
+}
+
+/** Verifies a cashier's cash-up, or queries it. */
+export async function reviewCashUp(raw: { date?: unknown; cashier?: unknown; status?: unknown; note?: unknown }): Promise<ActionResult> {
+  const { ctx, schoolName } = await getBursarSession();
+  const checked = checkCashUpReview(raw ?? {});
+  if (!checked.ok) return { ok: false, error: checked.error, fields: checked.fields };
+  const r = await bursar.reviewCashUp(ctx, checked.value, new Date().toISOString());
+  if (r.ok) {
+    audit.record({ user: ctx.bursarName, action: checked.value.status === "verified" ? "Cash-up verified" : "Cash-up queried", entity: `${checked.value.cashier}, ${checked.value.date}${checked.value.note ? `: ${checked.value.note}` : ""}`, scope: ctx.tenantId, school: schoolName });
+    refresh();
+  }
+  return r;
+}
+
+export type ImportActionResult = { ok: true; added: number; duplicates: number; skipped: number } | { ok: false; error: string };
+
+/** Adds pasted statement lines. Lines that cannot be read are reported and left out; the rest are added. */
+export async function importBankLines(text: unknown): Promise<ImportActionResult> {
+  const { ctx, schoolName } = await getBursarSession();
+  if (typeof text !== "string" || !text.trim()) return { ok: false, error: "Paste the statement lines first." };
+  if (text.length > 60_000) return { ok: false, error: "That is too much to add at once." };
+  const parsed = parseStatement(text, ctx.today);
+  if (parsed.lines.length === 0) return { ok: false, error: parsed.errors[0] ? `Row ${parsed.errors[0].row}: ${parsed.errors[0].message}` : "There are no lines to add." };
+  const r = await bursar.importBankLines(ctx, parsed.lines.slice(0, MAX_STATEMENT_LINES), new Date().toISOString());
+  if (!r.ok) return r;
+  audit.record({ user: ctx.bursarName, action: "Statement lines added", entity: `${r.added} added, ${r.duplicates} already loaded, ${parsed.errors.length} unreadable`, scope: ctx.tenantId, school: schoolName });
+  refresh();
+  return { ok: true, added: r.added, duplicates: r.duplicates, skipped: parsed.errors.length };
+}
+
+/** Matches a statement line by hand to a payment or deposit for the same amount. */
+export async function matchBankLine(lineId: unknown, target: { kind?: unknown; id?: unknown }): Promise<ActionResult> {
+  const { ctx, schoolName } = await getBursarSession();
+  if (typeof lineId !== "string" || !ID.test(lineId)) return bad("That statement line is not available.");
+  const t = checkMatchTarget(target ?? {});
+  if (!t.ok) return bad(t.error);
+  const r = await bursar.matchBankLine(ctx, lineId, t.value, new Date().toISOString());
+  if (r.ok) {
+    audit.record({ user: ctx.bursarName, action: "Statement line matched", entity: `${lineId} to ${t.value.kind} ${t.value.id}`, scope: ctx.tenantId, school: schoolName });
+    refresh();
+  }
+  return r;
+}
+
+/** Sets a statement line aside, with a reason. */
+export async function ignoreBankLine(lineId: unknown, reason: unknown): Promise<ActionResult> {
+  const { ctx, schoolName } = await getBursarSession();
+  if (typeof lineId !== "string" || !ID.test(lineId)) return bad("That statement line is not available.");
+  const why = checkReason(reason, "the line is being set aside");
+  if (!why.ok) return { ok: false, error: why.error, fields: why.fields };
+  const r = await bursar.ignoreBankLine(ctx, lineId, why.value, new Date().toISOString());
+  if (r.ok) {
+    audit.record({ user: ctx.bursarName, action: "Statement line set aside", entity: `${lineId}: ${why.value}`, scope: ctx.tenantId, school: schoolName });
+    refresh();
+  }
+  return r;
+}
+
+/** Puts a set-aside line back, or removes a hand match. */
+export async function restoreBankLine(lineId: unknown): Promise<ActionResult> {
+  const { ctx, schoolName } = await getBursarSession();
+  if (typeof lineId !== "string" || !ID.test(lineId)) return bad("That statement line is not available.");
+  const r = await bursar.restoreBankLine(ctx, lineId);
+  if (r.ok) {
+    audit.record({ user: ctx.bursarName, action: "Statement line restored", entity: lineId, scope: ctx.tenantId, school: schoolName });
+    refresh();
+  }
+  return r;
+}
+
+/** Takes a deposit that matches nothing in as an unallocated payment. */
+export async function receiveBankLine(lineId: unknown, raw: { method?: unknown; payer?: unknown }): Promise<ActionResult> {
+  const { ctx, schoolName } = await getBursarSession();
+  if (typeof lineId !== "string" || !ID.test(lineId)) return bad("That statement line is not available.");
+  const checked = checkReceiveLine(raw ?? {});
+  if (!checked.ok) return { ok: false, error: checked.error, fields: checked.fields };
+  const r = await bursar.receiveBankLine(ctx, lineId, checked.value);
+  if (r.ok) {
+    audit.record({ user: ctx.bursarName, action: "Deposit taken in as unallocated", entity: `${lineId} as ${r.id}`, scope: ctx.tenantId, school: schoolName });
     refresh();
   }
   return r;

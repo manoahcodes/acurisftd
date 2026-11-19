@@ -1,6 +1,7 @@
 import type { InstitutionType } from "@/config/institution";
+import type { CashUp } from "@/types/cashier";
 import type { ChargeInput } from "@/lib/bursar/validate";
-import type { AccountRow, AccountKind, GenerateInput, FeeItem, FeeItemInput, Invoice, Outcome, PaymentPlan, Payment, PlanInput, RecordPaymentInput, Reminder, ReminderChannel, Statement, UnallocatedPayment, Waiver, WaiverInput } from "@/types/bursar";
+import type { AccountRow, AccountKind, GenerateInput, FeeItem, FeeItemInput, Invoice, Outcome, BankInput, BankLine, CashUpReview, MatchTarget, MethodId, MissingCashUp, PaymentPlan, Payment, PlanInput, RecordPaymentInput, Reminder, ReminderChannel, Statement, UnallocatedPayment, Waiver, WaiverInput } from "@/types/bursar";
 
 /**
  * Who is asking, and which school day it is. The Bursar works on the whole
@@ -100,4 +101,25 @@ export interface BursarRepository {
   listReminders(ctx: BursarContext): Promise<Reminder[]>;
   /** Records that a debtor was chased. The mock sends nothing. */
   recordReminder(ctx: BursarContext, input: { studentNo: string; channel: ReminderChannel; note: string }, now: string): Promise<Outcome>;
+
+  // Reconciliation
+  /** Every cashier's submitted cash-ups with the Bursar's review of each, and the days cash was taken but never cashed up. */
+  listCashUps(ctx: BursarContext): Promise<CashUpBook>;
+  /** Verifies a cash-up, or queries it with a note. Can be changed later; the latest review stands. */
+  reviewCashUp(ctx: BursarContext, input: { date: string; cashier: string; status: "verified" | "queried"; note: string }, now: string): Promise<Outcome>;
+  /** Statement lines, newest first. Matching is worked out from these and the payments, not stored. */
+  listBankLines(ctx: BursarContext): Promise<BankLine[]>;
+  /** Adds statement lines. A reference already loaded is skipped, so loading the same statement twice adds nothing. */
+  importBankLines(ctx: BursarContext, lines: BankInput[], now: string): Promise<ImportOutcome>;
+  /** Matches a line by hand to a payment or deposit for exactly the same amount that no other line has. */
+  matchBankLine(ctx: BursarContext, lineId: string, target: { kind: MatchTarget["kind"]; id: string }, now: string): Promise<Outcome>;
+  /** Sets a line aside with a reason (a bank charge, a transfer that is not school money). It stays listed. */
+  ignoreBankLine(ctx: BursarContext, lineId: string, reason: string, now: string): Promise<Outcome>;
+  /** Puts an ignored line back, and removes a match made by hand. */
+  restoreBankLine(ctx: BursarContext, lineId: string): Promise<Outcome>;
+  /** Takes a line that matches nothing in as an unallocated payment, ready to allocate to a student. */
+  receiveBankLine(ctx: BursarContext, lineId: string, input: { method: MethodId; payer: string }): Promise<Outcome>;
 }
+
+export type CashUpBook = { rows: Array<{ cashUp: CashUp; review: CashUpReview | undefined }>; missing: MissingCashUp[] };
+export type ImportOutcome = { ok: true; added: number; duplicates: number } | { ok: false; error: string };

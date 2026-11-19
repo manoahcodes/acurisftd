@@ -35,6 +35,8 @@ export interface CashierRepository {
    * the mock also makes sure the caller's own desk exists.
    */
   listSchoolReceipts(ctx: CashierContext): Promise<Receipt[]>;
+  /** Every cashier's submitted cash-ups in this school, newest first, for the Bursar to review. */
+  listSchoolCashUps(ctx: CashierContext): Promise<CashUp[]>;
   /** Takes a payment today and returns the new receipt's id. */
   recordPayment(ctx: CashierContext, input: PaymentInput, now: string): Promise<Outcome>;
   /** Marks a pending mobile money or bank receipt as received. */

@@ -2,9 +2,10 @@ import { accountRow, statementEntries } from "@/lib/bursar/accounts";
 import { buildSchedule } from "@/lib/bursar/plans";
 import { invoiceViews, planInvoices } from "@/lib/bursar/invoices";
 import { groupsFor, inEffect, sameScope, scopeMatches, seedFeeItems } from "@/lib/bursar/fees";
-import { seedInvoices, seedPayments, seedUnallocated, seedWaivers } from "@/lib/bursar/seed";
+import { seedBankLines, seedInvoices, seedPayments, seedUnallocated, seedWaivers } from "@/lib/bursar/seed";
 import { studentsFor } from "@/lib/cashier/seed";
-import type { AccountKind, FeeItem, Invoice, Payment, Reminder, UnallocatedPayment, Waiver } from "@/types/bursar";
+import { missingCashUps, normRef, reviewOf, targetsOf, reconcile } from "@/lib/bursar/reconcile";
+import type { AccountKind, BankLine, CashUpReview, FeeItem, Invoice, Payment, Reminder, UnallocatedPayment, Waiver } from "@/types/bursar";
 import { methodOf } from "@/lib/cashier/methods";
 import { loadSnapshot, saveSnapshot } from "../persistence/store";
 import type { BursarContext, BursarRepository } from "./bursar-types";
@@ -30,6 +31,9 @@ type State = {
   nextInvoice: number;
   reminders: Reminder[];
   nextPlan: number;
+  bankLines: BankLine[];
+  nextLine: number;
+  cashUpReviews: CashUpReview[];
 };
 
 const g = globalThis as unknown as { __acurisBursar?: Map<string, State> };
@@ -58,6 +62,9 @@ function stateOf(ctx: BursarContext): State {
   s.nextWaiver ??= s.waivers.length + 1;
   s.nextInvoice ??= s.invoices.length + 1;
   s.reminders ??= [];
+  s.bankLines ??= seedBankLines();
+  s.nextLine ??= s.bankLines.length + 1;
+  s.cashUpReviews ??= [];
   s.nextPlan ??= listPlans(ledgerOf(ctx)).length + 1;
   save();
   return s;
@@ -254,6 +261,100 @@ export function createMockBursarRepository(cashier: CashierRepository): BursarRe
       s.reminders.push(r);
       save();
       return { ok: true, id: r.id };
+    },
+
+    async listCashUps(ctx) {
+      const s = stateOf(ctx);
+      const cc = cashierCtx(ctx);
+      const [cashUps, receipts] = await Promise.all([cashier.listSchoolCashUps(cc), cashier.listSchoolReceipts(cc)]);
+      return { rows: cashUps.map((cashUp) => ({ cashUp, review: reviewOf(s.cashUpReviews, cashUp.date, cashUp.submittedBy) })), missing: missingCashUps(receipts, cashUps, ctx.today) };
+    },
+
+    async reviewCashUp(ctx, input, now) {
+      const s = stateOf(ctx);
+      const cashUp = (await cashier.listSchoolCashUps(cashierCtx(ctx))).find((c) => c.date === input.date && c.submittedBy === input.cashier);
+      if (!cashUp) return bad("That cash-up is not in this school's records.");
+      const review: CashUpReview = { date: input.date, cashier: input.cashier, status: input.status, note: input.note, by: ctx.bursarName, at: now };
+      s.cashUpReviews = [...s.cashUpReviews.filter((r) => !(r.date === input.date && r.cashier === input.cashier)), review];
+      save();
+      return { ok: true, id: `${input.date}|${input.cashier}` };
+    },
+
+    async listBankLines(ctx) {
+      return stateOf(ctx).bankLines.map((l) => ({ ...l })).sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+    },
+
+    async importBankLines(ctx, lines, now) {
+      const s = stateOf(ctx);
+      if (lines.length === 0) return bad("There are no lines to add.");
+      const seen = new Set(s.bankLines.map((l) => normRef(l.reference)));
+      let added = 0;
+      let duplicates = 0;
+      for (const l of lines) {
+        const key = normRef(l.reference);
+        if (seen.has(key)) {
+          duplicates++;
+          continue;
+        }
+        seen.add(key);
+        s.bankLines.push({ id: `bl-${pad(s.nextLine++, 4)}`, date: l.date, reference: l.reference, amount: l.amount, description: l.description, importedAt: now, importedBy: ctx.bursarName });
+        added++;
+      }
+      if (added) save();
+      return { ok: true, added, duplicates };
+    },
+
+    async matchBankLine(ctx, lineId, target) {
+      const s = stateOf(ctx);
+      const line = s.bankLines.find((l) => l.id === lineId);
+      if (!line) return bad("That statement line is not in this school's records.");
+      if (line.ignored) return bad("Put that line back before matching it.");
+      const targets = targetsOf(await payments(ctx), s.unallocated);
+      const views = reconcile(s.bankLines, targets);
+      if (views.find((v) => v.line.id === lineId)?.status === "matched") return bad("That line is already matched.");
+      const t = targets.find((x) => x.kind === target.kind && x.id === target.id);
+      if (!t) return bad("That payment is not in this school's records.");
+      if (views.some((v) => v.status === "matched" && v.target?.kind === t.kind && v.target.id === t.id)) return bad("That payment is already matched to another line.");
+      if (t.amount !== line.amount) return bad("The amounts differ, so these cannot be matched. Correct the payment first.");
+      line.matchedTo = { kind: t.kind, id: t.id };
+      save();
+      return { ok: true, id: line.id };
+    },
+
+    async ignoreBankLine(ctx, lineId, reason, now) {
+      const s = stateOf(ctx);
+      const line = s.bankLines.find((l) => l.id === lineId);
+      if (!line) return bad("That statement line is not in this school's records.");
+      if (line.ignored) return bad("That line is already set aside.");
+      const view = reconcile(s.bankLines, targetsOf(await payments(ctx), s.unallocated)).find((v) => v.line.id === lineId);
+      if (view?.status === "matched") return bad("That line is matched to a payment, so it cannot be set aside.");
+      line.ignored = { reason, at: now, by: ctx.bursarName };
+      delete line.matchedTo;
+      save();
+      return { ok: true, id: line.id };
+    },
+
+    async restoreBankLine(ctx, lineId) {
+      const s = stateOf(ctx);
+      const line = s.bankLines.find((l) => l.id === lineId);
+      if (!line) return bad("That statement line is not in this school's records.");
+      if (!line.ignored && !line.matchedTo) return bad("There is nothing to undo on that line.");
+      delete line.ignored;
+      delete line.matchedTo;
+      save();
+      return { ok: true, id: line.id };
+    },
+
+    async receiveBankLine(ctx, lineId, input) {
+      const s = stateOf(ctx);
+      const line = s.bankLines.find((l) => l.id === lineId);
+      if (!line) return bad("That statement line is not in this school's records.");
+      const view = reconcile(s.bankLines, targetsOf(await payments(ctx), s.unallocated)).find((v) => v.line.id === lineId);
+      if (view?.status !== "unmatched") return bad(view?.status === "mismatch" ? "That reference is already on a payment for a different amount. Sort that out first." : "Only a line that matches nothing can be taken in.");
+      const n = s.unallocated.reduce((m, u) => Math.max(m, Number(u.id.replace(/\D/g, "")) || 0), 0) + 1;
+      s.unallocated.push({ id: `up-${pad(n, 4)}`, no: `UP-${pad(n, 4)}`, date: line.date, method: input.method, amount: line.amount, remaining: line.amount, reference: line.reference, payer: input.payer || line.description, note: "From the bank statement", status: "open", allocations: [] });
+      save();
+      return { ok: true, id: `up-${pad(n, 4)}` };
     },
 
     async recordPayment(ctx, input, now) {

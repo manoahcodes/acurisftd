@@ -3,7 +3,7 @@ import { RECEIPT_SEED, studentsFor } from "@/lib/cashier/seed";
 import { ACCOUNT_LABELS } from "@/lib/cashier/terms";
 import { bursarTermsFor } from "@/lib/bursar/terms";
 import type { AccountKind } from "@/types/cashier";
-import type { Invoice, InvoiceLine, Payment, UnallocatedPayment, Waiver } from "@/types/bursar";
+import type { BankLine, Invoice, InvoiceLine, Payment, UnallocatedPayment, Waiver } from "@/types/bursar";
 
 /**
  * Sample records for the Bursar until a real database is connected. They are
@@ -108,4 +108,29 @@ export function seedInvoices(type: InstitutionType): Invoice[] {
     });
   }
   return out;
+}
+
+/**
+ * A statement the Bursar has already loaded. Most lines match the desk's
+ * receipts and the unallocated deposit; one is for a different amount, and two
+ * are money the books know nothing about (a deposit with no payment, and a bank
+ * charge to ignore).
+ */
+export function seedBankLines(): BankLine[] {
+  const l = (n: number, date: string, reference: string, kwacha: number, description: string): BankLine => ({
+    id: `bl-${String(n).padStart(4, "0")}`, date, reference, amount: K(kwacha), description, importedAt: `${date}T18:00:00+02:00`, importedBy: "Finance office",
+  });
+  return [
+    l(1, "2026-11-15", "MP261115.0930.B07", 700, "MTN MoMo collection"),
+    l(2, "2026-11-16", "MP261116.0810.A41", 500, "MTN MoMo collection"),
+    l(3, "2026-11-16", "ZNC-778213", 1200, "ZNC deposit"),
+    l(4, "2026-11-16", "AM-5513902", 400, "Airtel collection"),
+    l(5, "2026-11-16", "AM-5514417", 300, "Airtel collection"),
+    l(6, "2026-11-16", "ZNC-778290", 650, "ZNC deposit"),
+    l(7, "2026-11-12", "ZNC-778301", 1200, "ZNC deposit"),
+    l(8, "2026-11-16", "ZNC-778350", 800, "ZNC deposit, no student named"),
+    l(9, "2026-11-16", "BANK-CHG-1116", 15, "Bank charges reversal"),
+    l(10, "2026-11-14", "MP261114.1215.C22", 650, "MTN MoMo collection"),
+    l(11, "2026-11-16", "AM-5513977", 500, "Airtel collection"),
+  ];
 }

@@ -232,3 +232,36 @@ export type Debtor = {
   plan: PaymentPlan | undefined;
   lastReminder: Reminder | undefined;
 };
+
+// ---- Reconciliation ----
+
+/** A cash-up the cashier submitted, and what the Bursar made of it. */
+export type CashUpReview = { date: string; cashier: string; status: "verified" | "queried"; note: string; by: string; at: string };
+
+/** A day with cash taken that the cashier has not counted and submitted. */
+export type MissingCashUp = { date: string; cashier: string; expectedCash: number };
+
+/** One line of a bank or mobile money statement, as the Bursar entered it. Never deleted; a line that does not belong is ignored with a reason. */
+export type BankLine = {
+  id: string;
+  date: string;
+  reference: string;
+  /** Ngwee, money in. */
+  amount: number;
+  description: string;
+  importedAt: string;
+  importedBy: string;
+  /** A match the Bursar made by hand. Matches by reference and amount are worked out, not stored. */
+  matchedTo?: { kind: "payment" | "unallocated"; id: string };
+  ignored?: { reason: string; at: string; by: string };
+};
+
+export type BankInput = { date: string; reference: string; amount: number; description: string };
+
+/** A payment or unallocated deposit a statement line can be matched to. */
+export type MatchTarget = { kind: "payment" | "unallocated"; id: string; no: string; date: string; amount: number; method: MethodId; reference: string; who: string; status: "success" | "pending" | "open" | "allocated" };
+
+/** Matched: the statement and the books agree. Mismatch: same reference, different amount. Unmatched: money in the bank the books do not know about. */
+export type LineStatus = "matched" | "mismatch" | "unmatched" | "ignored";
+
+export type LineView = { line: BankLine; status: LineStatus; target?: MatchTarget; manual?: boolean };

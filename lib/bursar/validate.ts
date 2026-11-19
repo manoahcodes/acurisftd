@@ -3,7 +3,7 @@ import { parseKwacha, type Checked } from "@/lib/cashier/validate";
 import { enabledMethods } from "@/lib/cashier/methods";
 import { addDays } from "@/lib/teacher/dates";
 import { bursarTermsFor } from "@/lib/bursar/terms";
-import { ACCOUNT_KINDS, type AccountKind } from "@/types/cashier";
+import { ACCOUNT_KINDS, type AccountKind, type MethodId } from "@/types/cashier";
 import { FEE_BILLINGS, FEE_FREQUENCIES, REMINDER_CHANNELS, WAIVER_KINDS, type FeeItemInput, type FeeScope, type GenerateInput, type PlanInput, type RecordPaymentInput, type WaiverInput } from "@/types/bursar";
 
 /** Checks shared by the Bursar's server actions (which must not trust the browser) and its forms. Pure, so they are easy to test. */
@@ -255,4 +255,37 @@ export function checkReminder(raw: { studentNo?: unknown; channel?: unknown; not
   const note = clean(raw.note, BURSAR_LIMITS.note);
   if (note.length > BURSAR_LIMITS.note) return { ok: false, error: `The note can be at most ${BURSAR_LIMITS.note} characters.`, fields: { note: `At most ${BURSAR_LIMITS.note} characters.` } };
   return { ok: true, value: { studentNo, channel, note } };
+}
+
+export type ReviewInput = { date: string; cashier: string; status: "verified" | "queried"; note: string };
+
+/** Signing off a cash-up, or querying it. A query must say what is wrong. */
+export function checkCashUpReview(raw: { date?: unknown; cashier?: unknown; status?: unknown; note?: unknown }): Checked<ReviewInput> {
+  if (!isIsoDate(raw.date)) return { ok: false, error: "Choose the cash-up.", fields: { date: "Choose a cash-up." } };
+  const cashier = clean(raw.cashier, BURSAR_LIMITS.name);
+  if (!cashier || cashier.length > BURSAR_LIMITS.name) return { ok: false, error: "Choose the cash-up.", fields: { cashier: "Choose a cash-up." } };
+  const status = raw.status === "verified" || raw.status === "queried" ? raw.status : undefined;
+  if (!status) return { ok: false, error: "Choose verify or query.", fields: { status: "Choose one." } };
+  const note = clean(raw.note, BURSAR_LIMITS.note);
+  if (status === "queried" && !note) return { ok: false, error: "Say what needs explaining.", fields: { note: "A note is required to query a cash-up." } };
+  if (note.length > BURSAR_LIMITS.note) return { ok: false, error: `The note can be at most ${BURSAR_LIMITS.note} characters.`, fields: { note: `At most ${BURSAR_LIMITS.note} characters.` } };
+  return { ok: true, value: { date: raw.date, cashier, status, note } };
+}
+
+const TARGET_KINDS = ["payment", "unallocated"] as const;
+const REF_ID = /^[A-Za-z0-9_-]{1,80}$/;
+
+export function checkMatchTarget(raw: { kind?: unknown; id?: unknown }): Checked<{ kind: (typeof TARGET_KINDS)[number]; id: string }> {
+  const kind = TARGET_KINDS.find((k) => k === raw.kind);
+  if (!kind || typeof raw.id !== "string" || !REF_ID.test(raw.id)) return { ok: false, error: "Choose the payment to match." };
+  return { ok: true, value: { kind, id: raw.id } };
+}
+
+/** Taking a deposit that matches nothing in as an unallocated payment, so it can be allocated to a student. */
+export function checkReceiveLine(raw: { method?: unknown; payer?: unknown }): Checked<{ method: MethodId; payer: string }> {
+  const method = enabledMethods().find((m) => m.id === raw.method && m.group !== "cash");
+  if (!method) return { ok: false, error: "Choose whether it came by bank or mobile money.", fields: { method: "Choose one." } };
+  const payer = clean(raw.payer, BURSAR_LIMITS.name);
+  if (payer.length > BURSAR_LIMITS.name) return { ok: false, error: `That can be at most ${BURSAR_LIMITS.name} characters.`, fields: { payer: `At most ${BURSAR_LIMITS.name} characters.` } };
+  return { ok: true, value: { method: method.id, payer } };
 }

@@ -4,6 +4,7 @@ import { ACCOUNT_LABELS } from "@/lib/cashier/terms";
 import { inEffect, scopeLabel } from "./fees";
 import { METHOD_LABELS } from "@/lib/cashier/methods";
 import { BUCKET_LABEL } from "./debtors";
+import type { LineView } from "@/types/bursar";
 import type { AccountRow, Debtor, FeeItem, InvoiceStatus, InvoiceView, Payment, StatementEntry, UnallocatedPayment, Waiver } from "@/types/bursar";
 
 /** Wording and table rows for the Bursar pages. Pure. */
@@ -63,3 +64,9 @@ export const CHANNEL_LABEL: Record<"sms" | "email" | "call" | "letter", string> 
 export const DEBTOR_COLUMNS = ["Student number", "Name", "Class or programme", "Owed", "Due", "Days overdue", "Ageing", "Plan", "Last reminder"];
 export const debtorRows = (rows: Debtor[]): string[][] =>
   rows.map((d) => [d.account.no, d.account.name, d.account.group, formatKwacha(d.account.owed), d.account.dueOn ? prettyDate(d.account.dueOn) : "", String(d.daysOverdue), BUCKET_LABEL[d.bucket], d.plan ? "Active" : "None", d.lastReminder ? `${prettyDate(d.lastReminder.at.slice(0, 10))} (${CHANNEL_LABEL[d.lastReminder.channel]})` : ""]);
+
+export const LINE_STATUS_LABEL: Record<LineView["status"], string> = { matched: "Matched", mismatch: "Amount differs", unmatched: "Not in the books", ignored: "Set aside" };
+
+export const STATEMENT_LINE_COLUMNS = ["Date", "Reference", "Amount", "Description", "Status", "Matched to", "Note"];
+export const statementLineRows = (rows: LineView[]): string[][] =>
+  rows.map((v) => [prettyDate(v.line.date), v.line.reference, formatKwacha(v.line.amount), v.line.description, LINE_STATUS_LABEL[v.status], v.target ? `${v.target.no} ${v.target.who}` : "", v.line.ignored?.reason ?? (v.status === "mismatch" && v.target ? `Books show ${formatKwacha(v.target.amount)}` : "")]);
