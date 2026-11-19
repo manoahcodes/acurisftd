@@ -4,7 +4,7 @@ import { enabledMethods } from "@/lib/cashier/methods";
 import { addDays } from "@/lib/teacher/dates";
 import { bursarTermsFor } from "@/lib/bursar/terms";
 import { ACCOUNT_KINDS, type AccountKind } from "@/types/cashier";
-import { FEE_BILLINGS, FEE_FREQUENCIES, WAIVER_KINDS, type FeeItemInput, type FeeScope, type GenerateInput, type RecordPaymentInput, type WaiverInput } from "@/types/bursar";
+import { FEE_BILLINGS, FEE_FREQUENCIES, REMINDER_CHANNELS, WAIVER_KINDS, type FeeItemInput, type FeeScope, type GenerateInput, type PlanInput, type RecordPaymentInput, type WaiverInput } from "@/types/bursar";
 
 /** Checks shared by the Bursar's server actions (which must not trust the browser) and its forms. Pure, so they are easy to test. */
 
@@ -220,4 +220,39 @@ export function checkCharge(raw: { studentNo?: unknown; feeId?: unknown; period?
   if (!isIsoDate(raw.dueOn)) return { ok: false, error: "Enter the date it falls due.", fields: { dueOn: "Enter a valid date." } };
   if (raw.dueOn < env.today) return { ok: false, error: "The due date cannot be in the past.", fields: { dueOn: "Not in the past." } };
   return { ok: true, value: { studentNo, feeId, period, dueOn: raw.dueOn } };
+}
+
+export const PLAN_COUNTS = { min: 2, max: 12 };
+/** How far ahead the first instalment can be. */
+export const PLAN_START_DAYS = 90;
+
+/**
+ * A payment plan for what a student owes: equal monthly instalments, from two
+ * to twelve, the first no earlier than today and no more than 90 days ahead.
+ * The student must owe something, and one plan at a time.
+ */
+export function checkPlan(raw: { studentNo?: unknown; count?: unknown; firstDueOn?: unknown; note?: unknown }, env: { owed: number; today: string; hasActivePlan: boolean }): Checked<PlanInput> {
+  const studentNo = typeof raw.studentNo === "string" ? raw.studentNo.trim() : "";
+  if (!STUDENT_NO.test(studentNo)) return { ok: false, error: "Choose the student.", fields: { student: "Choose a student." } };
+  if (env.owed <= 0) return { ok: false, error: "That student owes nothing, so there is nothing to put on a plan.", fields: { student: "Owes nothing." } };
+  if (env.hasActivePlan) return { ok: false, error: "That student already has an active plan. Cancel it first to agree a new one.", fields: { student: "Already on a plan." } };
+  const count = typeof raw.count === "number" ? raw.count : Number(raw.count);
+  if (!Number.isInteger(count) || count < PLAN_COUNTS.min || count > PLAN_COUNTS.max) return { ok: false, error: `Choose ${PLAN_COUNTS.min} to ${PLAN_COUNTS.max} instalments.`, fields: { count: `${PLAN_COUNTS.min} to ${PLAN_COUNTS.max}.` } };
+  if (count > env.owed) return { ok: false, error: "There are not enough ngwee owed to split that many ways.", fields: { count: "Too many instalments." } };
+  if (!isIsoDate(raw.firstDueOn)) return { ok: false, error: "Enter the date of the first instalment.", fields: { firstDueOn: "Enter a valid date." } };
+  if (raw.firstDueOn < env.today) return { ok: false, error: "The first instalment cannot be in the past.", fields: { firstDueOn: "Not in the past." } };
+  if (raw.firstDueOn > addDays(env.today, PLAN_START_DAYS)) return { ok: false, error: `The first instalment must be within ${PLAN_START_DAYS} days.`, fields: { firstDueOn: `Within ${PLAN_START_DAYS} days.` } };
+  const note = clean(raw.note, BURSAR_LIMITS.note);
+  if (note.length > BURSAR_LIMITS.note) return { ok: false, error: `The note can be at most ${BURSAR_LIMITS.note} characters.`, fields: { note: `At most ${BURSAR_LIMITS.note} characters.` } };
+  return { ok: true, value: { studentNo, count, firstDueOn: raw.firstDueOn, note } };
+}
+
+export function checkReminder(raw: { studentNo?: unknown; channel?: unknown; note?: unknown }): Checked<{ studentNo: string; channel: (typeof REMINDER_CHANNELS)[number]; note: string }> {
+  const studentNo = typeof raw.studentNo === "string" ? raw.studentNo.trim() : "";
+  if (!STUDENT_NO.test(studentNo)) return { ok: false, error: "Choose the student.", fields: { student: "Choose a student." } };
+  const channel = REMINDER_CHANNELS.find((c) => c === raw.channel);
+  if (!channel) return { ok: false, error: "Choose how they were contacted.", fields: { channel: "Choose one." } };
+  const note = clean(raw.note, BURSAR_LIMITS.note);
+  if (note.length > BURSAR_LIMITS.note) return { ok: false, error: `The note can be at most ${BURSAR_LIMITS.note} characters.`, fields: { note: `At most ${BURSAR_LIMITS.note} characters.` } };
+  return { ok: true, value: { studentNo, channel, note } };
 }

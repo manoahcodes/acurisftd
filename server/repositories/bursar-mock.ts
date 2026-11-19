@@ -1,14 +1,15 @@
 import { accountRow, statementEntries } from "@/lib/bursar/accounts";
+import { buildSchedule } from "@/lib/bursar/plans";
 import { invoiceViews, planInvoices } from "@/lib/bursar/invoices";
 import { groupsFor, inEffect, sameScope, scopeMatches, seedFeeItems } from "@/lib/bursar/fees";
 import { seedInvoices, seedPayments, seedUnallocated, seedWaivers } from "@/lib/bursar/seed";
 import { studentsFor } from "@/lib/cashier/seed";
-import type { AccountKind, FeeItem, Invoice, Payment, UnallocatedPayment, Waiver } from "@/types/bursar";
+import type { AccountKind, FeeItem, Invoice, Payment, Reminder, UnallocatedPayment, Waiver } from "@/types/bursar";
 import { methodOf } from "@/lib/cashier/methods";
 import { loadSnapshot, saveSnapshot } from "../persistence/store";
 import type { BursarContext, BursarRepository } from "./bursar-types";
 import type { CashierRepository } from "./cashier-types";
-import { addOwed, baseDueOf, dueOf, listPlans, markReversed, owedOf, resetLedger, reversalOf, setDue, type LedgerScope } from "./ledger-store";
+import { addOwed, baseDueOf, dueOf, listPlans, markReversed, owedOf, positionOf, resetLedger, reversalOf, savePlan, setDue, type LedgerScope } from "./ledger-store";
 
 /**
  * Bursar data per school, kept in memory and saved to the SQLite file like the
@@ -27,6 +28,8 @@ type State = {
   nextPayment: number;
   nextWaiver: number;
   nextInvoice: number;
+  reminders: Reminder[];
+  nextPlan: number;
 };
 
 const g = globalThis as unknown as { __acurisBursar?: Map<string, State> };
@@ -54,6 +57,8 @@ function stateOf(ctx: BursarContext): State {
   s.nextPayment ??= s.payments.length + 1;
   s.nextWaiver ??= s.waivers.length + 1;
   s.nextInvoice ??= s.invoices.length + 1;
+  s.reminders ??= [];
+  s.nextPlan ??= listPlans(ledgerOf(ctx)).length + 1;
   save();
   return s;
 }
@@ -206,6 +211,49 @@ export function createMockBursarRepository(cashier: CashierRepository): BursarRe
       inv.cancelled = { reason, at: now, by: ctx.bursarName };
       save();
       return { ok: true, id: inv.id };
+    },
+
+    async listPlans(ctx) {
+      stateOf(ctx);
+      const rank = (p: { status: string }) => (p.status === "active" ? 0 : 1);
+      return listPlans(ledgerOf(ctx)).sort((a, b) => rank(a) - rank(b) || b.createdAt.localeCompare(a.createdAt));
+    },
+
+    async createPlan(ctx, input, now) {
+      const s = stateOf(ctx);
+      const st = roll(ctx).find((x) => x.no === input.studentNo);
+      if (!st) return bad("That student is not on this school's roll.");
+      const { balance } = positionOf(ledgerOf(ctx), st.no);
+      if (balance <= 0) return bad("That student owes nothing.");
+      if (listPlans(ledgerOf(ctx)).some((p) => p.studentNo === st.no && p.status === "active")) return bad("That student already has an active plan.");
+      if (input.count > balance) return bad("There are not enough ngwee owed to split that many ways.");
+      const id = `plan-${pad(s.nextPlan++, 4)}`;
+      savePlan(ledgerOf(ctx), { id, studentNo: st.no, startBalance: balance, instalments: buildSchedule(balance, input.count, input.firstDueOn), note: input.note, status: "active", createdAt: now, createdBy: ctx.bursarName });
+      save();
+      return { ok: true, id };
+    },
+
+    async cancelPlan(ctx, planId, reason, now) {
+      const plan = listPlans(ledgerOf(ctx)).find((p) => p.id === planId);
+      if (!plan) return bad("That plan is not in this school's records.");
+      if (plan.status !== "active") return bad("That plan has already ended.");
+      savePlan(ledgerOf(ctx), { ...plan, status: "cancelled", cancelledAt: now, cancelReason: reason });
+      return { ok: true, id: plan.id };
+    },
+
+    async listReminders(ctx) {
+      return stateOf(ctx).reminders.map((r) => ({ ...r })).sort((a, b) => b.at.localeCompare(a.at));
+    },
+
+    async recordReminder(ctx, input, now) {
+      const s = stateOf(ctx);
+      const st = roll(ctx).find((x) => x.no === input.studentNo);
+      if (!st) return bad("That student is not on this school's roll.");
+      if (positionOf(ledgerOf(ctx), st.no).balance <= 0) return bad("That student owes nothing.");
+      const r: Reminder = { id: `rem-${pad(s.reminders.length + 1, 5)}`, studentNo: st.no, at: now, by: ctx.bursarName, channel: input.channel, note: input.note };
+      s.reminders.push(r);
+      save();
+      return { ok: true, id: r.id };
     },
 
     async recordPayment(ctx, input, now) {

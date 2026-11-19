@@ -1,13 +1,14 @@
 import { cache } from "react";
 import { connection } from "next/server";
 import { todayIn } from "@/lib/format";
+import { DEFAULT_FEE_POLICY, isFeePolicy, type FeePolicy } from "@/lib/fee-policy";
 import { bursarTermsFor, type BursarTerms } from "@/lib/bursar/terms";
 import { getDashboardSchool } from "./queries/dashboard";
 import { getResolvedTheme } from "./queries/theme";
-import { session } from "./repositories";
+import { session, tenantDirectory } from "./repositories";
 import type { BursarContext } from "./repositories/bursar-types";
 
-export type BursarSession = { ctx: BursarContext; terms: BursarTerms; timezone: string; schoolName: string; campus: string };
+export type BursarSession = { ctx: BursarContext; terms: BursarTerms; timezone: string; schoolName: string; campus: string; feePolicy: FeePolicy };
 
 /**
  * The signed-in bursar, the school whose fees they run, the wording for it and
@@ -24,11 +25,13 @@ export const getBursarSession = cache(async (): Promise<BursarSession> => {
   if (!user) throw new Error("Not signed in.");
   const school = (await getDashboardSchool("bursar")) ?? user.tenant;
   const { branding } = await getResolvedTheme("bursar");
+  const tenant = (await tenantDirectory.list()).find((t) => t.id === school.tenantId);
   return {
     ctx: { tenantId: school.tenantId, bursarId: user.id, bursarName: user.name, institutionType: school.institutionType, today: todayIn(branding.timezone).iso },
     terms: bursarTermsFor(school.institutionType),
     timezone: branding.timezone,
     schoolName: school.tenantName,
     campus: school.campus,
+    feePolicy: isFeePolicy(tenant?.feePolicy) ? tenant.feePolicy : DEFAULT_FEE_POLICY,
   };
 });

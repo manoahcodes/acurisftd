@@ -1,6 +1,6 @@
 import type { InstitutionType } from "@/config/institution";
 import type { ChargeInput } from "@/lib/bursar/validate";
-import type { AccountRow, AccountKind, GenerateInput, FeeItem, FeeItemInput, Invoice, Outcome, Payment, RecordPaymentInput, Statement, UnallocatedPayment, Waiver, WaiverInput } from "@/types/bursar";
+import type { AccountRow, AccountKind, GenerateInput, FeeItem, FeeItemInput, Invoice, Outcome, PaymentPlan, Payment, PlanInput, RecordPaymentInput, Reminder, ReminderChannel, Statement, UnallocatedPayment, Waiver, WaiverInput } from "@/types/bursar";
 
 /**
  * Who is asking, and which school day it is. The Bursar works on the whole
@@ -85,4 +85,19 @@ export interface BursarRepository {
   requestWaiver(ctx: BursarContext, input: WaiverInput, now: string): Promise<Outcome>;
   /** Approves (takes the amount off the account, if it still owes that much) or declines a pending request. */
   decideWaiver(ctx: BursarContext, id: string, decision: "approve" | "decline", note: string, now: string): Promise<Outcome>;
+
+  // Debtors
+  /** Payment plans, active ones first, then newest. */
+  listPlans(ctx: BursarContext): Promise<PaymentPlan[]>;
+  /**
+   * Agrees a plan for what the student owes now: equal monthly instalments, the
+   * odd ngwee on the last. While it is active the next unpaid instalment is the
+   * due date everywhere. One active plan per student.
+   */
+  createPlan(ctx: BursarContext, input: PlanInput, now: string): Promise<Outcome>;
+  /** Ends a plan with a reason. It stays listed and the original due dates apply again. */
+  cancelPlan(ctx: BursarContext, planId: string, reason: string, now: string): Promise<Outcome>;
+  listReminders(ctx: BursarContext): Promise<Reminder[]>;
+  /** Records that a debtor was chased. The mock sends nothing. */
+  recordReminder(ctx: BursarContext, input: { studentNo: string; channel: ReminderChannel; note: string }, now: string): Promise<Outcome>;
 }

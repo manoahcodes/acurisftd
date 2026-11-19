@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { checkAllocation, checkCharge, checkDecision, checkFeeItem, checkGenerate, checkReason, checkRecordPayment, checkWaiver, type RawFee } from "@/lib/bursar/validate";
+import { checkAllocation, checkCharge, checkDecision, checkFeeItem, checkGenerate, checkPlan, checkReason, checkReminder, checkRecordPayment, checkWaiver, type RawFee } from "@/lib/bursar/validate";
 import { scopeLabel } from "@/lib/bursar/fees";
 import { formatKwacha } from "@/lib/money";
 import { METHOD_LABELS } from "@/lib/cashier/methods";
@@ -181,6 +181,49 @@ export async function cancelInvoice(id: unknown, reason: unknown): Promise<Actio
   const r = await bursar.cancelInvoice(ctx, id, why.value, new Date().toISOString());
   if (r.ok && inv) {
     audit.record({ user: ctx.bursarName, action: "Invoice cancelled", entity: `${inv.no}, ${formatKwacha(inv.total)}: ${why.value}`, scope: ctx.tenantId, school: schoolName });
+    refresh();
+  }
+  return r;
+}
+
+/** Agrees a payment plan for what a student owes. The first due date and the split are worked out on the server. */
+export async function createPlan(raw: { studentNo?: unknown; count?: unknown; firstDueOn?: unknown; note?: unknown }): Promise<ActionResult> {
+  const { ctx, schoolName } = await getBursarSession();
+  const studentNo = typeof raw?.studentNo === "string" ? raw.studentNo.trim() : "";
+  const row = (await bursar.listAccounts(ctx)).find((a) => a.no === studentNo);
+  const hasActivePlan = (await bursar.listPlans(ctx)).some((p) => p.studentNo === studentNo && p.status === "active");
+  const checked = checkPlan(raw ?? {}, { owed: row?.owed ?? 0, today: ctx.today, hasActivePlan });
+  if (!checked.ok) return { ok: false, error: checked.error, fields: checked.fields };
+  const r = await bursar.createPlan(ctx, checked.value, new Date().toISOString());
+  if (!r.ok) return r;
+  audit.record({ user: ctx.bursarName, action: "Payment plan agreed", entity: `${row?.name ?? studentNo} (${studentNo}) ${checked.value.count} instalments of ${formatKwacha(row?.owed ?? 0)} owed`, scope: ctx.tenantId, school: schoolName });
+  refresh();
+  return r;
+}
+
+/** Ends a plan. A reason is required; the plan stays on the record. */
+export async function cancelPlan(planId: unknown, reason: unknown): Promise<ActionResult> {
+  const { ctx, schoolName } = await getBursarSession();
+  if (typeof planId !== "string" || !ID.test(planId)) return bad("That plan is not available.");
+  const why = checkReason(reason, "the plan is being cancelled");
+  if (!why.ok) return { ok: false, error: why.error, fields: why.fields };
+  const plan = (await bursar.listPlans(ctx)).find((p) => p.id === planId);
+  const r = await bursar.cancelPlan(ctx, planId, why.value, new Date().toISOString());
+  if (r.ok) {
+    audit.record({ user: ctx.bursarName, action: "Payment plan cancelled", entity: `${plan?.studentNo ?? planId}: ${why.value}`, scope: ctx.tenantId, school: schoolName });
+    refresh();
+  }
+  return r;
+}
+
+/** Records that a debtor was chased. Nothing is sent from here. */
+export async function recordReminder(raw: { studentNo?: unknown; channel?: unknown; note?: unknown }): Promise<ActionResult> {
+  const { ctx, schoolName } = await getBursarSession();
+  const checked = checkReminder(raw ?? {});
+  if (!checked.ok) return { ok: false, error: checked.error, fields: checked.fields };
+  const r = await bursar.recordReminder(ctx, checked.value, new Date().toISOString());
+  if (r.ok) {
+    audit.record({ user: ctx.bursarName, action: "Reminder recorded", entity: `${checked.value.studentNo} by ${checked.value.channel}`, scope: ctx.tenantId, school: schoolName });
     refresh();
   }
   return r;

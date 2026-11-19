@@ -210,3 +210,25 @@ export type StatementEntry = {
 };
 
 export type Statement = { account: AccountRow; entries: StatementEntry[]; invoices: Invoice[]; payments: Payment[]; waivers: Waiver[]; plan: PaymentPlan | undefined };
+
+// ---- Debtors ----
+
+export const REMINDER_CHANNELS = ["sms", "email", "call", "letter"] as const;
+export type ReminderChannel = (typeof REMINDER_CHANNELS)[number];
+
+/** A record that the school chased a debt. The mock does not send anything; a real system sends the message and records it here. */
+export type Reminder = { id: string; studentNo: string; at: string; by: string; channel: ReminderChannel; note: string };
+
+/** A plan as agreed: how many equal monthly instalments, starting when. Amounts are worked out from what is owed. */
+export type PlanInput = { studentNo: string; count: number; firstDueOn: string; note: string };
+
+export type AgingBucket = "current" | "d1_30" | "d31_60" | "d61_90" | "d90_plus";
+
+export type Debtor = {
+  account: AccountRow;
+  /** Whole days past the due date; 0 when not yet due. */
+  daysOverdue: number;
+  bucket: AgingBucket;
+  plan: PaymentPlan | undefined;
+  lastReminder: Reminder | undefined;
+};

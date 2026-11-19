@@ -3,7 +3,8 @@ import { prettyDate } from "@/lib/teacher/dates";
 import { ACCOUNT_LABELS } from "@/lib/cashier/terms";
 import { inEffect, scopeLabel } from "./fees";
 import { METHOD_LABELS } from "@/lib/cashier/methods";
-import type { AccountRow, FeeItem, InvoiceStatus, InvoiceView, Payment, StatementEntry, UnallocatedPayment, Waiver } from "@/types/bursar";
+import { BUCKET_LABEL } from "./debtors";
+import type { AccountRow, Debtor, FeeItem, InvoiceStatus, InvoiceView, Payment, StatementEntry, UnallocatedPayment, Waiver } from "@/types/bursar";
 
 /** Wording and table rows for the Bursar pages. Pure. */
 
@@ -56,3 +57,9 @@ export const invoiceStatusLabel = (s: InvoiceStatus) => ({ paid: "Paid", partly_
 export const INVOICE_COLUMNS = ["Invoice", "Period", "Student number", "Student", "Issued", "Due", "Total", "Paid", "Outstanding", "Status"];
 export const invoiceRows = (rows: InvoiceView[]): string[][] =>
   rows.map((v) => [v.invoice.no, v.invoice.period, v.invoice.studentNo, v.studentName, prettyDate(v.invoice.issuedOn), prettyDate(v.invoice.dueOn), formatKwacha(v.invoice.total), formatKwacha(v.paid), formatKwacha(v.outstanding), invoiceStatusLabel(v.status)]);
+
+export const CHANNEL_LABEL: Record<"sms" | "email" | "call" | "letter", string> = { sms: "SMS", email: "Email", call: "Phone call", letter: "Letter" };
+
+export const DEBTOR_COLUMNS = ["Student number", "Name", "Class or programme", "Owed", "Due", "Days overdue", "Ageing", "Plan", "Last reminder"];
+export const debtorRows = (rows: Debtor[]): string[][] =>
+  rows.map((d) => [d.account.no, d.account.name, d.account.group, formatKwacha(d.account.owed), d.account.dueOn ? prettyDate(d.account.dueOn) : "", String(d.daysOverdue), BUCKET_LABEL[d.bucket], d.plan ? "Active" : "None", d.lastReminder ? `${prettyDate(d.lastReminder.at.slice(0, 10))} (${CHANNEL_LABEL[d.lastReminder.channel]})` : ""]);

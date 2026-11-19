@@ -29,3 +29,20 @@ export function planProgress(plan: Pick<PaymentPlan, "startBalance" | "instalmen
   const next = nextInstalment(plan, owedNow);
   return { paid: paidOnPlan(plan, owedNow), remaining: owedNow, next, behind: Boolean(next && next.dueOn < today && owedNow > 0), done: owedNow <= 0 };
 }
+
+const lastDay = (y: number, m: number) => new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+
+/** The same day `n` months on, or the last day of that month when it is shorter (31 Jan plus a month is 28 Feb). */
+export function addMonths(iso: string, n: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const total = y * 12 + (m - 1) + n;
+  const year = Math.floor(total / 12);
+  const month = total % 12;
+  return `${year}-${String(month + 1).padStart(2, "0")}-${String(Math.min(d, lastDay(year, month))).padStart(2, "0")}`;
+}
+
+/** Equal monthly instalments that add up to exactly the total; any odd ngwee goes on the last one. */
+export function buildSchedule(total: number, count: number, firstDueOn: string): PlanInstalment[] {
+  const each = Math.floor(total / count);
+  return Array.from({ length: count }, (_, i) => ({ dueOn: addMonths(firstDueOn, i), amount: i === count - 1 ? total - each * (count - 1) : each }));
+}
