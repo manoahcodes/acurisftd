@@ -9,6 +9,7 @@ import { InvoicesView } from "./invoices-view";
 import { invoiceViews } from "@/lib/bursar/invoices";
 import { ReconciliationView } from "./reconciliation-view";
 import { RecordPaymentView } from "./record-payment-view";
+import { ReportsView } from "./reports-view";
 import { StudentAccountsView } from "./student-accounts-view";
 
 export { BURSAR_PAGES };
@@ -47,6 +48,11 @@ export async function BursarSection({ slug }: { slug: string }) {
   if (slug === "reconciliation") {
     const [lines, payments, unallocated, book] = await Promise.all([bursar.listBankLines(ctx), bursar.listPayments(ctx), bursar.listUnallocated(ctx), bursar.listCashUps(ctx)]);
     return <ReconciliationView lines={lines} payments={payments} unallocated={unallocated} book={book} today={ctx.today} branding={branding} />;
+  }
+
+  if (slug === "financial-reports") {
+    const [accounts, payments, waivers, plans] = await Promise.all([bursar.listAccounts(ctx), bursar.listPayments(ctx), bursar.listWaivers(ctx), bursar.listPlans(ctx)]);
+    return <ReportsView accounts={accounts} payments={payments} waivers={waivers} plans={plans} terms={terms} today={ctx.today} branding={branding} />;
   }
 
   return null;
