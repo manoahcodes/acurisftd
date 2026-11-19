@@ -5,6 +5,8 @@ import { getParentSession } from "@/server/parent-context";
 import { getStudentSession } from "@/server/student-context";
 import { getTeacherSession } from "@/server/teacher-context";
 import { getCashierSession } from "@/server/cashier-context";
+import { getBursarSession } from "@/server/bursar-context";
+import { bursarBadges } from "./bursar-queries";
 import { cashierToday } from "./cashier-queries";
 import { getTenantContext } from "@/server/request-context";
 
@@ -32,6 +34,10 @@ export const getNavBadges = cache(
     if (role === "cashier") {
       // Receipts still pending confirmation come from the cashier's own ledger.
       raw = { ...raw, "Today's transactions": (await cashierToday(await getCashierSession())).pending };
+    }
+    if (role === "bursar") {
+      // What is waiting on each page comes from the school's own books.
+      raw = { ...raw, ...(await bursarBadges(await getBursarSession())) };
     }
     if (role === "parent") {
       // Unread conversations come from the guardian's own messages.

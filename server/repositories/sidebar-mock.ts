@@ -6,7 +6,7 @@ const DATA: Record<RoleKey, Record<string, number>> = {
   platform: { "Tenants & schools": 1, Subscriptions: 1, "Support queue": 17 },
   // The teacher's badges (Class register, Assignments, Assessments) come from their own data in server/queries/sidebar.ts.
   teacher: {},
-  bursar: { "Student accounts": 3, Debtors: 24, Reconciliation: 1 },
+  bursar: {},
   cashier: { "Today's transactions": 2 },
   // The parent's Messages badge comes from their own conversations in server/queries/sidebar.ts.
   parent: {},

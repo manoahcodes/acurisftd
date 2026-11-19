@@ -46,7 +46,7 @@ All work on mock data now (CSV files up to 1 MB, 500 rows; every run is written 
 - [ ] Browser (end-to-end) tests in the repo, and CI to run lint, typecheck and tests
 
 ## Out of scope for Platform Admin (separate work)
-- Bursar and Cashier pages are still "hasn't been built yet" placeholders
+- Bursar pages: see the Bursar role section below
 - Student pages: see section 8
 - Teacher / Lecturer pages: see section 7
 
@@ -88,7 +88,7 @@ Data is the in-memory mock saved through the SQLite store (key `student`), scope
 - [x] My profile: identity read-only; edit phone, email, address, required emergency contact; profile photo (PNG or JPEG by bytes, 1 MB, `/api/student/photo`)
 - [x] Sidebar badges (Assignments, School notices), the bell and the top bar search come from the student's own data
 - [x] Unpaid fees, set per school by the Platform Admin: **Fee policy** on the school form (Tenants & schools): information only, withhold exam card, withhold result slip, or both (`lib/fee-policy.ts`, field `feePolicy` on `TenantSummary`, audited as "Fee policy changed"). The student sees a fee notice on My home and in the bell; a withheld page shows "Available once your balance is cleared" and, at colleges and universities, the amount. Learners at schools are pointed to their parent or guardian and are not shown the amount. New **Exam card** page (printable). The result slip (print and CSV) is the withheld item on Results & grades; marks stay visible.
-- [ ] Fee balance is sample data (`lib/student/fees.ts`, `StudentRepository.getFees`); connect it to the Bursar's records when that role is built, and compute overdue from the due date
+- [x] Fee balance now comes from the Bursar's shared ledger (`server/repositories/ledger-store.ts`), with overdue worked out from the due date; payments the Bursar or Cashier take change what the student sees, including the notice and the withheld exam card and result slip
 - [ ] Exam card lists each course's upcoming exam; replace with the Registrar's exam timetable and add a student-specific exam number and venue when those exist
 - [ ] Link the student's data to the Teacher module: assignments, marks, attendance and shared resources a teacher enters should be what the student sees (today the two mocks are separate)
 - [ ] Swap `StudentRepository` for a real one; the school's timetable, notices and the review of absence reasons need an owner role (Teacher, Registrar or Parent)
@@ -110,7 +110,7 @@ Built on the Student module's records: every child page reads the selected child
 - [x] Sidebar Messages badge, the bell (unread messages, events awaiting a reply, each child's fee balance; honours the parent's notification choices) and top bar search come from the guardian's own data
 - [x] `ParentRepository` (`server/repositories/parent-types.ts`, swap point in `index.ts`) with a SQLite-backed mock; pure validation in `lib/parent/validate.ts`; server actions in `server/actions/parent.ts` re-check everything
 - [ ] Swap `ParentRepository` for a real one, and have the school side answer meeting requests and review link requests (today they stay "waiting for the school")
-- [ ] Fee statements are built from the Student fee position (`lib/parent/fees.ts`); replace with the Bursar's invoices and receipts
+- [x] Parent fee position follows the same ledger as the Student. [ ] Fee statements still show the position only; swap in the Bursar's invoices and receipts
 - [ ] The bell lists an event until the parent replies, even after its date, because the server cannot read the clock while prerendering; filter past events once the date is available there
 - [ ] Notification preferences are saved and the bell honours them; email and text delivery need a sending service
 - [ ] A child's class label comes from the guardian's child record (`ChildRepository`), while the timetable and results come from the Student module's sample data, so both children show the same courses
@@ -129,11 +129,31 @@ Own ledger, like the Student and Teacher modules: every page reads and writes on
 - [x] Payment methods: read-only list of what the school accepts, merchant and bank details, today's confirmed total per method, what to check before issuing a receipt
 - [x] Sidebar badge (pending receipts), the bell (pending receipts, cash-up not submitted), the top bar search (students and receipts) and the dashboard figures come from the cashier's own records
 - [x] `tests/cashier-*.test.ts`: validation, money parsing, cash-up counting, repository rules (void, confirm, lock, separation by cashier and school), dashboard, bell and search
-- [ ] Link the ledger to the rest of the platform: payments should lower the **Student** fee balance (`lib/student/fees.ts`), show on the **Parent** fee statements and the **Platform Admin** Student payments table, and clear the Student withholding of the exam card and result slip (today each module has its own sample numbers)
-- [ ] Swap `CashierRepository` for a real one, and move the student list and fee balances to the Bursar's records. A real ledger should be shared across cashiers at one school; the mock keeps one per cashier
-- [ ] Payment methods (merchant numbers, bank account) are sample data in `lib/cashier/methods.ts`; the school should set them (Bursar or Platform Admin) and be able to switch a method off
+- [x] (Done with the Bursar role: Student and Parent follow the ledger; the Platform Admin Student payments table is still sample data) Link the ledger to the rest of the platform: payments should lower the **Student** fee balance (`lib/student/fees.ts`), show on the **Parent** fee statements and the **Platform Admin** Student payments table, and clear the Student withholding of the exam card and result slip (today each module has its own sample numbers)
+- [x] Fee balances now live in the Bursar's ledger, shared by every cashier in a school. [ ] Swap `CashierRepository` for a real one; the student list is still the sample roll
+- [ ] Payment methods (merchant numbers, bank account) are sample data in `lib/cashier/methods.ts`; the school should set them (Bursar or Platform Admin) and be able to switch a method off. The Bursar has no screen for this yet
 - [ ] Mobile money confirmation is manual; connect it to the provider's callback or the bank statement import when those exist
 - [ ] Advance payments (more than is owed) and refunds are refused at the desk; the Bursar role needs screens for them
 - [ ] The cash-up has no opening float and no per-cashier handover; add them if the school needs them
 - [ ] Phone width and dark mode of the six Cashier pages were not checked; the desktop pages, the full payment, void and cash-up flow and the pending/closed rules were run in a browser with no console errors
 - [ ] `next build` could not be run in the sandbox (Google Fonts unreachable); dev server, typecheck, lint and tests pass
+
+## Bursar role (added 2026-11-19, one commit per page on `main`)
+The Bursar owns the books. One shared school ledger (`server/repositories/ledger-store.ts`, keyed by school and level) holds what each student owes, payment plans and reversed payments, and every role reads it: Cashier, Student, Parent and Bursar always show one balance. `BursarRepository` (`server/repositories/bursar-types.ts`, SQLite-backed mock in `bursar-mock.ts`, swap point in `index.ts`) keeps the fee structure, invoices, payments the Bursar records, unallocated money, waivers, reminders, statement lines and cash-up reviews; desk receipts and cash-ups are read from the cashier repository. Money is integer ngwee. Wording follows the school (`lib/bursar/terms.ts`). Pure rules live in `lib/bursar/*` (validate, fees, accounts, invoices, plans, debtors, reconcile, reports, overview); server actions in `server/actions/bursar.ts` re-check everything, resolve ids inside the signed-in school and write to the audit log. Invariant, tested for all four school types: billed - paid - waived = owed.
+
+- [x] Fee structures: the Bursar owns and edits them (seeded from the Admin sample amounts). Scope by grades or programme, per period or yearly, everyone or optional, effective dates, switch off (never deleted)
+- [x] Student accounts: balances, statements with running balance, **reverse a payment** (reason required, audited, never deleted, a later cashier void is refused), **allocate unallocated payments** (partly if needed), **approve or decline bursaries, waivers and discounts**
+- [x] Record payment: any method, back-dated up to 120 days, a reference can be used once, printable receipt
+- [x] Invoices: generate for a period from the fee structure (running twice never bills twice), charge one fee to one student, print, cancel while unpaid (reason, stays listed)
+- [x] Debtors: ageing buckets, filters, **payment plans** (2 to 12 equal monthly instalments; the next instalment becomes the due date everywhere; behind-plan flag; cancel with a reason), reminders log, documents held back under the school's fee policy, CSV and print
+- [x] Reconciliation: review each cashier's cash-up (verify or query), days with cash taken but no cash-up, paste bank and mobile money statement lines, automatic matching by reference and amount, match by hand, take an unknown deposit in as unallocated, set a line aside with a reason, payments missing from the statement
+- [x] Financial reports: collections (by account, method, day), fee position by class or programme, debtor ageing, bursaries and reversals; date presets or custom range; CSV and print
+- [x] Finance overview, sidebar badges, the bell and the top bar search come from the school's own books (`server/queries/bursar-queries.ts`)
+- [x] `tests/bursar-*.test.ts`
+- [ ] Swap `BursarRepository` for a real one. `getBursarSession` (`server/bursar-context.ts`) must verify the Bursar role and fail closed; the mock session has no roles
+- [ ] Reminders are only recorded; nothing is sent. Connect SMS or email when a provider exists
+- [ ] Statement lines are typed or pasted; connect bank and mobile money feeds or file imports. Cash-ups have no opening float or deposit slip tracking
+- [ ] Advance payments (more than is owed) and refunds are refused; they need their own flow and approval
+- [ ] The Platform Admin's Student payments table and the Parent fee statements do not yet show the Bursar's invoices and receipts
+- [ ] Phone width and dark mode of the seven Bursar pages were not checked in a browser; the pages were fetched from the dev server (200) and the logic is covered by tests. Add them to the contrast scan
+- [ ] `next build` could not run in the sandbox (Google Fonts unreachable); typecheck, lint and tests pass

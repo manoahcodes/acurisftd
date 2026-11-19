@@ -8,6 +8,8 @@ import { TodayDate } from "@/components/dashboard/today-date";
 import { StudentFeeBanner } from "@/components/student/student-fee-banner";
 import { dashboards, teaching } from "@/server/repositories";
 import { getTeacherSession } from "@/server/teacher-context";
+import { getBursarSession } from "@/server/bursar-context";
+import { bursarDashboard } from "@/server/queries/bursar-queries";
 import { getCashierSession } from "@/server/cashier-context";
 import { cashierDashboard } from "@/server/queries/cashier-queries";
 import { getDashboardSchool } from "@/server/queries/dashboard";
@@ -52,6 +54,10 @@ async function RoleDashboard({ params }: { params: Params }) {
   if (role === "cashier") {
     // Today's figures come from the cashier's own receipts and cash-up.
     data = await cashierDashboard(data, await getCashierSession());
+  }
+  if (role === "bursar") {
+    // Today's collections, debt and what needs checking come from the school's own books.
+    data = await bursarDashboard(data, await getBursarSession());
   }
   const { branding } = await getResolvedTheme(role);
   const subtitleName = school
