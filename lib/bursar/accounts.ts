@@ -14,7 +14,7 @@ export type LedgerLine = { kind: AccountKind; owed: number; dueOn: string | null
  * are complete, billed − paid − waived equals owed.
  */
 export function accountRow(st: RollStudent, ledger: LedgerLine[], invoices: Invoice[], payments: Payment[], waivers: Waiver[], onPlan: boolean, today: string): AccountRow {
-  const mine = invoices.filter((i) => i.studentNo === st.no);
+  const mine = invoices.filter((i) => i.studentNo === st.no && !i.cancelled);
   const paidPayments = payments.filter((p) => p.studentNo === st.no && p.status === "success");
   const approved = waivers.filter((w) => w.studentNo === st.no && w.status === "approved");
   const lines = ledger.map((l) => ({ kind: l.kind, billed: mine.flatMap((i) => i.lines).filter((x) => x.kind === l.kind).reduce((n, x) => n + x.amount, 0), owed: l.owed, dueOn: l.dueOn }));
@@ -45,7 +45,10 @@ export function accountRow(st: RollStudent, ledger: LedgerLine[], invoices: Invo
  */
 export function statementEntries(invoices: Invoice[], payments: Payment[], waivers: Waiver[]): StatementEntry[] {
   const raw: Array<Omit<StatementEntry, "balance">> = [];
-  for (const i of invoices) raw.push({ id: i.id, date: i.issuedOn, at: `${i.issuedOn}T08:00:00+02:00`, kind: "invoice", description: `Fees, ${i.period}`, reference: i.no, charge: i.total, credit: 0 });
+  for (const i of invoices) {
+    raw.push({ id: i.id, date: i.issuedOn, at: `${i.issuedOn}T08:00:00+02:00`, kind: "invoice", description: `Fees, ${i.period}`, reference: i.no, charge: i.total, credit: 0 });
+    if (i.cancelled) raw.push({ id: `${i.id}-cancel`, date: i.cancelled.at.slice(0, 10), at: i.cancelled.at, kind: "cancellation", description: `Invoice cancelled: ${i.cancelled.reason}`, reference: i.no, charge: 0, credit: i.total });
+  }
   for (const p of payments) {
     if (p.status === "pending") continue;
     raw.push({ id: p.id, date: p.date, at: p.at, kind: "payment", description: `Payment, ${ACCOUNT_LABELS[p.account]}`, reference: p.no, charge: 0, credit: p.amount, paymentId: p.id });

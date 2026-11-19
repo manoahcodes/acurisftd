@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { checkAllocation, checkDecision, checkFeeItem, checkReason, checkRecordPayment, checkWaiver, type RawFee } from "@/lib/bursar/validate";
+import { checkAllocation, checkCharge, checkDecision, checkFeeItem, checkGenerate, checkReason, checkRecordPayment, checkWaiver, type RawFee } from "@/lib/bursar/validate";
 import { scopeLabel } from "@/lib/bursar/fees";
 import { formatKwacha } from "@/lib/money";
 import { METHOD_LABELS } from "@/lib/cashier/methods";
@@ -141,4 +141,47 @@ export async function recordPayment(raw: { studentNo?: unknown; account?: unknow
   audit.record({ user: ctx.bursarName, action: "Payment recorded", entity: `${payment?.no ?? r.id}, ${formatKwacha(checked.value.amount)} via ${METHOD_LABELS[checked.value.method]} for ${checked.value.studentNo}`, scope: ctx.tenantId, school: schoolName });
   refresh();
   return { ...r, payment };
+}
+
+export type GenerateActionResult = { ok: true; created: number; total: number; skipped: number } | { ok: false; error: string; fields?: Record<string, string> };
+
+/** Makes the period's invoices from the fee structure. Anyone already invoiced for that period is skipped. */
+export async function generateInvoices(raw: { period?: unknown; dueOn?: unknown; includeAnnual?: unknown; groups?: unknown }): Promise<GenerateActionResult> {
+  const { ctx, schoolName } = await getBursarSession();
+  const checked = checkGenerate(raw ?? {}, { groups: await bursar.listGroups(ctx), today: ctx.today });
+  if (!checked.ok) return { ok: false, error: checked.error, fields: checked.fields };
+  const r = await bursar.generateInvoices(ctx, checked.value, new Date().toISOString());
+  if (r.ok) {
+    audit.record({ user: ctx.bursarName, action: "Invoices generated", entity: `${checked.value.period}: ${r.created} invoices, ${formatKwacha(r.total)}`, scope: ctx.tenantId, school: schoolName });
+    refresh();
+  }
+  return r;
+}
+
+/** Adds one fee to one student for a period. */
+export async function chargeFee(raw: { studentNo?: unknown; feeId?: unknown; period?: unknown; dueOn?: unknown }): Promise<ActionResult> {
+  const { ctx, schoolName } = await getBursarSession();
+  const checked = checkCharge(raw ?? {}, { today: ctx.today });
+  if (!checked.ok) return { ok: false, error: checked.error, fields: checked.fields };
+  const r = await bursar.chargeFee(ctx, checked.value, new Date().toISOString());
+  if (r.ok) {
+    audit.record({ user: ctx.bursarName, action: "Fee charged", entity: `${checked.value.feeId} to ${checked.value.studentNo} for ${checked.value.period}`, scope: ctx.tenantId, school: schoolName });
+    refresh();
+  }
+  return r;
+}
+
+/** Cancels an unpaid invoice with a reason. It stays on the record. */
+export async function cancelInvoice(id: unknown, reason: unknown): Promise<ActionResult> {
+  const { ctx, schoolName } = await getBursarSession();
+  if (typeof id !== "string" || !ID.test(id)) return bad("That invoice is not available.");
+  const why = checkReason(reason, "this invoice is being cancelled");
+  if (!why.ok) return { ok: false, error: why.error, fields: why.fields };
+  const inv = (await bursar.listInvoices(ctx)).find((i) => i.id === id);
+  const r = await bursar.cancelInvoice(ctx, id, why.value, new Date().toISOString());
+  if (r.ok && inv) {
+    audit.record({ user: ctx.bursarName, action: "Invoice cancelled", entity: `${inv.no}, ${formatKwacha(inv.total)}: ${why.value}`, scope: ctx.tenantId, school: schoolName });
+    refresh();
+  }
+  return r;
 }

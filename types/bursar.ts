@@ -93,7 +93,7 @@ export type Payment = {
 /** A payment the Bursar records. Amount is ngwee; date is the day it was received ("YYYY-MM-DD"). */
 export type RecordPaymentInput = { studentNo: string; account: AccountKind; method: MethodId; amount: number; date: string; reference: string; note: string };
 
-export type InvoiceLine = { kind: AccountKind; name: string; amount: number };
+export type InvoiceLine = { kind: AccountKind; name: string; amount: number; feeId?: string };
 
 export type Invoice = {
   id: string;
@@ -106,7 +106,19 @@ export type Invoice = {
   dueOn: string;
   lines: InvoiceLine[];
   total: number;
+  /** An invoice with nothing paid on it can be cancelled with a reason. It stays listed. */
+  cancelled?: Reversal;
 };
+
+export type InvoiceStatus = "paid" | "partly_paid" | "unpaid" | "overdue" | "cancelled";
+
+/** An invoice with what has been paid against it. Payments are made on accounts, not invoices, so what is still owed on an account goes to the newest invoices first. */
+export type InvoiceView = { invoice: Invoice; studentName: string; group: string; paid: number; outstanding: number; status: InvoiceStatus };
+
+/** What to invoice: the period's name, when it falls due, whether once-a-year fees are included, and which classes (empty means all). */
+export type GenerateInput = { period: string; dueOn: string; includeAnnual: boolean; groups: string[] };
+
+export type InvoiceDraft = { studentNo: string; lines: InvoiceLine[]; total: number };
 
 /** One slice of an unallocated payment given to a student. Kept for the record even if it is later reversed. */
 export type Allocation = { paymentNo: string; studentNo: string; studentName: string; account: AccountKind; amount: number; at: string; by: string; reversed?: boolean };
@@ -178,7 +190,7 @@ export type AccountRow = {
   pendingWaivers: number;
 };
 
-export type StatementEntryKind = "invoice" | "payment" | "reversal" | "waiver";
+export type StatementEntryKind = "invoice" | "payment" | "reversal" | "waiver" | "cancellation";
 
 export type StatementEntry = {
   id: string;

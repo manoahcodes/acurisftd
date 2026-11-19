@@ -76,6 +76,9 @@ export function setDue(scope: LedgerScope, no: string, kind: AccountKind, dueOn:
   save();
 }
 
+/** The account's own due date, ignoring any payment plan. Null when none was ever set. */
+export const baseDueOf = (scope: LedgerScope, no: string, kind: AccountKind): string | null => ledgerOf(scope).dues[keyOf(no, kind)] ?? null;
+
 /** When an account falls due: nothing once it is paid, the next instalment while an active plan covers the student, otherwise its own date. */
 export function dueOf(scope: LedgerScope, no: string, kind: AccountKind): string | null {
   const l = ledgerOf(scope);

@@ -4,7 +4,7 @@ import { enabledMethods } from "@/lib/cashier/methods";
 import { addDays } from "@/lib/teacher/dates";
 import { bursarTermsFor } from "@/lib/bursar/terms";
 import { ACCOUNT_KINDS, type AccountKind } from "@/types/cashier";
-import { FEE_BILLINGS, FEE_FREQUENCIES, WAIVER_KINDS, type FeeItemInput, type FeeScope, type RecordPaymentInput, type WaiverInput } from "@/types/bursar";
+import { FEE_BILLINGS, FEE_FREQUENCIES, WAIVER_KINDS, type FeeItemInput, type FeeScope, type GenerateInput, type RecordPaymentInput, type WaiverInput } from "@/types/bursar";
 
 /** Checks shared by the Bursar's server actions (which must not trust the browser) and its forms. Pure, so they are easy to test. */
 
@@ -185,4 +185,39 @@ export function checkRecordPayment(raw: { studentNo?: unknown; account?: unknown
   const note = clean(raw.note, BURSAR_LIMITS.note);
   if (note.length > BURSAR_LIMITS.note) return { ok: false, error: `The note can be at most ${BURSAR_LIMITS.note} characters.`, fields: { note: `At most ${BURSAR_LIMITS.note} characters.` } };
   return { ok: true, value: { studentNo, account, method: method.id, amount, date: raw.date, reference: method.group === "cash" ? "" : reference, note } };
+}
+
+/** A period name such as "Term 1 2027". */
+export const PERIOD_MAX = 40;
+
+/**
+ * An invoice run: a name for the period, when it falls due, whether once-a-year
+ * fees go on it, and which classes (none chosen means all). The due date cannot
+ * already have passed, or every invoice would be overdue the day it is made.
+ */
+export function checkGenerate(raw: { period?: unknown; dueOn?: unknown; includeAnnual?: unknown; groups?: unknown }, env: { groups: string[]; today: string }): Checked<GenerateInput> {
+  const period = clean(raw.period, PERIOD_MAX);
+  if (period.length < 3) return { ok: false, error: "Name the period, for example Term 1 2027.", fields: { period: "Enter a period." } };
+  if (period.length > PERIOD_MAX) return { ok: false, error: `The period can be at most ${PERIOD_MAX} characters.`, fields: { period: `At most ${PERIOD_MAX} characters.` } };
+  if (!isIsoDate(raw.dueOn)) return { ok: false, error: "Enter the date the invoices fall due.", fields: { dueOn: "Enter a valid date." } };
+  if (raw.dueOn < env.today) return { ok: false, error: "The due date cannot be in the past.", fields: { dueOn: "Not in the past." } };
+  if (raw.groups !== undefined && !Array.isArray(raw.groups)) return { ok: false, error: "Choose classes from the list.", fields: { groups: "Choose from the list." } };
+  const groups = (raw.groups as unknown[] | undefined) ?? [];
+  if (groups.some((g) => typeof g !== "string" || !env.groups.includes(g))) return { ok: false, error: "One of those classes is not on the school's roll.", fields: { groups: "Choose from the list." } };
+  return { ok: true, value: { period, dueOn: raw.dueOn, includeAnnual: raw.includeAnnual === true, groups: [...new Set(groups as string[])] } };
+}
+
+export type ChargeInput = { studentNo: string; feeId: string; period: string; dueOn: string };
+
+/** Adding one fee, usually an optional one such as hostel or transport, to one student. */
+export function checkCharge(raw: { studentNo?: unknown; feeId?: unknown; period?: unknown; dueOn?: unknown }, env: { today: string }): Checked<ChargeInput> {
+  const studentNo = typeof raw.studentNo === "string" ? raw.studentNo.trim() : "";
+  if (!STUDENT_NO.test(studentNo)) return { ok: false, error: "Choose the student.", fields: { student: "Choose a student." } };
+  const feeId = typeof raw.feeId === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(raw.feeId) ? raw.feeId : "";
+  if (!feeId) return { ok: false, error: "Choose the fee to charge.", fields: { fee: "Choose a fee." } };
+  const period = clean(raw.period, PERIOD_MAX);
+  if (period.length < 3 || period.length > PERIOD_MAX) return { ok: false, error: "Name the period, for example Term 1 2027.", fields: { period: "Enter a period." } };
+  if (!isIsoDate(raw.dueOn)) return { ok: false, error: "Enter the date it falls due.", fields: { dueOn: "Enter a valid date." } };
+  if (raw.dueOn < env.today) return { ok: false, error: "The due date cannot be in the past.", fields: { dueOn: "Not in the past." } };
+  return { ok: true, value: { studentNo, feeId, period, dueOn: raw.dueOn } };
 }

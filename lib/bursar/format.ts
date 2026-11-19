@@ -3,7 +3,7 @@ import { prettyDate } from "@/lib/teacher/dates";
 import { ACCOUNT_LABELS } from "@/lib/cashier/terms";
 import { inEffect, scopeLabel } from "./fees";
 import { METHOD_LABELS } from "@/lib/cashier/methods";
-import type { AccountRow, FeeItem, Payment, StatementEntry, UnallocatedPayment, Waiver } from "@/types/bursar";
+import type { AccountRow, FeeItem, InvoiceStatus, InvoiceView, Payment, StatementEntry, UnallocatedPayment, Waiver } from "@/types/bursar";
 
 /** Wording and table rows for the Bursar pages. Pure. */
 
@@ -50,3 +50,9 @@ export const sourceLabel = (s: Payment["source"]) => (s === "cashier" ? "Cashier
 export const PAYMENT_COLUMNS = ["Receipt", "Date", "Student number", "Student", "Account", "Method", "Reference", "Amount", "Taken by", "Status"];
 export const paymentRows = (rows: Payment[]): string[][] =>
   rows.map((p) => [p.no, prettyDate(p.date), p.studentNo, p.studentName, ACCOUNT_LABELS[p.account], METHOD_LABELS[p.method], p.reference, formatKwacha(p.amount), `${sourceLabel(p.source)}, ${p.by}`, paymentStatusLabel(p.status)]);
+
+export const invoiceStatusLabel = (s: InvoiceStatus) => ({ paid: "Paid", partly_paid: "Partly paid", unpaid: "Unpaid", overdue: "Overdue", cancelled: "Cancelled" })[s];
+
+export const INVOICE_COLUMNS = ["Invoice", "Period", "Student number", "Student", "Issued", "Due", "Total", "Paid", "Outstanding", "Status"];
+export const invoiceRows = (rows: InvoiceView[]): string[][] =>
+  rows.map((v) => [v.invoice.no, v.invoice.period, v.invoice.studentNo, v.studentName, prettyDate(v.invoice.issuedOn), prettyDate(v.invoice.dueOn), formatKwacha(v.invoice.total), formatKwacha(v.paid), formatKwacha(v.outstanding), invoiceStatusLabel(v.status)]);

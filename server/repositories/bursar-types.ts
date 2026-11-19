@@ -1,5 +1,6 @@
 import type { InstitutionType } from "@/config/institution";
-import type { AccountRow, AccountKind, FeeItem, FeeItemInput, Invoice, Outcome, Payment, RecordPaymentInput, Statement, UnallocatedPayment, Waiver, WaiverInput } from "@/types/bursar";
+import type { ChargeInput } from "@/lib/bursar/validate";
+import type { AccountRow, AccountKind, GenerateInput, FeeItem, FeeItemInput, Invoice, Outcome, Payment, RecordPaymentInput, Statement, UnallocatedPayment, Waiver, WaiverInput } from "@/types/bursar";
 
 /**
  * Who is asking, and which school day it is. The Bursar works on the whole
@@ -25,6 +26,8 @@ export type BursarContext = { tenantId: string; bursarId: string; bursarName: st
  *
  * Methods are added page by page as each Bursar page is built.
  */
+export type GenerateResult = { ok: true; created: number; total: number; skipped: number } | { ok: false; error: string };
+
 export interface BursarRepository {
   /** One student's total owed and earliest due date, or undefined for a number that is not on the school's roll. */
   balanceOf(ctx: BursarContext, studentNo: string): Promise<{ balance: number; dueOn: string | null } | undefined>;
@@ -47,6 +50,17 @@ export interface BursarRepository {
   /** Every payment in the school, whoever took it (the desk, the Bursar, or an allocation), newest first. Reversed ones stay listed; voided receipts do not. */
   listPayments(ctx: BursarContext): Promise<Payment[]>;
   listInvoices(ctx: BursarContext): Promise<Invoice[]>;
+  /**
+   * Makes an invoice for every student the fee structure applies to who does
+   * not already have one for that period. It adds the amounts to what each owes
+   * (an older, earlier due date on an account is kept). Running it twice never
+   * bills anyone twice.
+   */
+  generateInvoices(ctx: BursarContext, input: GenerateInput, now: string): Promise<GenerateResult>;
+  /** One fee on one student, for a period: an optional fee taken up, or one added later. Once per fee per period. */
+  chargeFee(ctx: BursarContext, input: ChargeInput, now: string): Promise<Outcome>;
+  /** Cancels an invoice that has nothing paid on it, with a reason. It stays listed and the charge comes off what is owed. */
+  cancelInvoice(ctx: BursarContext, invoiceId: string, reason: string, now: string): Promise<Outcome>;
   /**
    * Records a payment the Bursar received (a bank deposit, a transfer, cash at
    * the office), dated the day it arrived. It is counted straight away. Not

@@ -1,5 +1,6 @@
 import { accountRow, statementEntries } from "@/lib/bursar/accounts";
-import { groupsFor, sameScope, seedFeeItems } from "@/lib/bursar/fees";
+import { invoiceViews, planInvoices } from "@/lib/bursar/invoices";
+import { groupsFor, inEffect, sameScope, scopeMatches, seedFeeItems } from "@/lib/bursar/fees";
 import { seedInvoices, seedPayments, seedUnallocated, seedWaivers } from "@/lib/bursar/seed";
 import { studentsFor } from "@/lib/cashier/seed";
 import type { AccountKind, FeeItem, Invoice, Payment, UnallocatedPayment, Waiver } from "@/types/bursar";
@@ -7,7 +8,7 @@ import { methodOf } from "@/lib/cashier/methods";
 import { loadSnapshot, saveSnapshot } from "../persistence/store";
 import type { BursarContext, BursarRepository } from "./bursar-types";
 import type { CashierRepository } from "./cashier-types";
-import { addOwed, dueOf, listPlans, markReversed, owedOf, resetLedger, reversalOf, type LedgerScope } from "./ledger-store";
+import { addOwed, baseDueOf, dueOf, listPlans, markReversed, owedOf, resetLedger, reversalOf, setDue, type LedgerScope } from "./ledger-store";
 
 /**
  * Bursar data per school, kept in memory and saved to the SQLite file like the
@@ -25,6 +26,7 @@ type State = {
   waivers: Waiver[];
   nextPayment: number;
   nextWaiver: number;
+  nextInvoice: number;
 };
 
 const g = globalThis as unknown as { __acurisBursar?: Map<string, State> };
@@ -51,6 +53,7 @@ function stateOf(ctx: BursarContext): State {
   s.waivers ??= seedWaivers(t);
   s.nextPayment ??= s.payments.length + 1;
   s.nextWaiver ??= s.waivers.length + 1;
+  s.nextInvoice ??= s.invoices.length + 1;
   save();
   return s;
 }
@@ -88,6 +91,20 @@ export function createMockBursarRepository(cashier: CashierRepository): BursarRe
     const s = stateOf(ctx);
     const pay = await payments(ctx);
     return roll(ctx).map((st) => accountRow(st, ledgerLines(ctx, st.no), s.invoices, pay, s.waivers, onPlan(ctx, st.no), ctx.today));
+  }
+
+  /** Makes one invoice and puts its lines on the ledger. An older due date on an account that already owes is kept, so an overdue balance is not made to look current. */
+  function bill(ctx: BursarContext, s: State, no: string, period: string, lines: Invoice["lines"], dueOn: string): string {
+    const n = s.nextInvoice++;
+    const id = `inv-${pad(n, 4)}`;
+    for (const l of lines) {
+      const before = owedOf(ledgerOf(ctx), no, l.kind);
+      const base = baseDueOf(ledgerOf(ctx), no, l.kind);
+      addOwed(ledgerOf(ctx), no, l.kind, l.amount);
+      setDue(ledgerOf(ctx), no, l.kind, before > 0 && base && base < dueOn ? base : dueOn);
+    }
+    s.invoices.push({ id, no: `INV-${ctx.today.slice(0, 4)}-${pad(n, 4)}`, studentNo: no, period, issuedOn: ctx.today, dueOn, lines, total: lines.reduce((t, l) => t + l.amount, 0) });
+    return id;
   }
 
   return {
@@ -147,6 +164,48 @@ export function createMockBursarRepository(cashier: CashierRepository): BursarRe
 
     async listInvoices(ctx) {
       return stateOf(ctx).invoices.map((i) => ({ ...i, lines: i.lines.map((l) => ({ ...l })) }));
+    },
+
+    async generateInvoices(ctx, input) {
+      const s = stateOf(ctx);
+      const { drafts, skipped } = planInvoices(s.fees, roll(ctx), s.invoices, input, ctx.today);
+      if (drafts.length === 0) return { ok: false, error: skipped.length > 0 ? "Nothing to invoice: everyone it applies to already has an invoice for that period, or no fee applies." : "Nothing to invoice: no fee in effect applies." };
+      let total = 0;
+      for (const d of drafts) {
+        bill(ctx, s, d.studentNo, input.period, d.lines, input.dueOn);
+        total += d.total;
+      }
+      save();
+      return { ok: true, created: drafts.length, total, skipped: skipped.length };
+    },
+
+    async chargeFee(ctx, input) {
+      const s = stateOf(ctx);
+      const st = roll(ctx).find((x) => x.no === input.studentNo);
+      if (!st) return bad("That student is not on this school's roll.");
+      const fee = s.fees.find((f) => f.id === input.feeId);
+      if (!fee) return bad("That fee is not in this school's structure.");
+      if (!inEffect(fee, ctx.today)) return bad("That fee is off or has not taken effect yet.");
+      if (!scopeMatches(fee.scope, st.group)) return bad(`That fee does not apply to ${st.group}.`);
+      if (!st.lines.some((l) => l.kind === fee.kind)) return bad("That fee's account does not exist for this school.");
+      if (s.invoices.some((i) => i.studentNo === st.no && i.period === input.period && !i.cancelled && i.lines.some((l) => l.feeId === fee.id))) return bad("That fee is already on an invoice for this student and period.");
+      const id = bill(ctx, s, st.no, input.period, [{ kind: fee.kind, name: fee.name, amount: fee.amount, feeId: fee.id }], input.dueOn);
+      save();
+      return { ok: true, id };
+    },
+
+    async cancelInvoice(ctx, invoiceId, reason, now) {
+      const s = stateOf(ctx);
+      const inv = s.invoices.find((i) => i.id === invoiceId);
+      if (!inv) return bad("That invoice is not in this school's records.");
+      if (inv.cancelled) return bad("That invoice is already cancelled.");
+      const students = roll(ctx).map((st) => ({ no: st.no, name: st.name, group: st.group, lines: ledgerLines(ctx, st.no) }));
+      const v = invoiceViews(s.invoices, students, ctx.today).find((x) => x.invoice.id === invoiceId);
+      if (!v || v.paid > 0) return bad("Something has been paid against that invoice. Reverse the payment first, or waive the fee instead.");
+      for (const l of inv.lines) addOwed(ledgerOf(ctx), inv.studentNo, l.kind, -l.amount);
+      inv.cancelled = { reason, at: now, by: ctx.bursarName };
+      save();
+      return { ok: true, id: inv.id };
     },
 
     async recordPayment(ctx, input, now) {
