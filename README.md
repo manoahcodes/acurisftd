@@ -2,7 +2,7 @@
 
 A role-based, multi-tenant school management platform frontend built with **Next.js 16** (App Router), **React 19**, and **Tailwind CSS v4**.
 
-Each role — Platform Admin, Teacher, Bursar, Cashier, Parent, and Student — gets its own shell, navigation, dashboard, and top bar. Data is currently served by in-memory mock repositories behind typed interfaces, so the UI can be connected to a real API or database without changing components.
+Each role — Platform Admin, School Admin, Teacher, Bursar, Cashier, Parent, and Student — gets its own shell, navigation, dashboard, and top bar. Data is currently served by in-memory mock repositories behind typed interfaces, so the UI can be connected to a real API or database without changing components.
 
 ---
 
@@ -136,8 +136,15 @@ Set `NEXT_PUBLIC_ACURIS_DEPLOYMENT` (unset means `cloud`; an unknown value fails
 
 | Mode | Hosted by | Top admin | Schools visible |
 | --- | --- | --- | --- |
-| `cloud` | ACURIS, shared | Platform Admin | All, with a school switcher |
+| `cloud` | ACURIS, shared | Platform Admin (tenants) and School Admin (one school) | All; the Platform Admin opens a school workspace |
 | `dedicated` | ACURIS, one school | School Admin | Only its own |
 | `self_hosted` | The school | School Admin | Only its own |
 
-Single-school modes hide the tenant list, subscriptions, platform users, support queue and the school switcher, refuse tenant creation, and never search across schools. Every mode has a **Data export & backup** page. The top admin role keeps the route `/platform` in all modes. In single-school modes the session's own school is the deployment's school.
+Single-school modes have no Platform Admin: they hide the tenant list, subscriptions, platform users and support queue, refuse tenant creation, and never search across schools. The School Admin (`/school-admin`) is the top admin in every mode and has the **Data export & backup** page. In single-school modes the session's own school is the deployment's school.
+
+### Platform Admin vs School Admin
+
+- **Platform Admin** (`/platform`) works on tenants and the platform only: tenants, subscriptions, usage, support, platform users, access control, default branding and a platform audit trail. It never sees a school's students, registrations, academics, hostels or finances.
+- **School Admin** (`/school-admin`) runs one school: institution, finances, users, registrations, academics, examinations, hostels, reports and school settings.
+- A Platform Admin reaches a school only through **Open workspace** (Tenants & schools). A banner shows on every page inside, with **Exit workspace**, and entry and exit are written to the audit trail.
+- Each tenant has a **setup type**. *Higher education* (the default) offers College and University. *Higher education + school levels* also enables Primary and High School divisions. Those features are switched off, not removed (`config/institution.ts`).

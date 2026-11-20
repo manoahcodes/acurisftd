@@ -1,5 +1,7 @@
 # Platform Admin: to-do (not yet covered)
 
+> **2026-11-20: Platform Admin and School Admin are now separate roles (section 10).** Items below that say "Platform Admin" for school-level screens (students, finances, registrations, academics, hostels, reports) now belong to the **School Admin**.
+
 Last updated: 2026-11-13. Covered so far: all list screens, create/edit forms on mock data, sidebar features, search, tests (207 passing, Chromium only).
 
 ## 1. Real data and sign-in
@@ -157,3 +159,20 @@ The Bursar owns the books. One shared school ledger (`server/repositories/ledger
 - [ ] The Platform Admin's Student payments table and the Parent fee statements do not yet show the Bursar's invoices and receipts
 - [ ] Phone width and dark mode of the seven Bursar pages were not checked in a browser; the pages were fetched from the dev server (200) and the logic is covered by tests. Add them to the contrast scan
 - [ ] `next build` could not run in the sandbox (Google Fonts unreachable); typecheck, lint and tests pass
+
+## 10. Platform Admin vs School Admin, higher education focus (added 2026-11-20)
+Team lead review: the platform operator and a school's own admin are different people with different scope. Done on `main`.
+
+- [x] **Two roles.** **Platform Admin** (`/platform`, cloud only) is about tenants and the platform: Tenants & schools, Subscriptions, Usage & capacity, Support queue, Platform users, Access control, Platform settings (default branding) and a platform-level Audit trail. **School Admin** (`/school-admin`) runs one school: Institution, Finances, Users, Registrations, Academics, Examinations, **Hostels**, Reports, School settings, Data export & backup. Config: `buildPlatformRole` / `buildSchoolAdminRole` in `config/navigation.ts` (`adminNavItem(slug)` finds an item in either)
+- [x] **No school records for the Platform Admin.** Its pages are never given a school (`AdminSection` in `app/[role]/[...slug]/page.tsx`), its dashboard is tenant-level only (`PLATFORM_WIDE`), its search returns tenants and platform pages only, it always uses the platform default theme, and its audit trail lists platform-level events only (`audit-trail` slug)
+- [x] **Workspace entry.** The only route into a school's students, fees, registrations or hostels is **Open workspace** on Tenants & schools (`server/actions/workspace.ts`): sets the school, writes a "Workspace opened" audit entry (also visible in that school's own audit trail), shows a banner on every School Admin page with **Exit workspace** (audited as "Workspace closed"). School Admin pages with no workspace open ask which school to open
+- [x] **Single-school deployments** (dedicated, self-hosted): no Platform Admin (`availableRoleKeys`); the School Admin is the top admin and the only role offered in the pickers
+- [x] **Higher education first.** Each tenant has a **setup type** (`config/institution.ts`: `SETUPS`, `DEFAULT_SETUP`): *Higher education* (default: College and University) or *Higher education + school levels* (also enables Primary and High School divisions). Primary and High School features are switched off, not deleted: creating or editing a tenant with school-level divisions is refused unless its setup allows them (`setupError` in `server/actions/records.ts`). Shown as a "Setup" column; changes audited as "Setup changed". Existing school-level demo tenants are on the extended setup
+- [x] Theme editor takes an `area` ("platform" or "school") instead of guessing from the selection, so the Platform Admin edits only the default and a School Admin only its open school
+- [x] `tests/platform-school-split.test.ts` and updates to the deployment, theme-scope, dashboard and form tests (846 pass)
+- [ ] Setup type only gates the tenant form today. Also hide school-level wording, sample data and Teacher/Parent/Student variants for tenants on the higher-education setup, and make the Teacher and Parent roles optional per setup
+- [ ] Per-setup feature flags beyond Primary and High School (for example hostels on or off per tenant)
+- [ ] Platform Admin and School Admin need real roles in the session: `requirePlatformAdmin` (`server/forms/guard.ts`) is still a placeholder, and school-level form actions must verify School Admin, or a Platform Admin with an open workspace, and fail closed. Today the guard only checks that someone is signed in; the open workspace cookie is what scopes the data
+- [ ] Time-box workspace entry (the cookie lasts 24 hours) and let a school see and approve platform support access
+- [ ] Division scope of Data export & backup, Access control (which still lists both admin roles in the matrix) and platform user roles should be reviewed with the team lead
+- [ ] `next build` could not run in the sandbox (Google Fonts unreachable); typecheck, lint, tests and the dev server (routes return 200) pass
