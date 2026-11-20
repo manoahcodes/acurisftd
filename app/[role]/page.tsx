@@ -14,6 +14,8 @@ import { getCashierSession } from "@/server/cashier-context";
 import { cashierDashboard } from "@/server/queries/cashier-queries";
 import { getDashboardSchool } from "@/server/queries/dashboard";
 import { getResolvedTheme } from "@/server/queries/theme";
+import { getTenantSelection } from "@/server/queries/platform";
+import { OpenWorkspacePrompt } from "@/components/platform/open-workspace-prompt";
 
 type Params = Promise<{ role: string }>;
 
@@ -37,6 +39,20 @@ async function RoleDashboard({ params }: { params: Params }) {
   // The school this role's dashboard describes (own school, or the selected
   // one for Platform Admin / demo preview); none means the platform-wide view.
   const school = await getDashboardSchool(role);
+  if (role === "school-admin" && !school) {
+    // No workspace open (never opened, or just exited): ask which school instead of failing.
+    const { tenants } = await getTenantSelection();
+    return (
+      <>
+        <PageHeader
+          crumbs={[{ label: "Dashboard", href: "/school-admin" }, { label: ROLES[role].label, href: "/school-admin" }]}
+          title="School Admin"
+          subtitle="Open a school workspace to continue"
+        />
+        <OpenWorkspacePrompt title="the school dashboard" tenants={tenants} />
+      </>
+    );
+  }
   let data = await dashboards.getDashboard(role, school);
   let roleLabel: string = ROLES[role].label;
   if (role === "teacher") {
