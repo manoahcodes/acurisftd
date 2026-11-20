@@ -1,4 +1,4 @@
-import type { Division } from "@/config/institution";
+import type { Division, SetupType } from "@/config/institution";
 import type { FeePolicy } from "@/lib/fee-policy";
 import type { Kpi } from "./dashboard";
 import type { ProcessSpec } from "./process";
@@ -14,6 +14,11 @@ export type TenantSummary = {
   learners: number;
   plan: "Starter" | "Growth" | "Enterprise";
   status: "Active" | "Trial" | "Suspended";
+  /**
+   * Which features the school has: higher education only (default), or also
+   * Primary and High School. Missing means inferred from its divisions.
+   */
+  setupType?: SetupType;
   /** What happens when a student owes fees. Missing means information only. */
   feePolicy?: FeePolicy;
 };

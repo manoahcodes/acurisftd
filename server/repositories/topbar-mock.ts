@@ -18,6 +18,11 @@ const DATA: Record<RoleKey, Seed[]> = {
     { id: "n3", title: "Failed nightly sync", detail: "2 tenants need investigation", navLabel: "Audit trail", unread: true },
     { id: "n4", title: "New tenant awaiting verification", detail: "1 request", navLabel: "Tenants & schools", unread: true },
   ],
+  "school-admin": [
+    { id: "n1", title: "Student registrations awaiting approval", detail: "Registrations", navLabel: "Admitted students", unread: true },
+    { id: "n2", title: "Room allocations to confirm", detail: "Hostels", navLabel: "Room allocations", unread: true },
+    { id: "n3", title: "Nightly sync failed on one campus", detail: "Review in the audit trail", navLabel: "Audit trail", unread: true },
+  ],
   teacher: [
     { id: "n1", title: "28 assessments to mark", detail: "Due by Friday", navLabel: "Assessments", unread: true },
     { id: "n2", title: "Week 4 quiz needs marking", detail: "Tionenji Phiri", navLabel: "Assessments", unread: true },

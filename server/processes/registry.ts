@@ -493,6 +493,8 @@ function reportEntries(screen: PlatformScreen, tableId: string, kind: "academic"
 }
 
 /** Page slugs that have process buttons. */
+MAKERS["school-settings"] = MAKERS["platform-settings"];
+
 export const PROCESS_SLUGS = Object.keys(MAKERS);
 
 const needsDivision = (slug: string, ctx: PlatformContext) =>

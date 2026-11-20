@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ROLES, ROLE_KEYS } from "@/config/navigation";
+import { ROLES, availableRoleKeys } from "@/config/navigation";
 
 /** Dev-only role picker. Replace with real login + role-based redirect. */
 export default function Home() {
@@ -11,7 +11,7 @@ export default function Home() {
         <Link href="/sign-in" className="font-medium text-brand underline">Open the branded sign-in page</Link>
       </p>
       <ul className="mt-8 space-y-2">
-        {ROLE_KEYS.map((key) => (
+        {availableRoleKeys().map((key) => (
           <li key={key}>
             <Link
               href={`/${key}`}

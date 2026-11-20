@@ -5,7 +5,7 @@ import { CampusControl } from "./campus-control";
 import { isMultiTenant } from "@/config/deployment";
 import { PREVIEW_SELECTED_SCHOOL } from "@/lib/theme/scope";
 import { DemoSchoolControl } from "./demo-school-control";
-import { PlatformTenantControl } from "./platform-tenant-control";
+import { WorkspaceControl } from "./workspace-control";
 import { SidebarFooter } from "./sidebar-footer";
 import { SidebarNav } from "./sidebar-nav";
 import { SidebarNavLive } from "./sidebar-nav-live";
@@ -32,18 +32,19 @@ export function SidebarBody({
   return (
     <>
       <div className="mt-5">
-        {role !== "platform" && PREVIEW_SELECTED_SCHOOL && (
+        {role !== "platform" && role !== "school-admin" && PREVIEW_SELECTED_SCHOOL && (
           <Suspense fallback={null}>
             <DemoSchoolControl tenant={tenant} />
           </Suspense>
         )}
-        {role === "platform" && isMultiTenant() ? (
-          // A platform admin spans every school, so they pick which school to work in
-          // (or stay platform-wide) instead of seeing a single campus.
-          <Suspense
-            fallback={<StaticTenantCard title="All tenants" subtitle="Platform-wide view" />}
-          >
-            <PlatformTenantControl />
+        {role === "platform" ? (
+          // The Platform Admin works on tenants, not inside a school, so there is no school to pick.
+          // Schools are entered from "Tenants & schools" through "Open workspace".
+          <StaticTenantCard title="All tenants" subtitle="Platform-wide view" />
+        ) : role === "school-admin" && isMultiTenant() ? (
+          // The school workspace that was opened (cloud only).
+          <Suspense fallback={<StaticTenantCard title="School workspace" subtitle="Loading..." />}>
+            <WorkspaceControl />
           </Suspense>
         ) : config.campusSwitcher ? (
           // Staff who may work at several campuses can switch between them.

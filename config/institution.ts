@@ -38,6 +38,47 @@ export const INSTITUTIONS: Record<InstitutionType, InstitutionInfo> = {
 };
 
 /**
+ * A tenant's setup type decides which institution types (and so which features)
+ * it can use. ACURIS targets higher education, so the default setup offers only
+ * College and University. Primary and High School features stay in the product
+ * but are switched off unless a tenant is set up for them.
+ */
+export const SETUP_TYPES = ["higher_ed", "extended"] as const;
+export type SetupType = (typeof SETUP_TYPES)[number];
+
+export const SETUPS: Record<SetupType, { label: string; description: string; types: readonly InstitutionType[] }> = {
+  higher_ed: {
+    label: "Higher education",
+    description: "Colleges and universities: semesters, programmes and courses.",
+    types: ["college", "university"],
+  },
+  extended: {
+    label: "Higher education + school levels",
+    description: "Also enables Primary and High School divisions (terms, classes and subjects).",
+    types: ["primary", "high_school", "college", "university"],
+  },
+};
+
+export const DEFAULT_SETUP: SetupType = "higher_ed";
+
+export const isSetupType = (value: string): value is SetupType => (SETUP_TYPES as readonly string[]).includes(value);
+
+/** The smallest setup that covers these divisions (used when a tenant has no explicit setup). */
+export const setupFor = (types: readonly InstitutionType[]): SetupType =>
+  types.every((t) => SETUPS.higher_ed.types.includes(t)) ? "higher_ed" : "extended";
+
+/** A tenant's setup: the stored one, else inferred from its divisions. */
+export const tenantSetup = (t: { setupType?: SetupType; divisions: readonly Division[] }): SetupType =>
+  t.setupType ?? setupFor(t.divisions.map((d) => d.institutionType));
+
+/** Institution types a setup allows. */
+export const typesForSetup = (setup: SetupType): readonly InstitutionType[] => SETUPS[setup].types;
+
+/** Types in `types` that the setup does not allow. */
+export const disallowedTypes = (setup: SetupType, types: readonly InstitutionType[]): InstitutionType[] =>
+  types.filter((t) => !SETUPS[setup].types.includes(t));
+
+/**
  * A division is one part of a tenant with its own level, students, fees, classes
  * and results (for example Primary and High School inside one combined school).
  * Divisions are fully separate: own student numbers and own fee accounts.

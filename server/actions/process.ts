@@ -54,7 +54,7 @@ export async function runProcess(_prev: ProcessState, formData: FormData): Promi
   }
 
   const user = await session.getCurrentUser();
-  const outcome = await entry.run({ slug, ctx, screen, f: flavour(ctx), values: checked.values, csv, user: user.name, timeZone: safeZone((await getResolvedTheme("platform")).branding.timezone) });
+  const outcome = await entry.run({ slug, ctx, screen, f: flavour(ctx), values: checked.values, csv, user: user.name, timeZone: safeZone((await getResolvedTheme("school-admin")).branding.timezone) });
   if (!outcome.ok) return fail(outcome.message, { problems: outcome.problems, errors: outcome.errors, values: submitted });
 
   audit.record({

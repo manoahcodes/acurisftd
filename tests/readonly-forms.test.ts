@@ -141,7 +141,7 @@ describe("Staff, division access and divisions", () => {
 
   const school = (id: string) => tenantDirectory.list().then((l) => l.find((t) => t.id === id)!);
   const tenantForm = (name: string, types: string[], extra: Record<string, string> = {}) =>
-    edit("tenants-and-schools", "tenant", name, { name, types, plan: "Growth", campuses: "2", feePolicy: "Information only", status: "Active", ...extra });
+    edit("tenants-and-schools", "tenant", name, { name, types, setup: types.some((t) => /Primary|High/.test(t)) ? "Higher education + school levels" : "Higher education", plan: "Growth", campuses: "2", feePolicy: "Information only", status: "Active", ...extra });
 
   it("adds a division to a school, keeping existing ones and one academic system", async () => {
     const before = await school("chilenje");
@@ -162,7 +162,7 @@ describe("Staff, division access and divisions", () => {
     expect(r.errors?.types).toMatch(/High School already has learners/);
     expect((await school("lusaka-hills")).divisions).toHaveLength(2);
 
-    await tenantDirectory.create({ name: "Tiny School", plan: "Starter", status: "Trial", campuses: 1, types: ["primary", "high_school"] });
+    await tenantDirectory.create({ name: "Tiny School", plan: "Starter", status: "Trial", campuses: 1, types: ["primary", "high_school"], setupType: "extended" });
     const ok = await tenantForm("Tiny School", ["Primary School"], { plan: "Starter", campuses: "1", status: "Trial" });
     expect(ok.status, ok.message).toBe("success");
     expect((await school("tiny-school")).divisions.map((d) => d.id)).toEqual(["primary"]);

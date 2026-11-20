@@ -10,16 +10,17 @@ function timezones(): string[] {
 }
 
 /** Branding and theme editor for the Platform settings page. Reads cookies: render inside <Suspense>. */
-export async function ThemeSection() {
-  const s = await getThemeEditorState();
+export async function ThemeSection({ area }: { area: "platform" | "school" }) {
+  const s = await getThemeEditorState(area);
   const zones = timezones();
   if (!zones.includes(s.config.branding.timezone)) zones.unshift(s.config.branding.timezone);
   return (
     <ThemeEditor
-      // A new key resets the editor's local state when the Platform Admin switches school.
+      // A new key resets the editor's local state when the workspace changes.
       key={`${s.scope}:${s.inherited}`}
       scopeLabel={s.scopeLabel}
       isTenant={s.scope !== "platform"}
+      area={area}
       inherited={s.inherited}
       theme={s.config.theme}
       branding={s.config.branding}

@@ -1,7 +1,9 @@
-import { INSTITUTIONS, INSTITUTION_TYPES, LEVEL_LABELS, divisionsLabel, systemLabel, tenantSystem, tenantSystemLabel } from "@/config/institution";
+import { INSTITUTIONS, INSTITUTION_TYPES, SETUPS, tenantSetup, LEVEL_LABELS, divisionsLabel, systemLabel, tenantSystem, tenantSystemLabel } from "@/config/institution";
 import { DEFAULT_FEE_POLICY, FEE_POLICY_LABELS } from "@/lib/fee-policy";
 import { scopeLabel, visibleDivisions } from "@/lib/division-scope";
 import type { PlatformContext } from "../platform-types";
+import { formatStamp } from "@/lib/format";
+import { mockAuditLog } from "../audit-mock";
 import { K, tableOf, type Builder } from "./shared";
 import { effectiveStaffFor } from "./staff";
 
@@ -17,12 +19,13 @@ const tenants: Builder = ({ tenants }) => ({
   tables: [
     tableOf("tenants",
       "Tenants & schools",
-      ["School", "Institution type", "Divisions", "Academic system", "Campuses", "Learners", "Plan", "Fee policy", "Status"],
+      ["School", "Institution type", "Divisions", "Academic system", "Setup", "Campuses", "Learners", "Plan", "Fee policy", "Status"],
       tenants.map((t) => [
         t.name,
         divisionsLabel(t.divisions),
         String(t.divisions.length),
         tenantSystemLabel(t.divisions),
+        SETUPS[tenantSetup(t)].label,
         String(t.campuses),
         t.learners.toLocaleString("en-US"),
         t.plan,
@@ -220,7 +223,41 @@ const access: Builder = (ctx) => ({
   ],
 });
 
+/**
+ * The Platform Admin's audit trail: tenants, plans, support and workspace
+ * entries only. Changes made inside a school (fees, registrations, results...)
+ * belong to that school's own audit trail and never appear here.
+ */
+const platformAudit: Builder = ({ tenants }) => {
+  const logged = mockAuditLog
+    .list()
+    .filter((e) => e.scope === "platform" || e.action.startsWith("Workspace"))
+    .map((e) => [formatStamp(e.at), e.user, e.action, e.entity, e.school, "Success"]);
+  const events: Array<[string, string, string, string]> = [
+    ["08:42", "Platform Admin", "Tenant created", "Kafue Valley School"],
+    ["08:20", "Platform Admin", "Subscription changed", "Plan: Growth"],
+    ["07:55", "Mercy Kangwa", "Support ticket escalated", "#SUP-1048"],
+  ];
+  return {
+    description: "Platform-level activity: tenants, subscriptions, support and workspace entries.",
+    tables: [
+      tableOf("platform-audit", "Audit trail", ["Time", "User", "Action", "Entity", "Tenant", "Result"], [
+        ...logged,
+        ...events.map(([time, user, action, entity], i) => [
+          `05 Nov 2026 ${time}`,
+          user,
+          action,
+          entity,
+          tenants[i % Math.max(tenants.length, 1)]?.name ?? "Platform",
+          i === 2 ? "Review" : "Success",
+        ]),
+      ], { statusColumn: "Result" }),
+    ],
+  };
+};
+
 export const platformScreens: Record<string, Builder> = {
+  "audit-trail": platformAudit,
   "tenants-and-schools": tenants,
   subscriptions,
   "platform-users": platformUsers,

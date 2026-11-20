@@ -12,8 +12,9 @@ export const PREVIEW_SELECTED_SCHOOL = isMultiTenant();
 
 /**
  * Which school's look an area shows. `undefined` means the platform default.
- * The Platform Admin's own screens follow the school they have selected (the
- * platform default when none is), so changes they save show straight away.
+ * School Admin screens follow the school workspace in use (the platform default
+ * when none is open), so changes saved there show straight away. The Platform
+ * Admin's screens never follow a school: they are not school workspaces.
  */
 export function themeTenantFor(
   role: RoleKey,
@@ -21,6 +22,9 @@ export function themeTenantFor(
   selectedTenantId: string | undefined,
   preview: boolean = PREVIEW_SELECTED_SCHOOL,
 ): string | undefined {
-  if (role === "platform") return selectedTenantId;
+  // The Platform Admin only sees platform-level screens, so it always gets the platform default look.
+  if (role === "platform") return undefined;
+  // The School Admin follows the school workspace it is in (none yet = platform default).
+  if (role === "school-admin") return selectedTenantId;
   return preview ? (selectedTenantId ?? ownTenantId) : ownTenantId;
 }

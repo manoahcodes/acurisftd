@@ -14,9 +14,9 @@ const single = (type: InstitutionType): Division[] => [
 const combined = (...types: InstitutionType[]): Division[] => types.flatMap(single);
 
 export const TENANTS: TenantSummary[] = [
-  { id: "lusaka-hills", name: "Lusaka Hills Academy", divisions: combined("primary", "high_school"), campuses: 2, learners: 1248, plan: "Growth", status: "Active" },
-  { id: "chilenje", name: "Chilenje Secondary", divisions: single("high_school"), campuses: 1, learners: 2104, plan: "Growth", status: "Active" },
-  { id: "northview", name: "Northview Primary", divisions: single("primary"), campuses: 1, learners: 684, plan: "Starter", status: "Trial" },
+  { id: "lusaka-hills", name: "Lusaka Hills Academy", divisions: combined("primary", "high_school"), campuses: 2, learners: 1248, plan: "Growth", status: "Active", setupType: "extended" },
+  { id: "chilenje", name: "Chilenje Secondary", divisions: single("high_school"), campuses: 1, learners: 2104, plan: "Growth", status: "Active", setupType: "extended" },
+  { id: "northview", name: "Northview Primary", divisions: single("primary"), campuses: 1, learners: 684, plan: "Starter", status: "Trial", setupType: "extended" },
   { id: "mukuba", name: "Mukuba Learning Centre", divisions: single("college"), campuses: 2, learners: 950, plan: "Growth", status: "Active" },
   { id: "kafue-valley", name: "Kafue Valley College", divisions: single("college"), campuses: 3, learners: 1720, plan: "Enterprise", status: "Active" },
   { id: "zambezi-university", name: "Zambezi University", divisions: single("university"), campuses: 3, learners: 6400, plan: "Enterprise", status: "Active" },
@@ -38,13 +38,13 @@ export const mockTenantDirectory: TenantDirectory = {
   async list() {
     return [...TENANTS];
   },
-  async create({ name, plan, status, campuses, types, feePolicy }) {
+  async create({ name, plan, status, campuses, types, feePolicy, setupType }) {
     const divisions = combined(...types);
     // Same rule as the seed data: one academic system per school.
     assertSharedSystem(name, divisions);
     let id = slugify(name);
     for (let n = 2; TENANTS.some((t) => t.id === id); n++) id = `${slugify(name)}-${n}`;
-    const tenant: TenantSummary = { id, name, divisions, campuses, learners: 0, plan, status, feePolicy };
+    const tenant: TenantSummary = { id, name, divisions, campuses, learners: 0, plan, status, feePolicy, setupType };
     TENANTS.push(tenant);
     save();
     return tenant;

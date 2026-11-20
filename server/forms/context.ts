@@ -1,4 +1,4 @@
-import { ROLES } from "@/config/navigation";
+import { adminNavItem } from "@/config/navigation";
 import type { Division } from "@/config/institution";
 import type { PlatformContext } from "../repositories/platform-types";
 import { isDivisionScoped } from "../repositories/platform-mock/divisions";
@@ -17,7 +17,7 @@ export type ResolvedContext =
 export async function resolveContext(slug: string, divisionId: string): Promise<ResolvedContext> {
   if (divisionId && !ID.test(divisionId)) return { ok: false, message: "That division is not valid." };
   const { tenants, selected, division } = await getTenantSelection();
-  const item = ROLES.platform.nav.find((n) => n.slug === slug);
+  const item = adminNavItem(slug);
   if (item?.scope === "tenant" && !selected) return { ok: false, message: "Select a school first." };
 
   const multi = (selected?.divisions.length ?? 0) > 1 && isDivisionScoped(slug);

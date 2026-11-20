@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { INSTITUTION_TYPES, type Division, type InstitutionType, INSTITUTIONS } from "@/config/institution";
-import { ROLES } from "@/config/navigation";
+import { ROLES, adminNavItem } from "@/config/navigation";
 import { askedFields, keyForRow } from "@/lib/forms/spec";
 import { validateForm } from "@/lib/forms/validate";
 import { FORM_SLUGS, entriesFor, offeredEntries } from "@/server/forms/registry";
@@ -26,13 +26,13 @@ const contexts: Array<[string, PlatformContext]> = [
 
 describe("form registry matches the screens", () => {
   it("only names real pages", () => {
-    const slugs = new Set(ROLES.platform.nav.map((n) => n.slug));
+    const slugs = new Set([...ROLES.platform.nav, ...ROLES["school-admin"].nav].map((n) => n.slug));
     for (const s of FORM_SLUGS) expect(slugs.has(s), s).toBe(true);
   });
 
   for (const [label, ctx] of contexts) {
     for (const slug of FORM_SLUGS) {
-      const item = ROLES.platform.nav.find((n) => n.slug === slug)!;
+      const item = adminNavItem(slug)!;
       if (item.scope === "tenant" && !ctx.tenant) continue;
 
       it(`${label}: ${slug}`, async () => {
@@ -85,7 +85,7 @@ describe("form registry matches the screens", () => {
 
   it("every action button opens a form or a job dialog", async () => {
     for (const [label, ctx] of contexts) {
-      for (const item of ROLES.platform.nav) {
+      for (const item of [...ROLES.platform.nav, ...ROLES["school-admin"].nav]) {
         if (!item.slug || (item.scope === "tenant" && !ctx.tenant)) continue;
         const screen = await mockPlatformScreenRepository.getScreen(ctx, item.slug);
         for (const action of screen?.actions ?? []) {

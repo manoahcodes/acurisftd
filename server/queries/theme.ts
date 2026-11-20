@@ -31,11 +31,14 @@ export type ThemeEditorState = {
   presets: ThemePreset[];
 };
 
-/** Everything the editor needs for the current Platform Admin selection. */
-export const getThemeEditorState = cache(async (): Promise<ThemeEditorState> => {
+/**
+ * Everything the editor needs. "platform" is the Platform Admin's default
+ * branding; "school" is the open workspace's own branding.
+ */
+export const getThemeEditorState = cache(async (area: "platform" | "school"): Promise<ThemeEditorState> => {
   const { selected } = await getTenantSelection();
   const platformDefault = await themes.getPlatformDefault();
-  if (!selected) {
+  if (area === "platform" || !selected) {
     return {
       scope: "platform",
       scopeLabel: "Platform default",

@@ -30,10 +30,10 @@ export interface TenantDirectory {
    */
   /** Deletes a school that has no learners yet. Returns false if it has some or does not exist. */
   remove(id: string): Promise<boolean>;
-  update(id: string, changes: Partial<Pick<TenantSummary, "name" | "plan" | "status" | "campuses" | "feePolicy">> & { types?: InstitutionType[] }): Promise<TenantSummary | undefined>;
+  update(id: string, changes: Partial<Pick<TenantSummary, "name" | "plan" | "status" | "campuses" | "feePolicy" | "setupType">> & { types?: InstitutionType[] }): Promise<TenantSummary | undefined>;
 }
 
-export type NewTenant = Pick<TenantSummary, "name" | "plan" | "status" | "campuses" | "feePolicy"> & {
+export type NewTenant = Pick<TenantSummary, "name" | "plan" | "status" | "campuses" | "feePolicy" | "setupType"> & {
   /** At least one institution type; each becomes a division. */
   types: InstitutionType[];
 };

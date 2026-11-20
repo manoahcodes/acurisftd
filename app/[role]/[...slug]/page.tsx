@@ -15,7 +15,7 @@ import { printBrandingOf } from "@/lib/print";
 import { getResolvedTheme } from "@/server/queries/theme";
 import { PlatformScreenView } from "@/components/platform/platform-screen-view";
 import { ThemeSection } from "@/components/platform/theme/theme-section";
-import { SelectSchoolPrompt } from "@/components/platform/select-school-prompt";
+import { OpenWorkspacePrompt } from "@/components/platform/open-workspace-prompt";
 import { platformScreens } from "@/server/repositories";
 import { getTenantSelection } from "@/server/queries/platform";
 import { TEACHER_PAGES, TeacherSection } from "@/components/teacher/teacher-section";
@@ -63,7 +63,8 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     const { ctx } = await getBursarSession();
     return { title: resolveLabel(item.label, termsFor(ctx.institutionType)) };
   }
-  if (role !== "platform") return { title: item.label };
+  if (role === "platform") return { title: item.label };
+  if (role !== "school-admin") return { title: item.label };
   const { selected } = await getTenantSelection();
   return { title: resolveLabel(item.label, termsFor(selected && tenantTermsType(selected.divisions))) };
 }
@@ -87,7 +88,7 @@ async function Section({ params }: { params: Params }) {
   const item = ROLES[role].nav.find((n) => n.slug === slug.join("/"));
   if (!item) notFound();
 
-  if (role === "platform") return <PlatformSection item={item} />;
+  if (role === "platform" || role === "school-admin") return <AdminSection role={role} item={item} />;
 
   if (role === "teacher") return <TeacherPage item={item} />;
 
@@ -101,13 +102,19 @@ async function Section({ params }: { params: Params }) {
 }
 
 /**
- * A Platform Admin page. Screens that belong to one school need a selected
- * school; "either" screens roll up across schools until one is picked.
+ * An admin page. Platform Admin pages are about the tenants and the platform
+ * and are never given a school. School Admin pages show one school's records,
+ * so they need an open school workspace (the only way a Platform Admin reaches
+ * them); in a single-school deployment that school is always open.
  */
-async function PlatformSection({ item }: { item: NavItem }) {
-  const { tenants, selected, division } = await getTenantSelection();
+async function AdminSection({ role, item }: { role: "platform" | "school-admin"; item: NavItem }) {
+  const { tenants, selected: workspace, division: workspaceDivision } = await getTenantSelection();
+  const isPlatform = role === "platform";
+  // Tenant-level pages never see a school, even when a workspace was opened earlier.
+  const selected = isPlatform ? undefined : workspace;
+  const division = isPlatform ? undefined : workspaceDivision;
   const title = resolveLabel(item.label, termsFor(selected && tenantTermsType(selected.divisions)));
-  const needsSchool = item.scope === "tenant" && !selected;
+  const needsSchool = !isPlatform && !selected;
 
   const screen = needsSchool
     ? undefined
@@ -118,27 +125,30 @@ async function PlatformSection({ item }: { item: NavItem }) {
 
   const subtitle = selected
     ? `${selected.name} • ${division ? division.name : divisionsLabel(selected.divisions)} • ${tenantSystemLabel(selected.divisions)}`
-    : item.scope === "tenant"
-      ? "Select a school to continue"
+    : needsSchool
+      ? "Open a school workspace to continue"
       : "All tenants";
 
   return (
     <>
       <PageHeader
         crumbs={[
-          { label: "Dashboard", href: "/platform" },
-          { label: ROLES.platform.label, href: hrefFor("platform", "") },
-          { label: title, href: hrefFor("platform", item.slug) },
+          { label: "Dashboard", href: `/${role}` },
+          { label: ROLES[role].label, href: hrefFor(role, "") },
+          { label: title, href: hrefFor(role, item.slug) },
         ]}
         title={title}
         subtitle={screen || needsSchool ? subtitle : "This section hasn't been built yet."}
       />
       {needsSchool ? (
-        <SelectSchoolPrompt title={title} tenants={tenants} />
+        <OpenWorkspacePrompt title={title} tenants={tenants} />
       ) : screen ? (
-        <PlatformScreenView screen={screen} slug={item.slug} branding={printBrandingOf((await getResolvedTheme("platform")).branding)} />
+        <PlatformScreenView screen={screen} slug={item.slug} branding={printBrandingOf((await getResolvedTheme(role)).branding)} />
       ) : null}
-      {item.slug === "platform-settings" && <ThemeSection />}
+      {/* Tenant list: the Platform Admin enters a school's workspace from here. */}
+      {isPlatform && item.slug === "tenants-and-schools" && <OpenWorkspacePrompt title="a school" tenants={tenants} compact />}
+      {item.slug === "platform-settings" && <ThemeSection area="platform" />}
+      {item.slug === "school-settings" && !needsSchool && <ThemeSection area="school" />}
     </>
   );
 }

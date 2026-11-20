@@ -22,6 +22,8 @@ import { userScreens } from "./users";
 
 const SCREENS: Record<string, Builder> = {
   ...platformScreens,
+  // School Admin's school settings: the same screen the platform settings page is built on.
+  "school-settings": platformScreens["platform-settings"],
   ...institutionScreens,
   ...financeScreens,
   ...userScreens,

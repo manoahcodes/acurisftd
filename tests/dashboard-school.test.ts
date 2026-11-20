@@ -18,9 +18,13 @@ const text = (role: (typeof ROLE_KEYS)[number], type: TenantContext["institution
   JSON.stringify(buildDashboard(role, ctxFor(type)));
 
 describe("dashboardSchoolFor", () => {
-  it("Platform Admin: platform-wide view with no school, else the selected school", () => {
+  it("Platform Admin: always the platform-wide view, even with a workspace open", () => {
     expect(dashboardSchoolFor("platform", own, undefined, undefined)).toBeUndefined();
-    const s = dashboardSchoolFor("platform", own, tenant("zambezi-university"), undefined);
+    expect(dashboardSchoolFor("platform", own, tenant("zambezi-university"), undefined)).toBeUndefined();
+  });
+  it("School Admin: the open school workspace, or nothing until one is opened", () => {
+    expect(dashboardSchoolFor("school-admin", own, undefined, undefined)).toBeUndefined();
+    const s = dashboardSchoolFor("school-admin", own, tenant("zambezi-university"), undefined);
     expect(s?.tenantName).toBe("Zambezi University");
     expect(s?.institutionType).toBe("university");
   });
@@ -69,9 +73,9 @@ describe("buildDashboard", () => {
     expect(text("teacher", "university")).toContain("BSc Computer Science");
     expect(text("teacher", "college")).toContain("Diploma in ICT");
   });
-  it("names the school in notices and the Platform Admin's school overview", () => {
+  it("names the school in notices and the School Admin's school overview", () => {
     expect(text("parent", "college")).toContain("Lusaka Hills Academy");
-    const d = buildDashboard("platform", { ...ctxFor("university"), tenantName: "Zambezi University" });
+    const d = buildDashboard("school-admin", { ...ctxFor("university"), tenantName: "Zambezi University" });
     expect(d.title).toContain("Zambezi University");
     expect(JSON.stringify(d)).toContain("Semester system");
   });

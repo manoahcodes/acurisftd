@@ -16,6 +16,7 @@ import { effectiveMode, MODE_COOKIE, parseModePreference, selectedPreference } f
 import { ThemeStyle } from "@/components/platform/theme/theme-style";
 import { getResolvedTheme } from "@/server/queries/theme";
 import { session } from "@/server/repositories";
+import { WorkspaceBanner } from "@/components/shell/workspace-banner";
 
 type Params = Promise<{ role: string }>;
 
@@ -94,6 +95,11 @@ async function Shell({ params, children }: { params: Params; children: React.Rea
           tabIndex={-1}
           className="relative flex-1 overflow-y-auto bg-canvas px-6 py-8 focus:outline-none lg:px-12"
         >
+          {role === "school-admin" && (
+            <Suspense fallback={null}>
+              <WorkspaceBanner />
+            </Suspense>
+          )}
           {children}
         </main>
       </div>

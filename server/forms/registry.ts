@@ -1,4 +1,4 @@
-import { INSTITUTIONS, INSTITUTION_TYPES, type Division } from "@/config/institution";
+import { DEFAULT_SETUP, INSTITUTIONS, INSTITUTION_TYPES, SETUPS, SETUP_TYPES, type Division } from "@/config/institution";
 import { DEFAULT_FEE_POLICY, FEE_POLICIES, FEE_POLICY_LABELS } from "@/lib/fee-policy";
 import { parseMoney } from "@/lib/forms/validate";
 import type { FieldDef, FormSpec, FormValues } from "@/types/forms";
@@ -446,6 +446,10 @@ const MAKERS: Record<string, Maker> = {
       action: "Add tenant",
       spec: form("tenant", "tenants", "school", ["School"], [
         text("name", "School name", "School"),
+        select("setup", "Setup type", "Setup", SETUP_TYPES.map((s) => SETUPS[s].label), {
+          defaultValue: SETUPS[DEFAULT_SETUP].label,
+          help: "Higher education offers College and University. Choose the extended setup only for a school that also needs Primary or High School features.",
+        }),
         {
           name: "types", label: "Divisions", type: "multiselect", required: true,
           column: "Institution type", joiner: " + ",
@@ -573,6 +577,9 @@ const MAKERS: Record<string, Maker> = {
     },
   ],
 };
+
+// School Admin's "School settings" edits the same settings as the platform page.
+MAKERS["school-settings"] = MAKERS["platform-settings"];
 
 /** Page slugs that have forms. */
 export const FORM_SLUGS = Object.keys(MAKERS);

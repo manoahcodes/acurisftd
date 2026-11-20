@@ -36,6 +36,7 @@ const LABEL_ICONS: Record<string, IconName> = {
   // ---- Platform Admin: overview and groups
   Overview: "LayoutDashboard",
   Platform: "Globe",
+  Tenants: "Globe",
   Institution: "Landmark",
   Finances: "Wallet",
   Users: "Users",

@@ -7,8 +7,10 @@ import type { TenantSummary } from "@/types/platform";
 /**
  * The school a role's dashboard should describe, as a TenantContext.
  *
- * - Platform Admin follows the sidebar selection; `undefined` means the
- *   platform-wide view (no school selected).
+ * - Platform Admin has no school: `undefined` is always the platform-wide
+ *   (tenant-level) view, whatever workspace was last opened.
+ * - School Admin follows the open school workspace; `undefined` means none is
+ *   open yet (cloud only), so the page asks which school to open.
  * - Other roles use their own school, or the demo-selected one while
  *   PREVIEW_SELECTED_SCHOOL is on (same rule as the theme).
  * - A selected division decides the wording; otherwise the first division does
@@ -21,6 +23,7 @@ export function dashboardSchoolFor(
   division: Division | undefined,
   preview: boolean = PREVIEW_SELECTED_SCHOOL,
 ): TenantContext | undefined {
+  if (role === "platform") return undefined;
   const tenantId = themeTenantFor(role, own.tenantId, selected?.id, preview);
   if (!tenantId) return undefined;
   if (!selected || selected.id !== tenantId) return own;

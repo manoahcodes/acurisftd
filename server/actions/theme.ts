@@ -12,19 +12,26 @@ const MAX_PRESETS = 20;
 const fail = (message: string, errors: ThemeFormState["errors"] = {}): ThemeFormState => ({ ok: false, message, errors });
 
 /**
- * The scope is never taken from the browser: it is the school the Platform
- * Admin has selected (from the cookie, checked against the real tenant list),
- * or the platform default when none is.
+ * Which page the editor sits on: the Platform Admin's platform settings (the
+ * default every school inherits) or a School Admin's school settings.
+ * It only chooses between the two; the school itself is never taken from the
+ * browser but from the open workspace (cookie checked against the real tenant list).
  */
-async function currentScope() {
+export type ThemeArea = "platform" | "school";
+const areaOf = (v: unknown): ThemeArea => (v === "school" ? "school" : "platform");
+
+/** "platform", or the open school's id; undefined when school branding is asked for with no workspace open. */
+async function currentScope(area: ThemeArea): Promise<string | undefined> {
+  if (area === "platform") return "platform";
   const { selected } = await getTenantSelection();
-  return selected?.id ?? "platform";
+  return selected?.id;
 }
 
 /** Saves branding and theme for the current scope. Everything is validated again here. */
 export async function saveTheme(_prev: ThemeFormState, formData: FormData): Promise<ThemeFormState> {
   await requirePlatformAdmin();
-  const scope = await currentScope();
+  const scope = await currentScope(areaOf(formData.get("area")));
+  if (!scope) return fail("Open a school workspace first.");
 
   const raw = Object.fromEntries(formData.entries());
   const theme = parseThemeSettings(raw);
@@ -54,10 +61,10 @@ export async function saveTheme(_prev: ThemeFormState, formData: FormData): Prom
 }
 
 /** Removes the selected school's override so it inherits the platform default again. */
-export async function resetTenantTheme(): Promise<ThemeFormState> {
+export async function resetTenantTheme(_prev: ThemeFormState, formData: FormData): Promise<ThemeFormState> {
   await requirePlatformAdmin();
-  const scope = await currentScope();
-  if (scope === "platform") return fail("Select a school first.");
+  const scope = await currentScope(areaOf(formData.get("area")));
+  if (!scope || scope === "platform") return fail("Open a school workspace first.");
   await themes.clearTenantOverride(scope);
   revalidatePath("/", "layout");
   return { ok: true, message: "Now using the platform default." };
@@ -65,7 +72,8 @@ export async function resetTenantTheme(): Promise<ThemeFormState> {
 
 export async function saveThemePreset(_prev: ThemeFormState, formData: FormData): Promise<ThemeFormState> {
   await requirePlatformAdmin();
-  const scope = await currentScope();
+  const scope = await currentScope(areaOf(formData.get("area")));
+  if (!scope) return fail("Open a school workspace first.");
   const name = String(formData.get("presetName") ?? "").trim().replace(/\s+/g, " ");
   if (name.length < 1 || name.length > 40) return fail("Name the preset (1 to 40 characters).", { form: "Name the preset (1 to 40 characters)." });
   const theme = parseThemeSettings(Object.fromEntries(formData.entries()));
@@ -77,10 +85,12 @@ export async function saveThemePreset(_prev: ThemeFormState, formData: FormData)
   return { ok: true, message: `Preset "${name}" saved.` };
 }
 
-export async function deleteThemePreset(id: string): Promise<ThemeFormState> {
+export async function deleteThemePreset(id: string, area: ThemeArea): Promise<ThemeFormState> {
   await requirePlatformAdmin();
   if (!/^[A-Za-z0-9-]{1,64}$/.test(id)) return fail("That preset is not valid.");
-  await themes.deletePreset(await currentScope(), id);
+  const scope = await currentScope(areaOf(area));
+  if (!scope) return fail("Open a school workspace first.");
+  await themes.deletePreset(scope, id);
   revalidatePath("/", "layout");
   return { ok: true };
 }

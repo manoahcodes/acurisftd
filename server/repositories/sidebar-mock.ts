@@ -4,6 +4,7 @@ import type { NavBadgeRepository } from "./sidebar-types";
 // Numbers come from the mockup dashboards.
 const DATA: Record<RoleKey, Record<string, number>> = {
   platform: { "Tenants & schools": 1, Subscriptions: 1, "Support queue": 17 },
+  "school-admin": {},
   // The teacher's badges (Class register, Assignments, Assessments) come from their own data in server/queries/sidebar.ts.
   teacher: {},
   bursar: {},

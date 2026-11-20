@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
-import { ROLES, ROLE_KEYS, type RoleKey } from "@/config/navigation";
+import { ROLES, availableRoleKeys, type RoleKey } from "@/config/navigation";
 import { inputClass } from "@/components/platform/record-form";
 
 /**
@@ -13,7 +13,7 @@ import { inputClass } from "@/components/platform/record-form";
 export function SignInForm() {
   const router = useRouter();
   const id = useId();
-  const [role, setRole] = useState<RoleKey>("platform");
+  const [role, setRole] = useState<RoleKey>(availableRoleKeys()[0]);
 
   return (
     <form
@@ -34,7 +34,7 @@ export function SignInForm() {
       <div>
         <label htmlFor={`${id}-role`} className="mb-1 block text-sm font-medium text-ink">Continue as</label>
         <select id={`${id}-role`} value={role} onChange={(e) => setRole(e.target.value as RoleKey)} className={inputClass}>
-          {ROLE_KEYS.map((k) => (
+          {availableRoleKeys().map((k) => (
             <option key={k} value={k}>{ROLES[k].label}</option>
           ))}
         </select>

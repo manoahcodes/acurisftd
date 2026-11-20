@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
-import { ROLE_KEYS, ROLES, hrefFor, isRoleKey, type RoleKey } from "@/config/navigation";
+import { ROLES, availableRoleKeys, hrefFor, isRoleKey, type RoleKey } from "@/config/navigation";
 
 /**
  * DEVELOPMENT ONLY. The topbar renders this only outside production. It simply
@@ -32,7 +32,7 @@ export function RoleSwitcher({ role }: { role: RoleKey }) {
         }}
         className="h-10 cursor-pointer appearance-none rounded-lg border border-dashed border-line bg-transparent py-2 pl-11 pr-8 text-sm text-ink hover:bg-canvas"
       >
-        {ROLE_KEYS.map((key) => (
+        {availableRoleKeys().map((key) => (
           <option key={key} value={key}>
             {ROLES[key].label}
           </option>

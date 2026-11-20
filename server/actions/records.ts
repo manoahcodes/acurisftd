@@ -2,7 +2,7 @@
 
 import { isMultiTenant } from "@/config/deployment";
 import { revalidatePath } from "next/cache";
-import { INSTITUTIONS, INSTITUTION_TYPES, divisionsShareSystem, type InstitutionType } from "@/config/institution";
+import { DEFAULT_SETUP, INSTITUTIONS, INSTITUTION_TYPES, SETUPS, SETUP_TYPES, disallowedTypes, divisionsShareSystem, tenantSetup, type InstitutionType, type SetupType } from "@/config/institution";
 import { DEFAULT_FEE_POLICY, FEE_POLICY_LABELS, labelToPolicy } from "@/lib/fee-policy";
 import { askedFields, keyForRow } from "@/lib/forms/spec";
 import { normaliseKey } from "@/lib/forms/overlay";
@@ -27,6 +27,15 @@ const typesFromLabels = (labels: string[]): InstitutionType[] =>
   labels
     .map((label) => INSTITUTION_TYPES.find((t) => INSTITUTIONS[t].label === label))
     .filter((t): t is InstitutionType => Boolean(t));
+
+const setupFromLabel = (label: string): SetupType | undefined => SETUP_TYPES.find((s) => SETUPS[s].label === label);
+
+/** The error to show when divisions use types the school's setup does not enable, or null. */
+function setupError(setup: SetupType, types: InstitutionType[]): string | null {
+  const bad = disallowedTypes(setup, types);
+  if (bad.length === 0) return null;
+  return `${bad.map((t) => INSTITUTIONS[t].label).join(" and ")} ${bad.length > 1 ? "are" : "is"} not part of the ${SETUPS[setup].label} setup. Choose "${SETUPS.extended.label}" to enable school-level divisions.`;
+}
 
 const fail = (message: string, extra: Partial<FormState> = {}): FormState => ({ status: "error", message, ...extra });
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
@@ -76,6 +85,9 @@ export async function submitRecord(_prev: FormState, formData: FormData): Promis
     if (mode === "create") {
       if (clash) return fail("A school with this name already exists.", { errors: { name: "Already exists." }, values: submitted });
       const types = typesFromLabels(values.types as string[]);
+      const setup = setupFromLabel(String(values.setup)) ?? DEFAULT_SETUP;
+      const notAllowed = setupError(setup, types);
+      if (notAllowed) return fail("Those divisions need a different setup.", { errors: { types: notAllowed }, values: submitted });
       const divisions = types.map((t) => ({ id: t, name: INSTITUTIONS[t].label, code: "", institutionType: t }));
       if (!divisionsShareSystem(divisions)) {
         return fail("A school uses one academic system.", {
@@ -89,6 +101,7 @@ export async function submitRecord(_prev: FormState, formData: FormData): Promis
         status: values.status as "Active" | "Trial" | "Suspended",
         campuses: Number(values.campuses),
         feePolicy: labelToPolicy(String(values.feePolicy)) ?? DEFAULT_FEE_POLICY,
+        setupType: setup,
       });
       await log("School added", `Tenants & schools: ${name}`, "platform", "Platform");
       revalidatePath("/platform", "layout");
@@ -99,6 +112,9 @@ export async function submitRecord(_prev: FormState, formData: FormData): Promis
     if (!current) return fail("That school no longer exists.");
     if (clash && clash.id !== current.id) return fail("A school with this name already exists.", { errors: { name: "Already exists." }, values: submitted });
     const picked = typesFromLabels(values.types as string[]);
+    const setup = setupFromLabel(String(values.setup)) ?? tenantSetup(current);
+    const notAllowed = setupError(setup, picked);
+    if (notAllowed) return fail("Those divisions need a different setup.", { errors: { types: notAllowed }, values: submitted });
     const before = current.divisions.map((d) => d.institutionType);
     const changed = picked.length !== before.length || picked.some((t) => !before.includes(t));
     if (changed) {
@@ -124,6 +140,7 @@ export async function submitRecord(_prev: FormState, formData: FormData): Promis
       status: values.status as "Active" | "Trial" | "Suspended",
       campuses: Number(values.campuses),
       feePolicy: newPolicy,
+      setupType: setup,
       ...(changed ? { types: picked } : {}),
     });
     if (newPolicy !== (current.feePolicy ?? DEFAULT_FEE_POLICY)) {
@@ -131,6 +148,9 @@ export async function submitRecord(_prev: FormState, formData: FormData): Promis
     }
     if (changed) {
       await log("Divisions changed", `Tenants & schools: ${name} (${picked.map((t) => INSTITUTIONS[t].label).join(" + ")})`, "platform", "Platform");
+    }
+    if (setup !== tenantSetup(current)) {
+      await log("Setup changed", `Tenants & schools: ${name} (${SETUPS[setup].label})`, "platform", "Platform");
     }
     await log("School edited", `Tenants & schools: ${name}`, "platform", "Platform");
     revalidatePath("/platform", "layout");

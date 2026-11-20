@@ -118,7 +118,7 @@ const PROFILES: Record<InstitutionType, Profile> = {
   },
 };
 
-function platformOverview(ctx: TenantContext, mode: DeploymentMode): Dashboard {
+function schoolAdminOverview(ctx: TenantContext, mode: DeploymentMode): Dashboard {
   const p = PROFILES[ctx.institutionType];
   const terms = termsFor(ctx.institutionType);
   const info = INSTITUTIONS[ctx.institutionType];
@@ -173,11 +173,12 @@ function platformOverview(ctx: TenantContext, mode: DeploymentMode): Dashboard {
   };
 }
 
+/** Tenant-level view for the Platform Admin: no learner-level or financial detail of any school. */
 const PLATFORM_WIDE: Dashboard = {
   title: "Platform overview",
   kpis: [
     { title: "Active tenants", caption: "Schools using ACURIS", value: "128", note: "+12 this month" },
-    { title: "Total learners", caption: "Across all tenants", value: "48,620", note: "+8.4% this term" },
+    { title: "Total students", caption: "Enrolled across all tenants", value: "48,620", note: "+8.4% this semester" },
     { title: "Platform health", caption: "Services operational", value: "99.98%", note: "All systems normal" },
     { title: "Open support", caption: "Awaiting action", value: "17", note: "5 high priority" },
   ],
@@ -468,9 +469,13 @@ export function buildDashboard(
   mode: DeploymentMode = DEPLOYMENT_MODE,
 ): Dashboard {
   if (role === "platform") {
-    // Single-school deployments never show the platform-wide view.
-    if (!ctx && !isMultiTenant(mode)) throw new Error("A single-school deployment needs its school.");
-    return ctx ? platformOverview(ctx, mode) : PLATFORM_WIDE;
+    // Tenant-level only: never one school's records, even if a workspace was opened.
+    if (!isMultiTenant(mode)) throw new Error("A single-school deployment has no Platform Admin.");
+    return PLATFORM_WIDE;
+  }
+  if (role === "school-admin") {
+    if (!ctx) throw new Error("The school-admin dashboard needs a school.");
+    return schoolAdminOverview(ctx, mode);
   }
   if (!ctx) throw new Error(`The ${role} dashboard needs a school.`);
   switch (role) {

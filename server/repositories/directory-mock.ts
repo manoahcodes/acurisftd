@@ -32,6 +32,7 @@ type Entry = {
 };
 
 const DATA: Record<RoleKey, Entry[]> = {
+  "school-admin": [],
   platform: [
     // Tenants, subscriptions and pages are added from live data in entriesFor().
     { id: "ticket-sup-1048", title: "Support ticket #SUP-1048", subtitle: "Escalated · High", kind: "Ticket", navLabel: "Support queue" },
@@ -90,11 +91,12 @@ const DATA: Record<RoleKey, Entry[]> = {
 };
 
 /**
- * Platform Admin search covers the schools on the platform (so new tenants are
- * found) and every page of the admin (so "tuition" or "hostel" jumps there).
- * Pages are found by their Term and Semester wording alike.
+ * Platform Admin search covers the tenants and the platform's own pages (so new
+ * tenants are found). School Admin search covers that school's pages (so
+ * "tuition" or "hostel" jumps there). It never returns tenants or other
+ * schools' records. Pages are found by their Term and Semester wording alike.
  */
-async function platformEntries(): Promise<Entry[]> {
+async function adminEntries(role: "platform" | "school-admin"): Promise<Entry[]> {
   const tenants = await mockTenantDirectory.list();
   const schoolTerms = termsFor("high_school");
   const tertiaryTerms = termsFor("university");
@@ -116,7 +118,7 @@ async function platformEntries(): Promise<Entry[]> {
     },
   ]);
 
-  const config = ROLES.platform;
+  const config = ROLES[role];
   const groupOf = new Map<string, string>();
   for (const group of config.navGroups ?? []) {
     for (const label of group.items) groupOf.set(label, group.label);
@@ -128,15 +130,15 @@ async function platformEntries(): Promise<Entry[]> {
       (item): Entry => ({
         id: `page-${item.slug}`,
         title: resolveLabel(item.label, GENERIC_TERMS),
-        subtitle: groupOf.get(item.label) ?? "Platform",
+        subtitle: groupOf.get(item.label) ?? ROLES[role].label,
         kind: "Page",
         navLabel: item.label,
         keywords: `${resolveLabel(item.label, schoolTerms)} ${resolveLabel(item.label, tertiaryTerms)}`,
       }),
     );
 
-  // Single-school deployments never search across schools.
-  return isMultiTenant() ? [...tenantEntries, ...pageEntries] : pageEntries;
+  // Only the Platform Admin searches tenants; a School Admin searches its own school's pages.
+  return role === "platform" && isMultiTenant() ? [...tenantEntries, ...pageEntries] : pageEntries;
 }
 
 function hrefForNavLabel(role: RoleKey, navLabel: string): string {
@@ -156,8 +158,8 @@ export const mockSearchRepository: SearchRepository = {
     if (!q) return [];
 
     const scored: { entry: Entry; score: number }[] = [];
-    const entries = role === "platform"
-      ? [...(await platformEntries()), ...(isMultiTenant() ? DATA.platform : [])]
+    const entries = role === "platform" || role === "school-admin"
+      ? [...(await adminEntries(role)), ...(role === "platform" && isMultiTenant() ? DATA.platform : [])]
       : DATA[role];
     for (const entry of entries) {
       const title = entry.title.toLowerCase();

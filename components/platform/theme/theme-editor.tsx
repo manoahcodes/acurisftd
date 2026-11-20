@@ -16,7 +16,7 @@ import {
   BASE_SIZES, DENSITIES, FALLBACK_FONT_STACK, FONTS, HARMONIES, MODES, RADII, SHADOWS, SIDEBAR_STYLES, type FontKey,
 } from "@/lib/theme/options";
 import { BUILT_IN_PRESETS, QUICK_COLOURS } from "@/lib/theme/presets";
-import { deleteThemePreset, resetTenantTheme, saveTheme, saveThemePreset } from "@/server/actions/theme";
+import { deleteThemePreset, resetTenantTheme, saveTheme, saveThemePreset, type ThemeArea } from "@/server/actions/theme";
 import type { Branding, ThemeFormState, ThemePreset, ThemeSettings } from "@/types/theme";
 
 const IDLE: ThemeFormState = { ok: false };
@@ -27,6 +27,8 @@ const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 type Props = {
   scopeLabel: string;
   isTenant: boolean;
+  /** Which page this editor is on; the server maps it to the platform default or the open school. */
+  area: ThemeArea;
   inherited: boolean;
   theme: ThemeSettings;
   branding: Branding;
@@ -34,7 +36,7 @@ type Props = {
   timezones: string[];
 };
 
-export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, branding, presets, timezones }: Props) {
+export function ThemeEditor({ scopeLabel, isTenant, area, inherited, theme: initial, branding, presets, timezones }: Props) {
   const [theme, setTheme] = useState<ThemeSettings>(initial);
   const [logoPreview, setLogoPreview] = useState<string>(branding.logoUrl);
   const [removeLogo, setRemoveLogo] = useState(false);
@@ -129,6 +131,7 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
 
   return (
     <form action={save} className="mt-6 space-y-6">
+      <input type="hidden" name="area" value={area} />
       <div>
         <h2 className="text-xl font-semibold text-ink">Branding and theme</h2>
         <p className="mt-1 max-w-3xl text-[15px] text-muted">
@@ -137,7 +140,7 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
             ? inherited
               ? "This school uses the platform default. Saving gives it its own branding."
               : "This school has its own branding."
-            : "Every school without its own branding uses this. Select a school in the sidebar to customise one."}
+            : "Every school without its own branding uses this. A school customises its own branding from its School Admin settings."}
         </p>
       </div>
 
@@ -301,7 +304,7 @@ export function ThemeEditor({ scopeLabel, isTenant, inherited, theme: initial, b
                     <span style={{ background: p.theme.primary }} className="h-3 w-3 rounded-full" aria-hidden />{p.name}
                   </button>
                   {!BUILT_IN_PRESETS.some((b) => b.id === p.id) && (
-                    <button type="button" aria-label={`Delete preset ${p.name}`} onClick={() => deleteThemePreset(p.id)} className="border-l border-line bg-surface px-2 text-muted hover:text-danger">
+                    <button type="button" aria-label={`Delete preset ${p.name}`} onClick={() => deleteThemePreset(p.id, area)} className="border-l border-line bg-surface px-2 text-muted hover:text-danger">
                       <Trash2 size={14} />
                     </button>
                   )}
