@@ -176,3 +176,12 @@ Team lead review: the platform operator and a school's own admin are different p
 - [ ] Time-box workspace entry (the cookie lasts 24 hours) and let a school see and approve platform support access
 - [ ] Division scope of Data export & backup, Access control (which still lists both admin roles in the matrix) and platform user roles should be reviewed with the team lead
 - [ ] `next build` could not run in the sandbox (Google Fonts unreachable); typecheck, lint, tests and the dev server (routes return 200) pass
+
+## 11. School portal pages (public landing, sign-in, register)
+- [x] Subdomain per school: `proxy.ts` rewrites `/`, `/sign-in` and `/register` on `<school>.<root domain>` to `/s/<school>/...` (root domain from `NEXT_PUBLIC_ACURIS_ROOT_DOMAIN`, default `localhost`). Also reachable by path at `/s/<school>` in development
+- [x] Landing, sign-in and register pages per school, themed from the school's own theme and branding; register has a role chooser (applicant/student, or staff and parent with an invite code). Demo only: nothing is checked or saved
+- [x] Academics, Admissions, About, Contact and the cards link out to the school's official website (new tab); with no website set, those links are hidden
+- [x] "Portal pages" editor on Platform settings (defaults) and School settings (per-school override), same default-plus-override pattern as the theme editor (`PortalRepository`, `server/repositories/portal-*.ts`)
+- [ ] Production: wildcard DNS and TLS for `*.<root domain>`, and a real school-slug or custom-domain field instead of the tenant id
+- [ ] Real sign-up (applications, invite-code redemption) and real sign-in; swap `PortalRepository` for one that checks role and tenant on writes
+- [ ] Unknown school subdomains return HTTP 200 with a "School not found" page (streaming); make that a real 404 when the host is known at the proxy

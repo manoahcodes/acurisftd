@@ -15,6 +15,8 @@ import { mockTenantDirectory } from "./tenants-mock";
 import { mockAuditLog } from "./audit-mock";
 import { mockRecordStore } from "./records-mock";
 import { mockThemeRepository } from "./theme-mock";
+import { mockPortalRepository } from "./portal-mock";
+import type { PortalRepository } from "./portal-types";
 import { mockTeachingRepository } from "./teacher-mock";
 import type { TeachingRepository } from "./teacher-types";
 import { mockStudentRepository } from "./student-mock";
@@ -60,6 +62,7 @@ export const tenantDirectory: TenantDirectory = mockTenantDirectory;
 export const platformScreens: PlatformScreenRepository = mockPlatformScreenRepository;
 export const records: RecordStore = mockRecordStore;
 export const themes: ThemeRepository = mockThemeRepository;
+export const portal: PortalRepository = mockPortalRepository;
 export const audit: AuditLog = mockAuditLog;
 
 export const teaching: TeachingRepository = mockTeachingRepository;

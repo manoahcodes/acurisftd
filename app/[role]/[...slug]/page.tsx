@@ -15,6 +15,7 @@ import { printBrandingOf } from "@/lib/print";
 import { getResolvedTheme } from "@/server/queries/theme";
 import { PlatformScreenView } from "@/components/platform/platform-screen-view";
 import { ThemeSection } from "@/components/platform/theme/theme-section";
+import { PortalSection } from "@/components/portal/portal-section";
 import { OpenWorkspacePrompt } from "@/components/platform/open-workspace-prompt";
 import { platformScreens } from "@/server/repositories";
 import { getTenantSelection } from "@/server/queries/platform";
@@ -147,8 +148,8 @@ async function AdminSection({ role, item }: { role: "platform" | "school-admin";
       ) : null}
       {/* Tenant list: the Platform Admin enters a school's workspace from here. */}
       {isPlatform && item.slug === "tenants-and-schools" && <OpenWorkspacePrompt title="a school" tenants={tenants} compact />}
-      {item.slug === "platform-settings" && <ThemeSection area="platform" />}
-      {item.slug === "school-settings" && !needsSchool && <ThemeSection area="school" />}
+      {item.slug === "platform-settings" && <><ThemeSection area="platform" /><PortalSection area="platform" /></>}
+      {item.slug === "school-settings" && !needsSchool && <><ThemeSection area="school" /><PortalSection area="school" /></>}
     </>
   );
 }
