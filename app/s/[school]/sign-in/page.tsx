@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { SignInForm } from "@/components/auth/sign-in-form";
 import { ThemeStyle } from "@/components/platform/theme/theme-style";
-import { PortalShell, SchoolMark } from "@/components/portal/portal-shell";
+import { PortalAuthLayout, canRegister } from "@/components/portal/portal-shell";
 import { getPortalBase, getPortalPage } from "@/server/queries/portal";
 
 type Params = Promise<{ school: string }>;
@@ -30,36 +30,22 @@ async function SignIn({ params }: { params: Params }) {
   const page = await getPortalPage(school);
   if (!page) notFound();
   const base = await getPortalBase(school);
-  const { branding, content } = page;
-  const canRegister = Object.values(content.register.roles).some(Boolean);
+  const { content } = page;
 
   return (
     <>
       <ThemeStyle theme={page.theme} />
-      <PortalShell page={page} base={base}>
-        <div className="mx-auto w-full max-w-md px-4 py-12">
-          {branding.loginBanner && (
-            <p role="status" className="mb-4 rounded-xl bg-brand px-4 py-3 text-center text-[15px] font-medium text-on-brand">
-              {branding.loginBanner}
-            </p>
-          )}
-          <div className="rounded-2xl border border-line bg-surface p-8 shadow-card">
-            <div className="flex flex-col items-center text-center">
-              <SchoolMark branding={branding} size="size-16" />
-              <h1 className="mt-4 text-2xl font-bold text-ink">{content.signIn.heading}</h1>
-              {content.signIn.intro && <p className="mt-2 text-[16px] text-muted">{content.signIn.intro}</p>}
-              {branding.welcomeMessage && <p className="mt-3 text-[16px] text-ink">{branding.welcomeMessage}</p>}
-            </div>
-            <SignInForm />
-          </div>
-          {canRegister && (
-            <p className="mt-6 text-center text-sm text-muted">
-              New here? <Link href={`${base}/register`} className="font-medium text-brand underline">Create an account</Link>
-            </p>
-          )}
-          {content.signIn.helpText && <p className="mt-3 text-center text-sm text-muted">{content.signIn.helpText}</p>}
+      <PortalAuthLayout page={page} base={base} heading={content.signIn.heading} intro={content.signIn.intro}>
+        <div className="rounded-2xl border border-line bg-surface p-6 shadow-card sm:p-8 [&>form]:mt-0">
+          <SignInForm />
         </div>
-      </PortalShell>
+        {canRegister(page) && (
+          <p className="mt-6 text-sm text-muted">
+            New here? <Link href={`${base}/register`} className="font-medium text-brand underline">Create an account</Link>
+          </p>
+        )}
+        {content.signIn.helpText && <p className="mt-3 text-sm text-muted">{content.signIn.helpText}</p>}
+      </PortalAuthLayout>
     </>
   );
 }
