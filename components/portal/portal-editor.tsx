@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, ExternalLink as ExternalIcon, ImagePlus, Plus, Trash2 } from "lucide-react";
 import { PORTAL_ICONS } from "@/lib/portal/icons";
+import { MAX_OVERLAY, OVERLAY_COLORS, overlayOf, type OverlayColor } from "@/lib/portal/overlay";
 import { MAX_FEATURES, MAX_NAV, MAX_SLIDES } from "@/lib/portal/validate";
 import { resetPortal, savePortal } from "@/server/actions/portal";
 import type { PortalContent, PortalFeature, PortalFormState, PortalLink } from "@/types/portal";
@@ -89,6 +90,39 @@ type EditorSlide = { key: number; keep: number; heading: string; body: string; c
 const toEditorSlides = (c: PortalContent): EditorSlide[] =>
   c.slides.map((s, n) => ({ key: n, keep: n, heading: s.heading, body: s.body, ctaLabel: s.ctaLabel, ctaPath: s.ctaPath, preview: "" }));
 
+/** Colour and strength of the tint over a side photo. Changes show in the preview straight away. */
+function OverlayControls({ id, value, onChange, hasPhoto, errorColor, errorStrength }: {
+  id: string; value: PortalContent["signIn"]["overlay"]; onChange: (v: PortalContent["signIn"]["overlay"]) => void; hasPhoto: boolean; errorColor?: string; errorStrength?: string;
+}) {
+  const o = overlayOf(value);
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <Field label="Overlay colour" error={errorColor}>
+        <select value={o.color} onChange={(e) => onChange({ ...o, color: e.target.value as OverlayColor })} className={input}>
+          {Object.entries(OVERLAY_COLORS).map(([k, c]) => <option key={k} value={k}>{c.label}</option>)}
+        </select>
+      </Field>
+      <div>
+        <label htmlFor={id} className="mb-1 flex items-center justify-between text-sm font-medium text-ink">
+          <span>Overlay strength</span><span className="tabular-nums text-muted">{o.strength}%</span>
+        </label>
+        <input id={id} type="range" min={0} max={MAX_OVERLAY} step={5} value={o.strength} onChange={(e) => onChange({ ...o, strength: Number(e.target.value) })} className="h-11 w-full accent-brand" />
+        {errorStrength && <p role="alert" className="text-xs text-danger">{errorStrength}</p>}
+      </div>
+      <p className="text-xs text-muted sm:col-span-2">
+        {hasPhoto ? "A stronger overlay makes the white text easier to read on a busy photo." : "The overlay is used once you add a side photo."}
+      </p>
+    </div>
+  );
+}
+
+/** Editable text state: photos stay out (they have their own fields), and an overlay missing from older saved content gets its default. */
+const blankMedia = (c: PortalContent): PortalContent => ({
+  ...c, heroImage: "", aboutImage: "", signInImage: "", registerImage: "", slides: [],
+  signIn: { ...c.signIn, overlay: overlayOf(c.signIn.overlay) },
+  register: { ...c.register, overlay: overlayOf(c.register.overlay) },
+});
+
 const readAsUrl = (file: File | undefined): Promise<string> =>
   new Promise((resolve) => {
     if (!file) return resolve("");
@@ -100,7 +134,7 @@ const readAsUrl = (file: File | undefined): Promise<string> =>
 
 export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, schoolId, content: initial, platformDefault, theme, branding }: Props) {
   // Photos stay out of this state (and out of the text payload); they have their own fields.
-  const [c, setC] = useState<PortalContent>({ ...initial, heroImage: "", aboutImage: "", signInImage: "", registerImage: "", slides: [] });
+  const [c, setC] = useState<PortalContent>(blankMedia(initial));
   const [slides, setSlides] = useState<EditorSlide[]>(() => toEditorSlides(initial));
   const [nextKey, setNextKey] = useState(initial.slides.length);
   // Images: what is saved, plus any file chosen but not saved yet (shown in the preview straight away).
@@ -148,7 +182,7 @@ export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, s
   }, IDLE);
   const [resetState, reset, resetting] = useActionState(async (prev: PortalFormState, fd: FormData) => {
     const r = await resetPortal(prev, fd);
-    if (r.ok) { clearPending(); setC({ ...platformDefault, heroImage: "", aboutImage: "", signInImage: "", registerImage: "", slides: [] }); setSlides(toEditorSlides(platformDefault)); }
+    if (r.ok) { clearPending(); setC(blankMedia(platformDefault)); setSlides(toEditorSlides(platformDefault)); }
     return r;
   }, IDLE);
   const router = useRouter();
@@ -425,6 +459,12 @@ export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, s
               error={err("signInImage")} resetKey={fileKey}
             />
           </div>
+          <div className="mt-4">
+            <OverlayControls
+              id="signin-overlay" value={c.signIn.overlay} onChange={(v) => setIn("signIn", { overlay: v })} hasPhoto={!!signInShown}
+              errorColor={err("signIn.overlay.color")} errorStrength={err("signIn.overlay.strength")}
+            />
+          </div>
           <p className="mt-3 text-xs text-muted">The welcome message and banner come from Branding above.</p>
         </div>
 
@@ -452,6 +492,10 @@ export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, s
               name="registerImage" removeName="removeRegisterImage" saved={initial.registerImage} preview={registerShown} removed={registerRemoved}
               onFile={async (f) => { setRegisterNew(await readAsUrl(f)); setRegisterRemoved(false); }} onRemove={setRegisterRemoved}
               error={err("registerImage")} resetKey={fileKey}
+            />
+            <OverlayControls
+              id="register-overlay" value={c.register.overlay} onChange={(v) => setIn("register", { overlay: v })} hasPhoto={!!registerShown}
+              errorColor={err("register.overlay.color")} errorStrength={err("register.overlay.strength")}
             />
             <Field label="Footer text (under the school name)" error={err("footerNote")}>
               <input value={c.footerNote} onChange={(e) => set("footerNote", e.target.value)} className={input} />

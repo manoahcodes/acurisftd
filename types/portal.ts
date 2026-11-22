@@ -26,6 +26,13 @@ export type PortalSlide = {
   ctaPath: string;
 };
 
+/** The tinted layer over a page's side photo, so the text on it stays readable. */
+export type PortalOverlay = {
+  color: "navy" | "brand" | "black";
+  /** 0 to 95 (percent). */
+  strength: number;
+};
+
 export type PortalSignUpRoles = {
   /** People applying to join the school (becomes a student after admission). */
   applicant: boolean;
@@ -70,8 +77,8 @@ export type PortalContent = {
     linkPath: string;
   };
   features: PortalFeature[];
-  signIn: { heading: string; intro: string; helpText: string };
-  register: { heading: string; intro: string; roles: PortalSignUpRoles };
+  signIn: { heading: string; intro: string; helpText: string; overlay: PortalOverlay };
+  register: { heading: string; intro: string; roles: PortalSignUpRoles; overlay: PortalOverlay };
   /** Text under the school name in the footer. */
   footerNote: string;
 };

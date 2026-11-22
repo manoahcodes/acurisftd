@@ -3,7 +3,8 @@ import { ArrowLeft, ArrowRight, LogIn, Menu, Globe } from "lucide-react";
 import { CopyrightYear } from "@/components/shell/copyright-year";
 import { externalHref } from "@/lib/portal/links";
 import { ACURIS_COPYRIGHT_TEXT, copyrightHolderFor } from "@/lib/theme/copyright";
-import type { PortalView } from "@/types/portal";
+import { overlayStyle } from "@/lib/portal/overlay";
+import type { PortalOverlay, PortalView } from "@/types/portal";
 
 type Branding = PortalView["branding"];
 
@@ -142,8 +143,8 @@ export function PortalShell({ page, base, children }: { page: PortalView; base: 
  * the form on the right. No header or footer, so nothing competes with the form.
  */
 export function PortalAuthLayout({
-  page, base, heading, intro, statement, image, wide, children,
-}: { page: PortalView; base: string; heading: string; intro?: string; statement?: string; image?: string; wide?: boolean; children: React.ReactNode }) {
+  page, base, heading, intro, statement, image, overlay, wide, children,
+}: { page: PortalView; base: string; heading: string; intro?: string; statement?: string; image?: string; overlay?: PortalOverlay; wide?: boolean; children: React.ReactNode }) {
   const { branding, content } = page;
   const site = externalHref(content.websiteUrl, "/");
   return (
@@ -153,8 +154,8 @@ export function PortalAuthLayout({
           <>
             {/* eslint-disable-next-line @next/next/no-img-element -- stored data URL */}
             <img src={image} alt="" className="absolute inset-0 -z-20 size-full object-cover" />
-            {/* Dark wash so the white text stays readable on any photo. */}
-            <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-b from-navy/80 via-navy/70 to-navy/90" />
+            {/* The school's overlay keeps the white text readable on the photo. */}
+            <div aria-hidden className="absolute inset-0 -z-10" style={overlayStyle(overlay)} />
           </>
         )}
         {/* Soft brand glow and a faint grid: decoration only, made from the school's own colours. */}

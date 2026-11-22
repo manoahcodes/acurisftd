@@ -8,7 +8,7 @@ import { PortalAuthLayout, canRegister } from "./portal-shell";
 export function PortalSignInView({ page, base }: { page: PortalView; base: string }) {
   const { content } = page;
   return (
-    <PortalAuthLayout page={page} base={base} heading={content.signIn.heading} intro={content.signIn.intro} image={content.signInImage}>
+    <PortalAuthLayout page={page} base={base} heading={content.signIn.heading} intro={content.signIn.intro} image={content.signInImage} overlay={content.signIn.overlay}>
       <div className="rounded-2xl border border-line bg-surface p-6 shadow-card sm:p-8 [&>form]:mt-0">
         <SignInForm />
       </div>
@@ -26,7 +26,7 @@ export function PortalSignInView({ page, base }: { page: PortalView; base: strin
 export function PortalRegisterView({ page, base }: { page: PortalView; base: string }) {
   const { content, branding } = page;
   return (
-    <PortalAuthLayout page={page} base={base} heading={content.register.heading} intro={content.register.intro} statement={`Join ${branding.name}.`} image={content.registerImage} wide>
+    <PortalAuthLayout page={page} base={base} heading={content.register.heading} intro={content.register.intro} statement={`Join ${branding.name}.`} image={content.registerImage} overlay={content.register.overlay} wide>
       <PortalRegisterForm roles={content.register.roles} base={base} />
     </PortalAuthLayout>
   );

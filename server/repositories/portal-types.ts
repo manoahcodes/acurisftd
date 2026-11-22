@@ -1,4 +1,5 @@
 import type { PortalContent, PortalOverride } from "@/types/portal";
+import { DEFAULT_OVERLAY } from "@/lib/portal/overlay";
 
 /**
  * The words and links on each school's public portal pages, per platform and per school.
@@ -56,11 +57,13 @@ export const DEFAULT_PORTAL: PortalContent = {
     heading: "Sign in",
     intro: "Use your portal account to continue.",
     helpText: "Forgot your details? Contact the school office.",
+    overlay: { ...DEFAULT_OVERLAY },
   },
   register: {
     heading: "Create your account",
     intro: "Choose how you are joining and we will take you through the next steps.",
     roles: { applicant: true, staff: true, parent: true },
+    overlay: { ...DEFAULT_OVERLAY },
   },
   footerNote: "",
 };

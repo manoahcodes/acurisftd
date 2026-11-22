@@ -1,5 +1,6 @@
 import { cleanWebsiteUrl } from "./links";
 import { isPortalIcon, PORTAL_ICONS } from "./icons";
+import { isOverlayColor, MAX_OVERLAY, OVERLAY_COLORS } from "./overlay";
 import type { PortalContent, PortalFeature, PortalFieldErrors, PortalLink, PortalSlide } from "@/types/portal";
 
 export const MAX_NAV = 8;
@@ -22,6 +23,14 @@ function cleanPath(v: unknown, key: string, errors: PortalFieldErrors): string {
   }
   if (/[\s<>"']/.test(p) || p.startsWith("//")) errors[key] = "Use a path like /admissions or a full https:// address.";
   return p.startsWith("/") ? p : `/${p}`;
+}
+
+function overlay(v: unknown, key: string, errors: PortalFieldErrors): { color: "navy" | "brand" | "black"; strength: number } {
+  const o = obj(v);
+  const strength = typeof o.strength === "number" ? o.strength : Number.NaN;
+  if (!isOverlayColor(o.color)) errors[`${key}.color`] = `Choose one of: ${Object.values(OVERLAY_COLORS).map((c) => c.label).join(", ")}.`;
+  if (!Number.isInteger(strength) || strength < 0 || strength > MAX_OVERLAY) errors[`${key}.strength`] = `Strength must be a whole number from 0 to ${MAX_OVERLAY}.`;
+  return { color: isOverlayColor(o.color) ? o.color : "navy", strength: Number.isInteger(strength) ? strength : 75 };
 }
 
 function text(v: unknown, key: string, label: string, min: number, max: number, errors: PortalFieldErrors): string {
@@ -108,6 +117,7 @@ export function parsePortalContent(input: unknown, images: { heroImage?: string;
     heading: text(s.heading, "signIn.heading", "Heading", 1, 80, errors),
     intro: text(s.intro, "signIn.intro", "Text", 0, 240, errors),
     helpText: text(s.helpText, "signIn.helpText", "Help text", 0, 240, errors),
+    overlay: overlay(s.overlay, "signIn.overlay", errors),
   };
 
   const r = obj(i.register);
@@ -115,6 +125,7 @@ export function parsePortalContent(input: unknown, images: { heroImage?: string;
   const register = {
     heading: text(r.heading, "register.heading", "Heading", 1, 80, errors),
     intro: text(r.intro, "register.intro", "Text", 0, 300, errors),
+    overlay: overlay(r.overlay, "register.overlay", errors),
     roles: { applicant: roles.applicant === true, staff: roles.staff === true, parent: roles.parent === true },
   };
   if (!register.roles.applicant && !register.roles.staff && !register.roles.parent) {

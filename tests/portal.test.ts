@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { cleanWebsiteUrl, externalHref } from "@/lib/portal/links";
 import { isPortalPath, schoolSlugFromHost } from "@/lib/portal/host";
 import { applyPortalOverride, diffPortal, isEmptyPortalOverride } from "@/lib/portal/merge";
+import { DEFAULT_OVERLAY, overlayOf, overlayStyle } from "@/lib/portal/overlay";
 import { parsePortalContent } from "@/lib/portal/validate";
 import { mockPortalRepository, resetMockPortal } from "@/server/repositories/portal-mock";
 import { DEFAULT_PORTAL } from "@/server/repositories/portal-types";
@@ -129,6 +130,29 @@ describe("hero slides", () => {
     const o = diffPortal(base(), next);
     expect(Object.keys(o)).toEqual(["slides"]);
     expect(applyPortalOverride(base(), o).slides).toHaveLength(1);
+  });
+});
+
+describe("overlay", () => {
+  it("falls back to the default for missing or out-of-range stored values", () => {
+    expect(overlayOf(undefined)).toEqual(DEFAULT_OVERLAY);
+    expect(overlayOf({ color: "pink" as never, strength: 500 })).toEqual({ color: "navy", strength: 95 });
+    expect(overlayOf({ color: "black", strength: -5 })).toEqual({ color: "black", strength: 0 });
+    expect(overlayStyle({ color: "brand", strength: 40 })).toEqual({ backgroundColor: "var(--color-brand)", opacity: 0.4 });
+  });
+  it("is validated on both pages", () => {
+    const ok = base();
+    ok.signIn.overlay = { color: "black", strength: 50 };
+    const r = parsePortalContent(ok);
+    expect(r.ok && r.value.signIn.overlay).toEqual({ color: "black", strength: 50 });
+    const bad = base();
+    bad.register.overlay = { color: "url(evil)" as never, strength: 120 };
+    const e = parsePortalContent(bad);
+    expect(!e.ok && e.errors["register.overlay.color"]).toBeDefined();
+    expect(!e.ok && e.errors["register.overlay.strength"]).toBeDefined();
+    const noOverlay = base();
+    delete (noOverlay.signIn as Partial<typeof noOverlay.signIn>).overlay;
+    expect(parsePortalContent(noOverlay).ok).toBe(false);
   });
 });
 
