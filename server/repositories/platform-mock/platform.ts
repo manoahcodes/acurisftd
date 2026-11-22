@@ -1,4 +1,4 @@
-import { INSTITUTIONS, INSTITUTION_TYPES, SETUPS, tenantSetup, LEVEL_LABELS, divisionsLabel, systemLabel, tenantSystem, tenantSystemLabel } from "@/config/institution";
+import { INSTITUTIONS, type InstitutionType, INSTITUTION_TYPES, SETUPS, tenantSetup, LEVEL_LABELS, divisionsLabel, systemLabel, tenantSystem, tenantSystemLabel } from "@/config/institution";
 import { DEFAULT_FEE_POLICY, FEE_POLICY_LABELS } from "@/lib/fee-policy";
 import { scopeLabel, visibleDivisions } from "@/lib/division-scope";
 import type { PlatformContext } from "../platform-types";
@@ -121,14 +121,25 @@ const support: Builder = ({ tenants }) => ({
   ],
 });
 
-const settings: Builder = () => ({
+/**
+ * Institution types to list. With no school open: all of them. With a school
+ * open: only the type(s) that school runs (its selected division, or all of its
+ * divisions), so a University is not shown the Primary and High School rows.
+ */
+function typesShown(ctx: PlatformContext): readonly InstitutionType[] {
+  if (!ctx.tenant) return INSTITUTION_TYPES;
+  const own = (ctx.division ? [ctx.division] : ctx.tenant.divisions).map((d) => d.institutionType);
+  return INSTITUTION_TYPES.filter((t) => own.includes(t));
+}
+
+const settings: Builder = (ctx) => ({
   description: "Platform-wide defaults. School-specific settings are managed per tenant.",
   actions: ["Edit settings"],
   tables: [
     tableOf("institution-types",
       "Institution types",
       ["Institution type", "Level", "Grades", "Academic system", "Period label"],
-      INSTITUTION_TYPES.map((type) => {
+      typesShown(ctx).map((type) => {
         const info = INSTITUTIONS[type];
         return [
           info.label,
@@ -138,7 +149,9 @@ const settings: Builder = () => ({
           info.system === "semester" ? "Semester" : "Term",
         ];
       }),
-      { note: "Primary (grades 1–7) is for smaller tenants. University and College are Tertiary and use semesters; Primary and High School use terms. A tenant can have several divisions (for example Primary and High School), each with its own students, fees, classes and results. All divisions of a tenant share one academic system, so a High School cannot be combined with a University." },
+      { note: ctx.tenant
+        ? `${ctx.tenant.name} runs ${typesShown(ctx).map((t) => INSTITUTIONS[t].label).join(" and ")}. All divisions of a school share one academic system.`
+        : "Primary (grades 1–7) is for smaller tenants. University and College are Tertiary and use semesters; Primary and High School use terms. A tenant can have several divisions (for example Primary and High School), each with its own students, fees, classes and results. All divisions of a tenant share one academic system, so a High School cannot be combined with a University." },
     ),
     tableOf("settings","General", ["Setting", "Value", "Scope"], [
       ["Default currency", "Zambian Kwacha (ZMW)", "Platform"],

@@ -6,6 +6,7 @@ vi.mock("next/headers", () => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
+import { INSTITUTIONS } from "@/config/institution";
 import { submitRecord } from "@/server/actions/records";
 import { accessRule, parseGrades } from "@/server/forms/registry";
 import { platformScreens, tenantDirectory } from "@/server/repositories";
@@ -79,6 +80,18 @@ describe("Institution types", () => {
     const r = await edit("platform-settings", "institution-type", "University", { grades: "1-4" });
     expect(r.status).toBe("error");
     expect(r.errors?.grades).toMatch(/no grades/);
+  });
+});
+
+describe("Institution types per school", () => {
+  it("lists every type with no school open, and only the school's own types with one open", async () => {
+    const all = await table("platform-settings", "institution-types", null);
+    expect(all.rows.map((r) => r[0])).toEqual(expect.arrayContaining(["Primary School", "High School", "College", "University"]));
+    for (const t of await tenantDirectory.list()) {
+      const own = new Set(t.divisions.map((d) => INSTITUTIONS[d.institutionType].label));
+      const shown = (await table("platform-settings", "institution-types", t.id)).rows.map((r) => r[0]);
+      expect(new Set(shown)).toEqual(own);
+    }
   });
 });
 
