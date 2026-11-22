@@ -3,6 +3,7 @@ import { cleanWebsiteUrl, externalHref } from "@/lib/portal/links";
 import { isPortalPath, schoolSlugFromHost } from "@/lib/portal/host";
 import { applyPortalOverride, diffPortal, isEmptyPortalOverride } from "@/lib/portal/merge";
 import { DEFAULT_OVERLAY, overlayOf, overlayStyle } from "@/lib/portal/overlay";
+import { DEFAULT_PANEL, panelColours, panelOf } from "@/lib/portal/panel";
 import { parsePortalContent } from "@/lib/portal/validate";
 import { mockPortalRepository, resetMockPortal } from "@/server/repositories/portal-mock";
 import { DEFAULT_PORTAL } from "@/server/repositories/portal-types";
@@ -153,6 +154,25 @@ describe("overlay", () => {
     const noOverlay = base();
     delete (noOverlay.signIn as Partial<typeof noOverlay.signIn>).overlay;
     expect(parsePortalContent(noOverlay).ok).toBe(false);
+  });
+});
+
+describe("panel design", () => {
+  it("falls back to the default and keeps text readable on a brand panel", () => {
+    expect(panelOf(undefined)).toEqual(DEFAULT_PANEL);
+    expect(panelOf({ color: "pink" as never, glow: "yes" as never })).toEqual(DEFAULT_PANEL);
+    expect(panelColours({ color: "navy", glow: true, grid: false })).toMatchObject({ text: "#ffffff", glowOn: true, gridOn: false });
+    expect(panelColours({ color: "brand", glow: true, grid: true })).toMatchObject({ text: "var(--color-on-brand)", glow: "#ffffff" });
+  });
+  it("is validated on both pages", () => {
+    const ok = base();
+    ok.register.panel = { color: "black", glow: false, grid: false };
+    const r = parsePortalContent(ok);
+    expect(r.ok && r.value.register.panel).toEqual({ color: "black", glow: false, grid: false });
+    const bad = base();
+    bad.signIn.panel = { color: "url(evil)" as never, glow: true, grid: true };
+    const e = parsePortalContent(bad);
+    expect(!e.ok && e.errors["signIn.panel.color"]).toBeDefined();
   });
 });
 

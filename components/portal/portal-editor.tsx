@@ -6,6 +6,7 @@ import { useActionState, useEffect, useMemo, useState, useTransition } from "rea
 import { ArrowDown, ArrowUp, ExternalLink as ExternalIcon, ImagePlus, Plus, Trash2 } from "lucide-react";
 import { PORTAL_ICONS } from "@/lib/portal/icons";
 import { MAX_OVERLAY, OVERLAY_COLORS, overlayOf, type OverlayColor } from "@/lib/portal/overlay";
+import { panelOf } from "@/lib/portal/panel";
 import { MAX_FEATURES, MAX_NAV, MAX_SLIDES } from "@/lib/portal/validate";
 import { resetPortal, savePortal } from "@/server/actions/portal";
 import type { PortalContent, PortalFeature, PortalFormState, PortalLink } from "@/types/portal";
@@ -90,6 +91,31 @@ type EditorSlide = { key: number; keep: number; heading: string; body: string; c
 const toEditorSlides = (c: PortalContent): EditorSlide[] =>
   c.slides.map((s, n) => ({ key: n, keep: n, heading: s.heading, body: s.body, ctaLabel: s.ctaLabel, ctaPath: s.ctaPath, preview: "" }));
 
+/** The panel's own look: base colour, soft glow and grid lines. Shown whether or not there is a photo. */
+function PanelControls({ id, value, onChange, errorColor }: {
+  id: string; value: PortalContent["signIn"]["panel"]; onChange: (v: PortalContent["signIn"]["panel"]) => void; errorColor?: string;
+}) {
+  const p = panelOf(value);
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <Field label="Panel colour" error={errorColor}>
+        <select id={`${id}-colour`} value={p.color} onChange={(e) => onChange({ ...p, color: e.target.value as OverlayColor })} className={input}>
+          {Object.entries(OVERLAY_COLORS).map(([k, c]) => <option key={k} value={k}>{c.label}</option>)}
+        </select>
+      </Field>
+      <fieldset>
+        <legend className="mb-1 text-sm font-medium text-ink">Decoration</legend>
+        <label className="flex items-center gap-2 text-[15px] text-ink">
+          <input type="checkbox" checked={p.glow} onChange={(e) => onChange({ ...p, glow: e.target.checked })} className="size-4 accent-brand" /> Soft glow
+        </label>
+        <label className="mt-1 flex items-center gap-2 text-[15px] text-ink">
+          <input type="checkbox" checked={p.grid} onChange={(e) => onChange({ ...p, grid: e.target.checked })} className="size-4 accent-brand" /> Grid lines
+        </label>
+      </fieldset>
+    </div>
+  );
+}
+
 /** Colour and strength of the tint over a side photo. Changes show in the preview straight away. */
 function OverlayControls({ id, value, onChange, hasPhoto, errorColor, errorStrength }: {
   id: string; value: PortalContent["signIn"]["overlay"]; onChange: (v: PortalContent["signIn"]["overlay"]) => void; hasPhoto: boolean; errorColor?: string; errorStrength?: string;
@@ -119,8 +145,8 @@ function OverlayControls({ id, value, onChange, hasPhoto, errorColor, errorStren
 /** Editable text state: photos stay out (they have their own fields), and an overlay missing from older saved content gets its default. */
 const blankMedia = (c: PortalContent): PortalContent => ({
   ...c, heroImage: "", aboutImage: "", signInImage: "", registerImage: "", slides: [],
-  signIn: { ...c.signIn, overlay: overlayOf(c.signIn.overlay) },
-  register: { ...c.register, overlay: overlayOf(c.register.overlay) },
+  signIn: { ...c.signIn, overlay: overlayOf(c.signIn.overlay), panel: panelOf(c.signIn.panel) },
+  register: { ...c.register, overlay: overlayOf(c.register.overlay), panel: panelOf(c.register.panel) },
 });
 
 const readAsUrl = (file: File | undefined): Promise<string> =>
@@ -459,7 +485,8 @@ export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, s
               error={err("signInImage")} resetKey={fileKey}
             />
           </div>
-          <div className="mt-4">
+          <div className="mt-4 space-y-4">
+            <PanelControls id="signin-panel" value={c.signIn.panel} onChange={(v) => setIn("signIn", { panel: v })} errorColor={err("signIn.panel.color")} />
             <OverlayControls
               id="signin-overlay" value={c.signIn.overlay} onChange={(v) => setIn("signIn", { overlay: v })} hasPhoto={!!signInShown}
               errorColor={err("signIn.overlay.color")} errorStrength={err("signIn.overlay.strength")}
@@ -493,6 +520,7 @@ export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, s
               onFile={async (f) => { setRegisterNew(await readAsUrl(f)); setRegisterRemoved(false); }} onRemove={setRegisterRemoved}
               error={err("registerImage")} resetKey={fileKey}
             />
+            <PanelControls id="register-panel" value={c.register.panel} onChange={(v) => setIn("register", { panel: v })} errorColor={err("register.panel.color")} />
             <OverlayControls
               id="register-overlay" value={c.register.overlay} onChange={(v) => setIn("register", { overlay: v })} hasPhoto={!!registerShown}
               errorColor={err("register.overlay.color")} errorStrength={err("register.overlay.strength")}

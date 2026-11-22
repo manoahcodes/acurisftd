@@ -33,6 +33,12 @@ function overlay(v: unknown, key: string, errors: PortalFieldErrors): { color: "
   return { color: isOverlayColor(o.color) ? o.color : "navy", strength: Number.isInteger(strength) ? strength : 75 };
 }
 
+function panel(v: unknown, key: string, errors: PortalFieldErrors): { color: "navy" | "brand" | "black"; glow: boolean; grid: boolean } {
+  const o = obj(v);
+  if (!isOverlayColor(o.color)) errors[`${key}.color`] = `Choose one of: ${Object.values(OVERLAY_COLORS).map((c) => c.label).join(", ")}.`;
+  return { color: isOverlayColor(o.color) ? o.color : "navy", glow: o.glow === true, grid: o.grid === true };
+}
+
 function text(v: unknown, key: string, label: string, min: number, max: number, errors: PortalFieldErrors): string {
   const s = clean(v);
   if (s.length < min) errors[key] = `${label} is required.`;
@@ -118,6 +124,7 @@ export function parsePortalContent(input: unknown, images: { heroImage?: string;
     intro: text(s.intro, "signIn.intro", "Text", 0, 240, errors),
     helpText: text(s.helpText, "signIn.helpText", "Help text", 0, 240, errors),
     overlay: overlay(s.overlay, "signIn.overlay", errors),
+    panel: panel(s.panel, "signIn.panel", errors),
   };
 
   const r = obj(i.register);
@@ -126,6 +133,7 @@ export function parsePortalContent(input: unknown, images: { heroImage?: string;
     heading: text(r.heading, "register.heading", "Heading", 1, 80, errors),
     intro: text(r.intro, "register.intro", "Text", 0, 300, errors),
     overlay: overlay(r.overlay, "register.overlay", errors),
+    panel: panel(r.panel, "register.panel", errors),
     roles: { applicant: roles.applicant === true, staff: roles.staff === true, parent: roles.parent === true },
   };
   if (!register.roles.applicant && !register.roles.staff && !register.roles.parent) {

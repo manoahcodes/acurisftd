@@ -4,16 +4,18 @@ import { CopyrightYear } from "@/components/shell/copyright-year";
 import { externalHref } from "@/lib/portal/links";
 import { ACURIS_COPYRIGHT_TEXT, copyrightHolderFor } from "@/lib/theme/copyright";
 import { overlayStyle } from "@/lib/portal/overlay";
-import type { PortalOverlay, PortalView } from "@/types/portal";
+import { panelColours } from "@/lib/portal/panel";
+import type { PortalOverlay, PortalPanel, PortalView } from "@/types/portal";
 
 type Branding = PortalView["branding"];
 
-export function SchoolMark({ branding, size = "size-11" }: { branding: Branding; size?: string }) {
+/** `light` is for a brand-coloured background, where the usual brand-coloured circle would disappear. */
+export function SchoolMark({ branding, size = "size-11", light = false }: { branding: Branding; size?: string; light?: boolean }) {
   return branding.logoUrl ? (
     // eslint-disable-next-line @next/next/no-img-element -- the logo is a stored data URL
     <img src={branding.logoUrl} alt="" className={`${size} shrink-0 rounded-full bg-white object-contain p-1`} />
   ) : (
-    <span aria-hidden className={`${size} grid shrink-0 place-items-center rounded-full bg-brand text-sm font-bold text-on-brand`}>
+    <span aria-hidden className={`${size} grid shrink-0 place-items-center rounded-full text-sm font-bold ${light ? "bg-white text-neutral-900" : "bg-brand text-on-brand"}`}>
       {branding.shortName.slice(0, 2).toUpperCase()}
     </span>
   );
@@ -143,13 +145,14 @@ export function PortalShell({ page, base, children }: { page: PortalView; base: 
  * the form on the right. No header or footer, so nothing competes with the form.
  */
 export function PortalAuthLayout({
-  page, base, heading, intro, statement, image, overlay, wide, children,
-}: { page: PortalView; base: string; heading: string; intro?: string; statement?: string; image?: string; overlay?: PortalOverlay; wide?: boolean; children: React.ReactNode }) {
+  page, base, heading, intro, statement, image, overlay, panel, wide, children,
+}: { page: PortalView; base: string; heading: string; intro?: string; statement?: string; image?: string; overlay?: PortalOverlay; panel?: PortalPanel; wide?: boolean; children: React.ReactNode }) {
   const { branding, content } = page;
   const site = externalHref(content.websiteUrl, "/");
+  const colours = panelColours(panel);
   return (
     <div className="grid min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-      <aside className="relative isolate flex flex-col justify-between gap-12 overflow-hidden bg-navy px-8 py-10 text-white sm:px-12 lg:py-14">
+      <aside style={{ backgroundColor: colours.background, color: colours.text }} className="relative isolate flex flex-col justify-between gap-12 overflow-hidden px-8 py-10 sm:px-12 lg:py-14">
         {image && (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element -- stored data URL */}
@@ -158,21 +161,21 @@ export function PortalAuthLayout({
             <div aria-hidden className="absolute inset-0 -z-10" style={overlayStyle(overlay)} />
           </>
         )}
-        {/* Soft brand glow and a faint grid: decoration only, made from the school's own colours. */}
-        <div aria-hidden className="pointer-events-none absolute -right-32 -top-32 -z-10 size-[28rem] rounded-full bg-brand opacity-25 blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 opacity-[0.07] [background-image:linear-gradient(white_1px,transparent_1px),linear-gradient(90deg,white_1px,transparent_1px)] [background-size:48px_48px]" />
+        {/* Soft glow and a faint grid: decoration only, switched on or off per school. */}
+        {colours.glowOn && <div aria-hidden style={{ backgroundColor: colours.glow }} className="pointer-events-none absolute -right-32 -top-32 -z-10 size-[28rem] rounded-full opacity-25 blur-3xl" />}
+        {colours.gridOn && <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 opacity-[0.07] [background-image:linear-gradient(currentColor_1px,transparent_1px),linear-gradient(90deg,currentColor_1px,transparent_1px)] [background-size:48px_48px]" />}
         <Link href={`${base}/`} className={`flex w-fit items-center gap-3 rounded-lg ${focus}`}>
-          <SchoolMark branding={branding} size="size-12" />
+          <SchoolMark branding={branding} size="size-12" light={panel?.color === "brand"} />
           <span className="text-lg font-semibold tracking-tight">{branding.name}</span>
         </Link>
         <div className="max-w-md">
           <p className="text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl">{statement || branding.welcomeMessage || branding.name}</p>
-          {branding.tagline && <p className="mt-5 text-lg text-white/75">{branding.tagline}</p>}
+          {branding.tagline && <p className="mt-5 text-lg opacity-80">{branding.tagline}</p>}
         </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/75">
-          <Link href={`${base}/`} className="inline-flex items-center gap-2 hover:text-white"><ArrowLeft aria-hidden className="size-4" /> Back to home</Link>
+        <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+          <Link href={`${base}/`} className="inline-flex items-center gap-2 opacity-80 hover:opacity-100"><ArrowLeft aria-hidden className="size-4" /> Back to home</Link>
           {site && (
-            <a href={site} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 hover:text-white">
+            <a href={site} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 opacity-80 hover:opacity-100">
               <Globe aria-hidden className="size-4" /> School website
             </a>
           )}

@@ -33,6 +33,13 @@ export type PortalOverlay = {
   strength: number;
 };
 
+/** The look of the brand panel on the left of the sign-in and register pages (its base colour, glow and grid lines). */
+export type PortalPanel = {
+  color: "navy" | "brand" | "black";
+  glow: boolean;
+  grid: boolean;
+};
+
 export type PortalSignUpRoles = {
   /** People applying to join the school (becomes a student after admission). */
   applicant: boolean;
@@ -77,8 +84,8 @@ export type PortalContent = {
     linkPath: string;
   };
   features: PortalFeature[];
-  signIn: { heading: string; intro: string; helpText: string; overlay: PortalOverlay };
-  register: { heading: string; intro: string; roles: PortalSignUpRoles; overlay: PortalOverlay };
+  signIn: { heading: string; intro: string; helpText: string; overlay: PortalOverlay; panel: PortalPanel };
+  register: { heading: string; intro: string; roles: PortalSignUpRoles; overlay: PortalOverlay; panel: PortalPanel };
   /** Text under the school name in the footer. */
   footerNote: string;
 };
