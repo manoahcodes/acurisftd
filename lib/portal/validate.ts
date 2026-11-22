@@ -1,9 +1,10 @@
 import { cleanWebsiteUrl } from "./links";
 import { isPortalIcon, PORTAL_ICONS } from "./icons";
-import type { PortalContent, PortalFeature, PortalFieldErrors, PortalLink } from "@/types/portal";
+import type { PortalContent, PortalFeature, PortalFieldErrors, PortalLink, PortalSlide } from "@/types/portal";
 
 export const MAX_NAV = 8;
 export const MAX_FEATURES = 6;
+export const MAX_SLIDES = 5;
 
 const clean = (v: unknown): string => (typeof v === "string" ? v.trim().replace(/\s+/g, " ") : "");
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
@@ -34,7 +35,7 @@ function text(v: unknown, key: string, label: string, min: number, max: number, 
  * Validates portal content from untrusted input (parsed JSON). Unknown keys are dropped.
  * Images never come from the JSON: they are data URLs the server built from validated uploads (see readImage).
  */
-export function parsePortalContent(input: unknown, images: { heroImage?: string; aboutImage?: string } = {}): Result {
+export function parsePortalContent(input: unknown, images: { heroImage?: string; aboutImage?: string; slideImages?: string[] } = {}): Result {
   const errors: PortalFieldErrors = {};
   const i = obj(input);
 
@@ -63,6 +64,21 @@ export function parsePortalContent(input: unknown, images: { heroImage?: string;
     secondaryLabel: text(h.secondaryLabel, "hero.secondaryLabel", "Second button", 0, 30, errors),
     secondaryPath: cleanPath(h.secondaryPath, "hero.secondaryPath", errors),
   };
+
+  const rawSlides = list(i.slides);
+  if (rawSlides.length > MAX_SLIDES) errors.slides = `Add at most ${MAX_SLIDES} slides.`;
+  const slides: PortalSlide[] = rawSlides.slice(0, MAX_SLIDES).map((sl, n) => {
+    const o = obj(sl);
+    const image = images.slideImages?.[n] ?? "";
+    if (!image) errors[`slides.${n}.image`] = "Add a photo for this slide.";
+    return {
+      image,
+      heading: text(o.heading, `slides.${n}.heading`, "Heading", 1, 100, errors),
+      body: text(o.body, `slides.${n}.body`, "Text", 0, 200, errors),
+      ctaLabel: text(o.ctaLabel, `slides.${n}.ctaLabel`, "Button", 0, 30, errors),
+      ctaPath: cleanPath(o.ctaPath, `slides.${n}.ctaPath`, errors),
+    };
+  });
 
   const a = obj(i.about);
   const about = {
@@ -108,5 +124,5 @@ export function parsePortalContent(input: unknown, images: { heroImage?: string;
   const footerNote = text(i.footerNote, "footerNote", "Footer text", 0, 160, errors);
 
   if (Object.keys(errors).length) return { ok: false, errors };
-  return { ok: true, value: { websiteUrl, heroImage: images.heroImage ?? "", aboutImage: images.aboutImage ?? "", nav, hero, about, features, signIn, register, footerNote } };
+  return { ok: true, value: { websiteUrl, heroImage: images.heroImage ?? "", aboutImage: images.aboutImage ?? "", slides, nav, hero, about, features, signIn, register, footerNote } };
 }

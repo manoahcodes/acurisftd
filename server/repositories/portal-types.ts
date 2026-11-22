@@ -20,6 +20,7 @@ export interface PortalRepository {
 export const DEFAULT_PORTAL: PortalContent = {
   websiteUrl: "",
   heroImage: "",
+  slides: [],
   aboutImage: "",
   nav: [
     { label: "About", path: "/about" },

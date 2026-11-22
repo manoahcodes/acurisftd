@@ -4,6 +4,7 @@ import { externalHref } from "@/lib/portal/links";
 import type { PortalView } from "@/types/portal";
 import { ExternalLink, canRegister } from "./portal-shell";
 import { PortalIconView } from "./portal-icon";
+import { PortalHeroSlider } from "./portal-hero-slider";
 
 const tint = "bg-[color-mix(in_srgb,var(--color-brand)_12%,var(--color-surface))]";
 const btnFocus = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
@@ -21,8 +22,38 @@ export function PortalLanding({ page, base }: { page: PortalView; base: string }
     ...(canRegister(page) ? [{ href: `${base}/register`, icon: UserPlus, title: "Apply or register", body: "Start an application or use an invite code." }] : []),
   ];
 
+  const accessPanel = (
+      <div className="rounded-2xl bg-surface p-3 text-ink shadow-2xl ring-1 ring-white/10">
+        <p className="px-4 pb-2 pt-3 text-sm font-semibold text-muted">Student and staff portal</p>
+        <ul>
+          {access.map((a, i) => (
+            <li key={a.title} className={i ? "border-t border-line" : ""}>
+              <Link href={a.href} className="group flex items-center gap-4 rounded-xl px-4 py-4 hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand">
+                <span className={`grid size-11 shrink-0 place-items-center rounded-xl text-brand ${tint}`}><a.icon aria-hidden className="size-5" /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold">{a.title}</span>
+                  <span className="block text-sm text-muted">{a.body}</span>
+                </span>
+                <ChevronRight aria-hidden className="size-5 text-muted transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+        {branding.email && (
+          <p className="border-t border-line px-4 pb-2 pt-4 text-sm text-muted">
+            Need help? <a href={`mailto:${branding.email}`} className="font-medium text-brand hover:underline">{branding.email}</a>
+          </p>
+        )}
+      </div>
+  );
+
   return (
     <>
+      {content.slides.length > 0 ? (
+        <PortalHeroSlider slides={content.slides} eyebrow={hero.eyebrow} schoolName={branding.name} website={site}>
+          {accessPanel}
+        </PortalHeroSlider>
+      ) : (
       <section className="relative isolate overflow-hidden bg-navy text-white">
         {content.heroImage && (
           <>
@@ -53,30 +84,10 @@ export function PortalLanding({ page, base }: { page: PortalView; base: string }
             </div>
           </div>
 
-          <div className="rounded-2xl bg-surface p-3 text-ink shadow-2xl ring-1 ring-white/10">
-            <p className="px-4 pb-2 pt-3 text-sm font-semibold text-muted">Student and staff portal</p>
-            <ul>
-              {access.map((a, i) => (
-                <li key={a.title} className={i ? "border-t border-line" : ""}>
-                  <Link href={a.href} className="group flex items-center gap-4 rounded-xl px-4 py-4 hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand">
-                    <span className={`grid size-11 shrink-0 place-items-center rounded-xl text-brand ${tint}`}><a.icon aria-hidden className="size-5" /></span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-semibold">{a.title}</span>
-                      <span className="block text-sm text-muted">{a.body}</span>
-                    </span>
-                    <ChevronRight aria-hidden className="size-5 text-muted transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            {branding.email && (
-              <p className="border-t border-line px-4 pb-2 pt-4 text-sm text-muted">
-                Need help? <a href={`mailto:${branding.email}`} className="font-medium text-brand hover:underline">{branding.email}</a>
-              </p>
-            )}
-          </div>
+          {accessPanel}
         </div>
       </section>
+      )}
 
       {(about.heading || features.length > 0) && (
         <section className="bg-surface">

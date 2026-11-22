@@ -98,6 +98,32 @@ describe("portal images", () => {
   });
 });
 
+describe("hero slides", () => {
+  const slide = { heading: "Open day", body: "", ctaLabel: "Book", ctaPath: "open-day" };
+  it("need a server-built photo, and come back normalised", () => {
+    const c = { ...base(), slides: [{ ...slide, image: "data:image/png;base64,EVIL" }] };
+    const missing = parsePortalContent(c);
+    expect(!missing.ok && missing.errors["slides.0.image"]).toBeDefined();
+    const ok = parsePortalContent(c, { slideImages: ["data:image/png;base64,AAAA"] });
+    expect(ok.ok && ok.value.slides[0].image).toBe("data:image/png;base64,AAAA");
+    expect(ok.ok && ok.value.slides[0].ctaPath).toBe("/open-day");
+  });
+  it("allow at most five and reject unsafe button links", () => {
+    const six = { ...base(), slides: Array.from({ length: 6 }, () => ({ ...slide })) };
+    const r = parsePortalContent(six, { slideImages: Array(6).fill("data:image/png;base64,A") });
+    expect(!r.ok && r.errors.slides).toBeDefined();
+    const bad = parsePortalContent({ ...base(), slides: [{ ...slide, ctaPath: "javascript:alert(1)" }] }, { slideImages: ["data:image/png;base64,A"] });
+    expect(!bad.ok && bad.errors["slides.0.ctaPath"]).toBeDefined();
+  });
+  it("are replaced as a whole by a school's override", () => {
+    const next = structuredClone(base());
+    next.slides = [{ ...slide, image: "data:image/png;base64,A" }];
+    const o = diffPortal(base(), next);
+    expect(Object.keys(o)).toEqual(["slides"]);
+    expect(applyPortalOverride(base(), o).slides).toHaveLength(1);
+  });
+});
+
 describe("override merge", () => {
   it("keeps only what differs and follows the default for the rest", () => {
     const next = base();

@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
-import { ExternalLink as ExternalIcon, ImagePlus, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ExternalLink as ExternalIcon, ImagePlus, Plus, Trash2 } from "lucide-react";
 import { PORTAL_ICONS } from "@/lib/portal/icons";
-import { MAX_FEATURES, MAX_NAV } from "@/lib/portal/validate";
+import { MAX_FEATURES, MAX_NAV, MAX_SLIDES } from "@/lib/portal/validate";
 import { resetPortal, savePortal } from "@/server/actions/portal";
 import type { PortalContent, PortalFeature, PortalFormState, PortalLink } from "@/types/portal";
 import type { Branding, ThemeSettings } from "@/types/theme";
@@ -84,6 +84,11 @@ function ImagePicker({
   );
 }
 
+/** A slide while it is being edited. Photos are never in the text payload: `keep` names which saved slide's photo it keeps, and a newly chosen file travels as its own form field. */
+type EditorSlide = { key: number; keep: number; heading: string; body: string; ctaLabel: string; ctaPath: string; preview: string };
+const toEditorSlides = (c: PortalContent): EditorSlide[] =>
+  c.slides.map((s, n) => ({ key: n, keep: n, heading: s.heading, body: s.body, ctaLabel: s.ctaLabel, ctaPath: s.ctaPath, preview: "" }));
+
 const readAsUrl = (file: File | undefined): Promise<string> =>
   new Promise((resolve) => {
     if (!file) return resolve("");
@@ -94,7 +99,10 @@ const readAsUrl = (file: File | undefined): Promise<string> =>
   });
 
 export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, schoolId, content: initial, platformDefault, theme, branding }: Props) {
-  const [c, setC] = useState<PortalContent>(initial);
+  // Photos stay out of this state (and out of the text payload); they have their own fields.
+  const [c, setC] = useState<PortalContent>({ ...initial, heroImage: "", aboutImage: "", slides: [] });
+  const [slides, setSlides] = useState<EditorSlide[]>(() => toEditorSlides(initial));
+  const [nextKey, setNextKey] = useState(initial.slides.length);
   // Images: what is saved, plus any file chosen but not saved yet (shown in the preview straight away).
   const [heroNew, setHeroNew] = useState("");
   const [aboutNew, setAboutNew] = useState("");
@@ -104,12 +112,25 @@ export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, s
   const heroShown = heroRemoved ? "" : heroNew || initial.heroImage;
   const aboutShown = aboutRemoved ? "" : aboutNew || initial.aboutImage;
   const previewPage = useMemo(
-    () => ({ branding, content: { ...c, heroImage: heroShown, aboutImage: aboutShown } }),
-    [branding, c, heroShown, aboutShown],
+    () => ({
+      branding,
+      content: {
+        ...c,
+        heroImage: heroShown,
+        aboutImage: aboutShown,
+        // A slide without a photo yet is left out of the preview, as it cannot be shown.
+        slides: slides
+          .map(({ keep, preview, heading, body, ctaLabel, ctaPath }) => ({ image: preview || initial.slides[keep]?.image || "", heading, body, ctaLabel, ctaPath }))
+          .filter((sl) => sl.image),
+      },
+    }),
+    [branding, c, heroShown, aboutShown, slides, initial.slides],
   );
   // After a successful save or reset nothing is pending: the refreshed content carries the saved images.
   const clearPending = () => {
     setHeroNew(""); setAboutNew(""); setHeroRemoved(false); setAboutRemoved(false); setFileKey((k) => k + 1);
+    // What was just saved is now the saved order, so every slide keeps its own photo by position.
+    setSlides((all) => all.map((sl, n) => ({ ...sl, keep: n, preview: "" })));
   };
   const [saved, save, saving] = useActionState(async (prev: PortalFormState, fd: FormData) => {
     const r = await savePortal(prev, fd);
@@ -118,7 +139,7 @@ export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, s
   }, IDLE);
   const [resetState, reset, resetting] = useActionState(async (prev: PortalFormState, fd: FormData) => {
     const r = await resetPortal(prev, fd);
-    if (r.ok) { clearPending(); setC(platformDefault); }
+    if (r.ok) { clearPending(); setC({ ...platformDefault, heroImage: "", aboutImage: "", slides: [] }); setSlides(toEditorSlides(platformDefault)); }
     return r;
   }, IDLE);
   const router = useRouter();
@@ -166,7 +187,7 @@ export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, s
       </div>
       <form action={save} className="space-y-5">
         <input type="hidden" name="area" value={areaKey} />
-        <input type="hidden" name="payload" value={JSON.stringify(c)} />
+        <input type="hidden" name="payload" value={JSON.stringify({ ...c, slides: slides.map(({ keep, heading, body, ctaLabel, ctaPath }) => ({ keep, heading, body, ctaLabel, ctaPath })) })} />
 
         <div className={card}>
           <h3 className="font-semibold text-ink">School website</h3>
@@ -214,6 +235,79 @@ export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, s
               onFile={async (f) => { setAboutNew(await readAsUrl(f)); setAboutRemoved(false); }} onRemove={setAboutRemoved}
               error={err("aboutImage")} resetKey={fileKey}
             />
+          </div>
+        </div>
+
+        <div className={card}>
+          <h3 className="font-semibold text-ink">Hero slider</h3>
+          <p className="mb-4 text-sm text-muted">
+            Optional. Add up to {MAX_SLIDES} slides and the top banner becomes a slider that changes every few seconds. With no slides, the single banner below is used.
+          </p>
+          {err("slides") && <p role="alert" className="mb-2 text-xs text-danger">{err("slides")}</p>}
+          <div className="space-y-4">
+            {slides.map((sl, i) => {
+              const shown = sl.preview || initial.slides[sl.keep]?.image || "";
+              const upd = (v: Partial<EditorSlide>) => setSlides((all) => all.map((x) => (x.key === sl.key ? { ...x, ...v } : x)));
+              const move = (d: number) =>
+                setSlides((all) => { const j = i + d; if (j < 0 || j >= all.length) return all; const n = [...all]; [n[i], n[j]] = [n[j], n[i]]; return n; });
+              return (
+                <fieldset key={sl.key} className="rounded-xl border border-line p-4">
+                  <legend className="px-1 text-sm font-semibold text-ink">Slide {i + 1}</legend>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <div className="flex items-center gap-4">
+                        <div className="grid h-20 w-32 shrink-0 place-items-center overflow-hidden rounded-lg border border-dashed border-line bg-canvas text-muted">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- stored data URL or a local preview */}
+                          {shown ? <img src={shown} alt="" className="size-full object-cover" /> : <ImagePlus aria-hidden className="size-6" />}
+                        </div>
+                        <div className="min-w-0">
+                          <input
+                            key={fileKey}
+                            type="file"
+                            name={`slideImage${i}`}
+                            accept="image/png,image/jpeg,image/webp"
+                            aria-label={`Slide ${i + 1} photo`}
+                            aria-invalid={!!err(`slides.${i}.image`)}
+                            onChange={async (e) => upd({ preview: await readAsUrl(e.target.files?.[0]) })}
+                            className="block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-2 file:text-sm file:font-semibold file:text-on-brand"
+                          />
+                          <p className="mt-1 text-xs text-muted">PNG, JPEG or WebP, up to 1.5 MB.</p>
+                          {err(`slides.${i}.image`) && <p role="alert" className="mt-1 text-xs text-danger">{err(`slides.${i}.image`)}</p>}
+                        </div>
+                      </div>
+                    </div>
+                    <Field label="Heading" error={err(`slides.${i}.heading`)}>
+                      <input value={sl.heading} onChange={(e) => upd({ heading: e.target.value })} aria-invalid={!!err(`slides.${i}.heading`)} className={input} />
+                    </Field>
+                    <Field label="Text" error={err(`slides.${i}.body`)}>
+                      <input value={sl.body} onChange={(e) => upd({ body: e.target.value })} className={input} />
+                    </Field>
+                    <Field label="Button (optional)" error={err(`slides.${i}.ctaLabel`)}>
+                      <input value={sl.ctaLabel} onChange={(e) => upd({ ctaLabel: e.target.value })} className={input} />
+                    </Field>
+                    <Field label="Button goes to" error={err(`slides.${i}.ctaPath`)}>
+                      <input value={sl.ctaPath} onChange={(e) => upd({ ctaPath: e.target.value })} aria-invalid={!!err(`slides.${i}.ctaPath`)} className={input} />
+                    </Field>
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <button type="button" aria-label={`Move slide ${i + 1} up`} disabled={i === 0} onClick={() => move(-1)} className="grid size-9 place-items-center rounded-lg border border-line text-muted hover:text-ink disabled:opacity-40"><ArrowUp aria-hidden className="size-4" /></button>
+                    <button type="button" aria-label={`Move slide ${i + 1} down`} disabled={i === slides.length - 1} onClick={() => move(1)} className="grid size-9 place-items-center rounded-lg border border-line text-muted hover:text-ink disabled:opacity-40"><ArrowDown aria-hidden className="size-4" /></button>
+                    <button type="button" onClick={() => setSlides((all) => all.filter((x) => x.key !== sl.key))} className="ml-auto inline-flex items-center gap-1 text-sm text-muted hover:text-danger">
+                      <Trash2 aria-hidden className="size-4" /> Remove slide
+                    </button>
+                  </div>
+                </fieldset>
+              );
+            })}
+            {slides.length < MAX_SLIDES && (
+              <button
+                type="button"
+                onClick={() => { setSlides((all) => [...all, { key: nextKey, keep: -1, heading: "", body: "", ctaLabel: "", ctaPath: "", preview: "" }]); setNextKey((k) => k + 1); }}
+                className="inline-flex items-center gap-1 text-sm font-medium text-brand"
+              >
+                <Plus aria-hidden className="size-4" /> Add slide
+              </button>
+            )}
           </div>
         </div>
 

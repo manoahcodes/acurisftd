@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { applyPortalOverride, diffPortal, isEmptyPortalOverride } from "@/lib/portal/merge";
-import { parsePortalContent } from "@/lib/portal/validate";
+import { MAX_SLIDES, parsePortalContent } from "@/lib/portal/validate";
 import { readImage } from "@/lib/theme/validate";
 import type { PortalFormState } from "@/types/portal";
 import { requirePlatformAdmin } from "../forms/guard";
@@ -10,7 +10,7 @@ import { portal } from "../repositories";
 import { getTenantSelection } from "../queries/platform";
 
 const MAX_PAYLOAD = 64 * 1024;
-/** Two images and the text share one request, which Server Actions cap at 4 MB. */
+/** Images and text share one request, which Server Actions cap at 12 MB (see next.config): 7 photos at 1.5 MB. */
 const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
 const fail = (message: string, errors: PortalFormState["errors"] = {}): PortalFormState => ({ ok: false, message, errors });
 
@@ -51,7 +51,21 @@ export async function savePortal(_prev: PortalFormState, formData: FormData): Pr
     aboutImage: formData.get("removeAboutImage") === "on" ? "" : (about.url ?? existing.aboutImage),
   };
 
-  const parsed = parsePortalContent(json, images);
+
+  // Slides: a new upload for that position wins; otherwise `keep` names which saved slide's photo it keeps.
+  const rawSlides = Array.isArray((json as { slides?: unknown })?.slides) ? ((json as { slides: unknown[] }).slides) : [];
+  const slideImages: string[] = [];
+  const slideErrors: Record<string, string> = {};
+  for (let n = 0; n < Math.min(rawSlides.length, MAX_SLIDES); n++) {
+    const up = await readImage(formData.get(`slideImage${n}`), MAX_IMAGE_BYTES, "Slide photo");
+    if (up.error) slideErrors[`slides.${n}.image`] = up.error;
+    const keep = (rawSlides[n] as { keep?: unknown } | null)?.keep;
+    const kept = typeof keep === "number" && Number.isInteger(keep) ? existing.slides[keep]?.image : undefined;
+    slideImages.push(up.url ?? kept ?? "");
+  }
+  if (Object.keys(slideErrors).length) return fail("Fix the highlighted fields.", slideErrors);
+
+  const parsed = parsePortalContent(json, { ...images, slideImages });
   if (!parsed.ok) return fail("Fix the highlighted fields.", parsed.errors);
 
   if (scope === "platform") await portal.savePlatformDefault(parsed.value);

@@ -16,6 +16,16 @@ export type PortalFeature = {
   path: string;
 };
 
+/** One slide of the optional hero slider. */
+export type PortalSlide = {
+  /** A data: URL built on the server from a validated upload. */
+  image: string;
+  heading: string;
+  body: string;
+  ctaLabel: string;
+  ctaPath: string;
+};
+
 export type PortalSignUpRoles = {
   /** People applying to join the school (becomes a student after admission). */
   applicant: boolean;
@@ -35,6 +45,8 @@ export type PortalContent = {
   nav: PortalLink[];
   /** A data: URL built on the server from a validated upload, or "" for none. Shown behind the hero text. */
   heroImage: string;
+  /** Optional hero slider. Empty means the normal single hero. */
+  slides: PortalSlide[];
   /** Same, shown beside the about text. */
   aboutImage: string;
   hero: {
