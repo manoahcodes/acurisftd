@@ -186,3 +186,17 @@ export function resolveLabel(label: string, terms: Terminology): string {
     key !== "labels" && key in terms ? terms[key as Exclude<keyof Terminology, "labels">] : match,
   );
 }
+
+/**
+ * Institution types to list in settings. With no school open: all of them.
+ * With a school open: only the type(s) it runs (its selected division, or all
+ * of its divisions), so a University is not shown the Primary and High School rows.
+ */
+export function institutionTypesShown(ctx: { tenant: { divisions: readonly Division[] } | null; division: Division | null }): readonly InstitutionType[] {
+  if (!ctx.tenant) return INSTITUTION_TYPES;
+  const own = (ctx.division ? [ctx.division] : ctx.tenant.divisions).map((d) => d.institutionType);
+  return INSTITUTION_TYPES.filter((t) => own.includes(t));
+}
+
+/** Grades only exist for school-level types. A list of tertiary types (College, University) has no use for a Grades column. */
+export const typesHaveGrades = (types: readonly InstitutionType[]): boolean => types.some((t) => INSTITUTIONS[t].level !== "tertiary");

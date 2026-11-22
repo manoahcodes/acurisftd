@@ -95,6 +95,18 @@ describe("Institution types per school", () => {
   });
 });
 
+describe("Grades column", () => {
+  it("is left out for a school that runs only College or University, and kept otherwise", async () => {
+    const tenants = await tenantDirectory.list();
+    for (const t of tenants) {
+      const tertiaryOnly = t.divisions.every((d) => INSTITUTIONS[d.institutionType].level === "tertiary");
+      const cols = (await table("platform-settings", "institution-types", t.id)).columns;
+      expect(cols.includes("Grades")).toBe(!tertiaryOnly);
+    }
+    expect((await table("platform-settings", "institution-types", null)).columns).toContain("Grades");
+  });
+});
+
 describe("Permission matrix", () => {
   const rights = (over: Record<string, string[]>) => {
     const base: Record<string, string[]> = {};

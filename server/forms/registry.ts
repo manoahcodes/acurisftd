@@ -1,4 +1,4 @@
-import { DEFAULT_SETUP, INSTITUTIONS, INSTITUTION_TYPES, SETUPS, SETUP_TYPES, type Division } from "@/config/institution";
+import { DEFAULT_SETUP, INSTITUTIONS, INSTITUTION_TYPES, SETUPS, SETUP_TYPES, institutionTypesShown, typesHaveGrades, type Division } from "@/config/institution";
 import { DEFAULT_FEE_POLICY, FEE_POLICIES, FEE_POLICY_LABELS } from "@/lib/fee-policy";
 import { parseMoney } from "@/lib/forms/validate";
 import type { FieldDef, FormSpec, FormValues } from "@/types/forms";
@@ -511,8 +511,9 @@ const MAKERS: Record<string, Maker> = {
     },
   ],
 
-  "platform-settings": () => [
-    {
+  "platform-settings": (ctx) => [
+    // Grades are the only thing editable here, so a school with only College or University has nothing to edit.
+    ...(!typesHaveGrades(institutionTypesShown(ctx)) ? [] : ([{
       spec: form("institution-type", "institution-types", "institution type", ["Institution type"], [
         text("type", "Institution type", "Institution type", { lockedOnEdit: true }),
         text("grades", "Grades", "Grades", { maxLength: 20, placeholder: "Grades 1–7", help: "Only school-level types have grades. Use a range like Grades 1–7." }),
@@ -521,7 +522,7 @@ const MAKERS: Record<string, Maker> = {
       derive: (v) => ({ Grades: parseGrades(val(v, "grades")) ?? val(v, "grades") }),
       check: (v) => (parseGrades(val(v, "grades")) ? null : { grades: "Use a range of grades from 1 to 12, like Grades 1–7." }),
       checkEdit: (_v, row) => (row["Grades"] === "—" ? { grades: "This institution type has no grades." } : null),
-    },
+    }] as FormEntry[])),
     {
       spec: form("setting", "settings", "setting", ["Setting"], [
         text("value", "Value", "Value"),
