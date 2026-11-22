@@ -123,11 +123,13 @@ function sniff(b: Uint8Array): "image/png" | "image/jpeg" | "image/webp" | undef
  * bytes, never by its name or the browser's MIME claim, and SVG is refused
  * because it can carry scripts. Returns undefined when no file was chosen.
  */
-export async function readLogo(file: unknown): Promise<{ url?: string; error?: string }> {
+export async function readImage(file: unknown, maxBytes: number, label: string): Promise<{ url?: string; error?: string }> {
   if (!(file instanceof File) || file.size === 0) return {};
-  if (file.size > MAX_LOGO_BYTES) return { error: "Logo must be 3 MB or smaller." };
+  if (file.size > maxBytes) return { error: `${label} must be ${maxBytes / (1024 * 1024)} MB or smaller.` };
   const bytes = new Uint8Array(await file.arrayBuffer());
   const type = sniff(bytes);
-  if (!type) return { error: "Logo must be a PNG, JPEG or WebP image." };
+  if (!type) return { error: `${label} must be a PNG, JPEG or WebP image.` };
   return { url: `data:${type};base64,${Buffer.from(bytes).toString("base64")}` };
 }
+
+export const readLogo = (file: unknown) => readImage(file, MAX_LOGO_BYTES, "Logo");

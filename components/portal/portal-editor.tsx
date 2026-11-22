@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useState, useTransition } from "react";
-import { ExternalLink as ExternalIcon, Plus, Trash2 } from "lucide-react";
+import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
+import { ExternalLink as ExternalIcon, ImagePlus, Plus, Trash2 } from "lucide-react";
 import { PORTAL_ICONS } from "@/lib/portal/icons";
 import { MAX_FEATURES, MAX_NAV } from "@/lib/portal/validate";
 import { resetPortal, savePortal } from "@/server/actions/portal";
 import type { PortalContent, PortalFeature, PortalFormState, PortalLink } from "@/types/portal";
+import type { Branding, ThemeSettings } from "@/types/theme";
+import { PortalPreview } from "./portal-preview";
 
 const IDLE: PortalFormState = { ok: false };
 const input =
@@ -23,6 +25,11 @@ type Props = {
   /** The open school's id, for the "view live pages" links. */
   schoolId?: string;
   content: PortalContent;
+  /** What a reset goes back to. */
+  platformDefault: PortalContent;
+  /** The school's look, used by the preview. */
+  theme: ThemeSettings;
+  branding: Branding;
 };
 
 function Field({ label, error, hint, children }: { label: string; error?: string; hint?: string; children: React.ReactNode }) {
@@ -37,10 +44,83 @@ function Field({ label, error, hint, children }: { label: string; error?: string
 }
 
 /** Edits the words and links on a school's landing, sign-in and register pages. */
-export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, schoolId, content: initial }: Props) {
+/** Picks one image: shows what is saved (or the new file) and lets the admin replace or remove it. */
+function ImagePicker({
+  label, hint, name, removeName, saved, preview, onFile, onRemove, removed, error, resetKey,
+}: {
+  label: string; hint: string; name: string; removeName: string; saved: string; preview: string;
+  onFile: (file: File | undefined) => void; onRemove: (v: boolean) => void; removed: boolean; error?: string; resetKey: number;
+}) {
+  return (
+    <div>
+      <p className="mb-1 text-sm font-medium text-ink">{label}</p>
+      <div className="flex items-center gap-4">
+        <div className="grid h-20 w-32 shrink-0 place-items-center overflow-hidden rounded-lg border border-dashed border-line bg-canvas text-muted">
+          {/* eslint-disable-next-line @next/next/no-img-element -- stored data URL or a local preview */}
+          {preview ? <img src={preview} alt="" className="size-full object-cover" /> : <ImagePlus aria-hidden className="size-6" />}
+        </div>
+        <div className="min-w-0 space-y-2">
+          <input
+            key={resetKey}
+            type="file"
+            name={name}
+            accept="image/png,image/jpeg,image/webp"
+            aria-label={label}
+            aria-invalid={!!error}
+            onChange={(e) => onFile(e.target.files?.[0])}
+            className="block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-brand file:px-3 file:py-2 file:text-sm file:font-semibold file:text-on-brand"
+          />
+          {(saved || preview) && (
+            <label className="flex items-center gap-2 text-sm text-ink">
+              <input type="checkbox" name={removeName} checked={removed} onChange={(e) => onRemove(e.target.checked)} className="size-4 accent-brand" />
+              Remove this image
+            </label>
+          )}
+        </div>
+      </div>
+      <p className="mt-1 text-xs text-muted">{hint}</p>
+      {error && <p role="alert" className="mt-1 text-xs text-danger">{error}</p>}
+    </div>
+  );
+}
+
+const readAsUrl = (file: File | undefined): Promise<string> =>
+  new Promise((resolve) => {
+    if (!file) return resolve("");
+    const r = new FileReader();
+    r.onload = () => resolve(typeof r.result === "string" ? r.result : "");
+    r.onerror = () => resolve("");
+    r.readAsDataURL(file);
+  });
+
+export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, schoolId, content: initial, platformDefault, theme, branding }: Props) {
   const [c, setC] = useState<PortalContent>(initial);
-  const [saved, save, saving] = useActionState(savePortal, IDLE);
-  const [resetState, reset, resetting] = useActionState(resetPortal, IDLE);
+  // Images: what is saved, plus any file chosen but not saved yet (shown in the preview straight away).
+  const [heroNew, setHeroNew] = useState("");
+  const [aboutNew, setAboutNew] = useState("");
+  const [heroRemoved, setHeroRemoved] = useState(false);
+  const [aboutRemoved, setAboutRemoved] = useState(false);
+  const [fileKey, setFileKey] = useState(0);
+  const heroShown = heroRemoved ? "" : heroNew || initial.heroImage;
+  const aboutShown = aboutRemoved ? "" : aboutNew || initial.aboutImage;
+  const previewPage = useMemo(
+    () => ({ branding, content: { ...c, heroImage: heroShown, aboutImage: aboutShown } }),
+    [branding, c, heroShown, aboutShown],
+  );
+  // After a successful save or reset nothing is pending: the refreshed content carries the saved images.
+  const clearPending = () => {
+    setHeroNew(""); setAboutNew(""); setHeroRemoved(false); setAboutRemoved(false); setFileKey((k) => k + 1);
+  };
+  const [saved, save, saving] = useActionState(async (prev: PortalFormState, fd: FormData) => {
+    const r = await savePortal(prev, fd);
+    if (r.ok) clearPending();
+    return r;
+  }, IDLE);
+  const [resetState, reset, resetting] = useActionState(async (prev: PortalFormState, fd: FormData) => {
+    const r = await resetPortal(prev, fd);
+    if (r.ok) { clearPending(); setC(platformDefault); }
+    return r;
+  }, IDLE);
   const router = useRouter();
   const [, startRefresh] = useTransition();
   useEffect(() => {
@@ -80,6 +160,10 @@ export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, s
         )}
       </div>
 
+      <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] 2xl:items-start">
+      <div className="order-first 2xl:order-last 2xl:sticky 2xl:top-4">
+        <PortalPreview page={previewPage} theme={theme} />
+      </div>
       <form action={save} className="space-y-5">
         <input type="hidden" name="area" value={areaKey} />
         <input type="hidden" name="payload" value={JSON.stringify(c)} />
@@ -111,6 +195,25 @@ export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, s
                 <Plus aria-hidden className="size-4" /> Add link
               </button>
             )}
+          </div>
+        </div>
+
+        <div className={card}>
+          <h3 className="font-semibold text-ink">Landing page images</h3>
+          <p className="mb-4 text-sm text-muted">Optional. PNG, JPEG or WebP, up to 1.5 MB each. Landscape photos work best.</p>
+          <div className="grid gap-6">
+            <ImagePicker
+              label="Banner photo" hint="Shown behind the heading at the top of the page. A dark wash keeps the text readable."
+              name="heroImage" removeName="removeHeroImage" saved={initial.heroImage} preview={heroShown} removed={heroRemoved}
+              onFile={async (f) => { setHeroNew(await readAsUrl(f)); setHeroRemoved(false); }} onRemove={setHeroRemoved}
+              error={err("heroImage")} resetKey={fileKey}
+            />
+            <ImagePicker
+              label="About photo" hint="Shown beside the about text."
+              name="aboutImage" removeName="removeAboutImage" saved={initial.aboutImage} preview={aboutShown} removed={aboutRemoved}
+              onFile={async (f) => { setAboutNew(await readAsUrl(f)); setAboutRemoved(false); }} onRemove={setAboutRemoved}
+              error={err("aboutImage")} resetKey={fileKey}
+            />
           </div>
         </div>
 
@@ -246,6 +349,7 @@ export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, s
           {saved.message && <p role={saved.ok ? "status" : "alert"} className={saved.ok ? "text-sm text-positive" : "text-sm text-danger"}>{saved.message}</p>}
         </div>
       </form>
+      </div>
 
       {isTenant && !inherited && (
         <form action={reset} className="flex items-center gap-3">

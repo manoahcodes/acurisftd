@@ -7,13 +7,16 @@ export async function PortalSection({ area }: { area: "platform" | "school" }) {
   return (
     <PortalEditor
       // A new key resets the editor's local state when the workspace changes.
-      key={`${s.schoolId ?? "platform"}:${s.inherited}`}
+      key={s.schoolId ?? "platform"}
       scopeLabel={s.scopeLabel}
       isTenant={s.isTenant}
       area={area}
       inherited={s.inherited}
       schoolId={s.schoolId}
       content={s.content}
+      platformDefault={s.platformDefault}
+      theme={s.theme}
+      branding={s.branding}
     />
   );
 }

@@ -78,6 +78,26 @@ describe("parsePortalContent", () => {
   });
 });
 
+describe("portal images", () => {
+  it("come only from the server, never from the submitted JSON", () => {
+    const c = { ...base(), heroImage: "data:image/png;base64,EVIL", aboutImage: "https://evil.example/x.png" };
+    const r = parsePortalContent(c, { heroImage: "data:image/png;base64,AAAA" });
+    expect(r.ok && r.value.heroImage).toBe("data:image/png;base64,AAAA");
+    expect(r.ok && r.value.aboutImage).toBe("");
+  });
+  it("follow the default until a school sets its own", () => {
+    const def = base();
+    def.heroImage = "data:image/png;base64,DEF";
+    const next = structuredClone(def);
+    next.aboutImage = "data:image/png;base64,OWN";
+    const o = diffPortal(def, next);
+    expect(Object.keys(o)).toEqual(["aboutImage"]);
+    const merged = applyPortalOverride(def, o);
+    expect(merged.heroImage).toBe("data:image/png;base64,DEF");
+    expect(merged.aboutImage).toBe("data:image/png;base64,OWN");
+  });
+});
+
 describe("override merge", () => {
   it("keeps only what differs and follows the default for the rest", () => {
     const next = base();

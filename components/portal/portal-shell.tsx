@@ -3,9 +3,9 @@ import { ArrowLeft, ArrowRight, LogIn, Menu, Globe } from "lucide-react";
 import { CopyrightYear } from "@/components/shell/copyright-year";
 import { externalHref } from "@/lib/portal/links";
 import { ACURIS_COPYRIGHT_TEXT, copyrightHolderFor } from "@/lib/theme/copyright";
-import type { PortalPageData } from "@/server/queries/portal";
+import type { PortalView } from "@/types/portal";
 
-type Branding = PortalPageData["branding"];
+type Branding = PortalView["branding"];
 
 export function SchoolMark({ branding, size = "size-11" }: { branding: Branding; size?: string }) {
   return branding.logoUrl ? (
@@ -30,14 +30,14 @@ export function ExternalLink({ website, path, className, children }: { website: 
 }
 
 const focus = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
-export const canRegister = (page: PortalPageData) => Object.values(page.content.register.roles).some(Boolean);
+export const canRegister = (page: PortalView) => Object.values(page.content.register.roles).some(Boolean);
 
 /**
  * Header and footer for the school's landing page.
  * `base` is where the portal lives: "" on the school's own subdomain, "/s/<school>"
  * when reached by path (local development).
  */
-export function PortalShell({ page, base, children }: { page: PortalPageData; base: string; children: React.ReactNode }) {
+export function PortalShell({ page, base, children }: { page: PortalView; base: string; children: React.ReactNode }) {
   const { branding, content } = page;
   const links = content.nav.filter((l) => externalHref(content.websiteUrl, l.path));
   const actions = (
@@ -143,7 +143,7 @@ export function PortalShell({ page, base, children }: { page: PortalPageData; ba
  */
 export function PortalAuthLayout({
   page, base, heading, intro, statement, wide, children,
-}: { page: PortalPageData; base: string; heading: string; intro?: string; statement?: string; wide?: boolean; children: React.ReactNode }) {
+}: { page: PortalView; base: string; heading: string; intro?: string; statement?: string; wide?: boolean; children: React.ReactNode }) {
   const { branding, content } = page;
   const site = externalHref(content.websiteUrl, "/");
   return (

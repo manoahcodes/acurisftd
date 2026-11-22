@@ -36,6 +36,9 @@ export type PortalEditorState = {
   schoolId?: string;
   content: PortalContent;
   platformDefault: PortalContent;
+  /** The look the pages are drawn with, so the preview matches. */
+  theme: ThemeSettings;
+  branding: Branding;
 };
 
 /** What the Portal pages editor needs: the platform default, or the open school's content. */
@@ -43,7 +46,8 @@ export const getPortalEditorState = cache(async (area: "platform" | "school"): P
   const { selected } = await getTenantSelection();
   const platformDefault = await portal.getPlatformDefault();
   if (area === "platform" || !selected) {
-    return { scopeLabel: "Platform default", isTenant: false, inherited: false, content: platformDefault, platformDefault };
+    const look = await themes.getPlatformDefault();
+    return { scopeLabel: "Platform default", isTenant: false, inherited: false, content: platformDefault, platformDefault, ...look };
   }
   const override = await portal.getTenantOverride(selected.id);
   return {
@@ -53,6 +57,7 @@ export const getPortalEditorState = cache(async (area: "platform" | "school"): P
     schoolId: selected.id,
     content: applyPortalOverride(platformDefault, override),
     platformDefault,
+    ...(await themes.resolve({ tenantId: selected.id })),
   };
 });
 

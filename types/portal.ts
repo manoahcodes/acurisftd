@@ -1,3 +1,5 @@
+import type { Branding } from "@/types/theme";
+
 /** One link in the portal header or footer. It points at the school's official website. */
 export type PortalLink = {
   label: string;
@@ -31,6 +33,10 @@ export type PortalContent = {
   /** The school's official website, e.g. "https://www.woodlands.edu". "" hides every external link. */
   websiteUrl: string;
   nav: PortalLink[];
+  /** A data: URL built on the server from a validated upload, or "" for none. Shown behind the hero text. */
+  heroImage: string;
+  /** Same, shown beside the about text. */
+  aboutImage: string;
   hero: {
     eyebrow: string;
     heading: string;
@@ -64,3 +70,6 @@ export type PortalFormState = {
   message?: string;
   errors?: PortalFieldErrors;
 };
+
+/** What the landing, sign-in and register components draw. Used by the live pages and the editor's preview. */
+export type PortalView = { branding: Branding; content: PortalContent };

@@ -3,8 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { ThemeStyle } from "@/components/platform/theme/theme-style";
-import { PortalRegisterForm } from "@/components/portal/portal-register-form";
-import { PortalAuthLayout } from "@/components/portal/portal-shell";
+import { PortalRegisterView } from "@/components/portal/portal-pages";
 import { getPortalBase, getPortalPage } from "@/server/queries/portal";
 
 type Params = Promise<{ school: string }>;
@@ -30,14 +29,10 @@ async function Register({ params }: { params: Params }) {
   // A school that has closed every sign-up type has no register page.
   if (!page || !Object.values(page.content.register.roles).some(Boolean)) notFound();
   const base = await getPortalBase(school);
-  const { content } = page;
-
   return (
     <>
       <ThemeStyle theme={page.theme} />
-      <PortalAuthLayout page={page} base={base} heading={content.register.heading} intro={content.register.intro} statement={`Join ${page.branding.name}.`} wide>
-        <PortalRegisterForm roles={content.register.roles} base={base} />
-      </PortalAuthLayout>
+      <PortalRegisterView page={page} base={base} />
     </>
   );
 }

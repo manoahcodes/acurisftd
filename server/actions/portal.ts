@@ -1,14 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { diffPortal, isEmptyPortalOverride } from "@/lib/portal/merge";
+import { applyPortalOverride, diffPortal, isEmptyPortalOverride } from "@/lib/portal/merge";
 import { parsePortalContent } from "@/lib/portal/validate";
+import { readImage } from "@/lib/theme/validate";
 import type { PortalFormState } from "@/types/portal";
 import { requirePlatformAdmin } from "../forms/guard";
 import { portal } from "../repositories";
 import { getTenantSelection } from "../queries/platform";
 
 const MAX_PAYLOAD = 64 * 1024;
+/** Two images and the text share one request, which Server Actions cap at 4 MB. */
+const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
 const fail = (message: string, errors: PortalFormState["errors"] = {}): PortalFormState => ({ ok: false, message, errors });
 
 /** Same idea as the theme editor: the page only picks platform or school; the school comes from the open workspace. */
@@ -35,13 +38,26 @@ export async function savePortal(_prev: PortalFormState, formData: FormData): Pr
   } catch {
     return fail("Those changes could not be read. Reload and try again.");
   }
-  const parsed = parsePortalContent(json);
+
+  // Keep each saved image unless a new one was uploaded or the admin asked to remove it.
+  const platform = await portal.getPlatformDefault();
+  const existing = scope === "platform" ? platform : applyPortalOverride(platform, await portal.getTenantOverride(scope));
+  const hero = await readImage(formData.get("heroImage"), MAX_IMAGE_BYTES, "Hero image");
+  const about = await readImage(formData.get("aboutImage"), MAX_IMAGE_BYTES, "About image");
+  const imageErrors = { ...(hero.error ? { heroImage: hero.error } : {}), ...(about.error ? { aboutImage: about.error } : {}) };
+  if (Object.keys(imageErrors).length) return fail("Fix the highlighted fields.", imageErrors);
+  const images = {
+    heroImage: formData.get("removeHeroImage") === "on" ? "" : (hero.url ?? existing.heroImage),
+    aboutImage: formData.get("removeAboutImage") === "on" ? "" : (about.url ?? existing.aboutImage),
+  };
+
+  const parsed = parsePortalContent(json, images);
   if (!parsed.ok) return fail("Fix the highlighted fields.", parsed.errors);
 
   if (scope === "platform") await portal.savePlatformDefault(parsed.value);
   else {
     // Keep only what differs from the platform default, so everything else keeps following it.
-    const override = diffPortal(await portal.getPlatformDefault(), parsed.value);
+    const override = diffPortal(platform, parsed.value);
     if (isEmptyPortalOverride(override)) await portal.clearTenantOverride(scope);
     else await portal.saveTenantOverride(scope, override);
   }
