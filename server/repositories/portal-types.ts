@@ -22,6 +22,8 @@ export const DEFAULT_PORTAL: PortalContent = {
   heroImage: "",
   slides: [],
   aboutImage: "",
+  signInImage: "",
+  registerImage: "",
   nav: [
     { label: "About", path: "/about" },
     { label: "Academics", path: "/academics" },

@@ -142,13 +142,21 @@ export function PortalShell({ page, base, children }: { page: PortalView; base: 
  * the form on the right. No header or footer, so nothing competes with the form.
  */
 export function PortalAuthLayout({
-  page, base, heading, intro, statement, wide, children,
-}: { page: PortalView; base: string; heading: string; intro?: string; statement?: string; wide?: boolean; children: React.ReactNode }) {
+  page, base, heading, intro, statement, image, wide, children,
+}: { page: PortalView; base: string; heading: string; intro?: string; statement?: string; image?: string; wide?: boolean; children: React.ReactNode }) {
   const { branding, content } = page;
   const site = externalHref(content.websiteUrl, "/");
   return (
     <div className="grid min-h-dvh lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
       <aside className="relative isolate flex flex-col justify-between gap-12 overflow-hidden bg-navy px-8 py-10 text-white sm:px-12 lg:py-14">
+        {image && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- stored data URL */}
+            <img src={image} alt="" className="absolute inset-0 -z-20 size-full object-cover" />
+            {/* Dark wash so the white text stays readable on any photo. */}
+            <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-b from-navy/80 via-navy/70 to-navy/90" />
+          </>
+        )}
         {/* Soft brand glow and a faint grid: decoration only, made from the school's own colours. */}
         <div aria-hidden className="pointer-events-none absolute -right-32 -top-32 -z-10 size-[28rem] rounded-full bg-brand opacity-25 blur-3xl" />
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 opacity-[0.07] [background-image:linear-gradient(white_1px,transparent_1px),linear-gradient(90deg,white_1px,transparent_1px)] [background-size:48px_48px]" />

@@ -100,17 +100,23 @@ const readAsUrl = (file: File | undefined): Promise<string> =>
 
 export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, schoolId, content: initial, platformDefault, theme, branding }: Props) {
   // Photos stay out of this state (and out of the text payload); they have their own fields.
-  const [c, setC] = useState<PortalContent>({ ...initial, heroImage: "", aboutImage: "", slides: [] });
+  const [c, setC] = useState<PortalContent>({ ...initial, heroImage: "", aboutImage: "", signInImage: "", registerImage: "", slides: [] });
   const [slides, setSlides] = useState<EditorSlide[]>(() => toEditorSlides(initial));
   const [nextKey, setNextKey] = useState(initial.slides.length);
   // Images: what is saved, plus any file chosen but not saved yet (shown in the preview straight away).
   const [heroNew, setHeroNew] = useState("");
   const [aboutNew, setAboutNew] = useState("");
+  const [signInNew, setSignInNew] = useState("");
+  const [registerNew, setRegisterNew] = useState("");
+  const [signInRemoved, setSignInRemoved] = useState(false);
+  const [registerRemoved, setRegisterRemoved] = useState(false);
   const [heroRemoved, setHeroRemoved] = useState(false);
   const [aboutRemoved, setAboutRemoved] = useState(false);
   const [fileKey, setFileKey] = useState(0);
   const heroShown = heroRemoved ? "" : heroNew || initial.heroImage;
   const aboutShown = aboutRemoved ? "" : aboutNew || initial.aboutImage;
+  const signInShown = signInRemoved ? "" : signInNew || initial.signInImage;
+  const registerShown = registerRemoved ? "" : registerNew || initial.registerImage;
   const previewPage = useMemo(
     () => ({
       branding,
@@ -118,17 +124,20 @@ export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, s
         ...c,
         heroImage: heroShown,
         aboutImage: aboutShown,
+        signInImage: signInShown,
+        registerImage: registerShown,
         // A slide without a photo yet is left out of the preview, as it cannot be shown.
         slides: slides
           .map(({ keep, preview, heading, body, ctaLabel, ctaPath }) => ({ image: preview || initial.slides[keep]?.image || "", heading, body, ctaLabel, ctaPath }))
           .filter((sl) => sl.image),
       },
     }),
-    [branding, c, heroShown, aboutShown, slides, initial.slides],
+    [branding, c, heroShown, aboutShown, signInShown, registerShown, slides, initial.slides],
   );
   // After a successful save or reset nothing is pending: the refreshed content carries the saved images.
   const clearPending = () => {
-    setHeroNew(""); setAboutNew(""); setHeroRemoved(false); setAboutRemoved(false); setFileKey((k) => k + 1);
+    setHeroNew(""); setAboutNew(""); setHeroRemoved(false); setAboutRemoved(false);
+    setSignInNew(""); setRegisterNew(""); setSignInRemoved(false); setRegisterRemoved(false); setFileKey((k) => k + 1);
     // What was just saved is now the saved order, so every slide keeps its own photo by position.
     setSlides((all) => all.map((sl, n) => ({ ...sl, keep: n, preview: "" })));
   };
@@ -139,7 +148,7 @@ export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, s
   }, IDLE);
   const [resetState, reset, resetting] = useActionState(async (prev: PortalFormState, fd: FormData) => {
     const r = await resetPortal(prev, fd);
-    if (r.ok) { clearPending(); setC({ ...platformDefault, heroImage: "", aboutImage: "", slides: [] }); setSlides(toEditorSlides(platformDefault)); }
+    if (r.ok) { clearPending(); setC({ ...platformDefault, heroImage: "", aboutImage: "", signInImage: "", registerImage: "", slides: [] }); setSlides(toEditorSlides(platformDefault)); }
     return r;
   }, IDLE);
   const router = useRouter();
@@ -408,6 +417,14 @@ export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, s
               <input value={c.signIn.helpText} onChange={(e) => setIn("signIn", { helpText: e.target.value })} className={input} />
             </Field>
           </div>
+          <div className="mt-5">
+            <ImagePicker
+              label="Side photo" hint="Shown behind the school name on the left of the sign-in page. A dark wash keeps the text readable."
+              name="signInImage" removeName="removeSignInImage" saved={initial.signInImage} preview={signInShown} removed={signInRemoved}
+              onFile={async (f) => { setSignInNew(await readAsUrl(f)); setSignInRemoved(false); }} onRemove={setSignInRemoved}
+              error={err("signInImage")} resetKey={fileKey}
+            />
+          </div>
           <p className="mt-3 text-xs text-muted">The welcome message and banner come from Branding above.</p>
         </div>
 
@@ -430,6 +447,12 @@ export function PortalEditor({ scopeLabel, isTenant, area: areaKey, inherited, s
               ))}
               {err("register.roles") && <p role="alert" className="mt-1 text-xs text-danger">{err("register.roles")}</p>}
             </fieldset>
+            <ImagePicker
+              label="Side photo" hint="Shown behind the heading on the left of the register page. A dark wash keeps the text readable."
+              name="registerImage" removeName="removeRegisterImage" saved={initial.registerImage} preview={registerShown} removed={registerRemoved}
+              onFile={async (f) => { setRegisterNew(await readAsUrl(f)); setRegisterRemoved(false); }} onRemove={setRegisterRemoved}
+              error={err("registerImage")} resetKey={fileKey}
+            />
             <Field label="Footer text (under the school name)" error={err("footerNote")}>
               <input value={c.footerNote} onChange={(e) => set("footerNote", e.target.value)} className={input} />
             </Field>

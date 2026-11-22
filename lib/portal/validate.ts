@@ -35,7 +35,7 @@ function text(v: unknown, key: string, label: string, min: number, max: number, 
  * Validates portal content from untrusted input (parsed JSON). Unknown keys are dropped.
  * Images never come from the JSON: they are data URLs the server built from validated uploads (see readImage).
  */
-export function parsePortalContent(input: unknown, images: { heroImage?: string; aboutImage?: string; slideImages?: string[] } = {}): Result {
+export function parsePortalContent(input: unknown, images: { heroImage?: string; aboutImage?: string; signInImage?: string; registerImage?: string; slideImages?: string[] } = {}): Result {
   const errors: PortalFieldErrors = {};
   const i = obj(input);
 
@@ -124,5 +124,5 @@ export function parsePortalContent(input: unknown, images: { heroImage?: string;
   const footerNote = text(i.footerNote, "footerNote", "Footer text", 0, 160, errors);
 
   if (Object.keys(errors).length) return { ok: false, errors };
-  return { ok: true, value: { websiteUrl, heroImage: images.heroImage ?? "", aboutImage: images.aboutImage ?? "", slides, nav, hero, about, features, signIn, register, footerNote } };
+  return { ok: true, value: { websiteUrl, heroImage: images.heroImage ?? "", aboutImage: images.aboutImage ?? "", signInImage: images.signInImage ?? "", registerImage: images.registerImage ?? "", slides, nav, hero, about, features, signIn, register, footerNote } };
 }

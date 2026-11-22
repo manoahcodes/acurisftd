@@ -10,7 +10,7 @@ import { portal } from "../repositories";
 import { getTenantSelection } from "../queries/platform";
 
 const MAX_PAYLOAD = 64 * 1024;
-/** Images and text share one request, which Server Actions cap at 12 MB (see next.config): 7 photos at 1.5 MB. */
+/** Images and text share one request, which Server Actions cap at 16 MB (see next.config): 9 photos at 1.5 MB. */
 const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
 const fail = (message: string, errors: PortalFormState["errors"] = {}): PortalFormState => ({ ok: false, message, errors });
 
@@ -42,15 +42,17 @@ export async function savePortal(_prev: PortalFormState, formData: FormData): Pr
   // Keep each saved image unless a new one was uploaded or the admin asked to remove it.
   const platform = await portal.getPlatformDefault();
   const existing = scope === "platform" ? platform : applyPortalOverride(platform, await portal.getTenantOverride(scope));
-  const hero = await readImage(formData.get("heroImage"), MAX_IMAGE_BYTES, "Hero image");
-  const about = await readImage(formData.get("aboutImage"), MAX_IMAGE_BYTES, "About image");
-  const imageErrors = { ...(hero.error ? { heroImage: hero.error } : {}), ...(about.error ? { aboutImage: about.error } : {}) };
+  // One entry per single-photo slot: a new upload wins, "remove" clears it, otherwise the saved photo stays.
+  const slots = ["heroImage", "aboutImage", "signInImage", "registerImage"] as const;
+  const labels = { heroImage: "Hero image", aboutImage: "About image", signInImage: "Sign-in image", registerImage: "Register image" };
+  const images = {} as Record<(typeof slots)[number], string>;
+  const imageErrors: Record<string, string> = {};
+  for (const slot of slots) {
+    const up = await readImage(formData.get(slot), MAX_IMAGE_BYTES, labels[slot]);
+    if (up.error) imageErrors[slot] = up.error;
+    images[slot] = formData.get(`remove${slot[0].toUpperCase()}${slot.slice(1)}`) === "on" ? "" : (up.url ?? existing[slot]);
+  }
   if (Object.keys(imageErrors).length) return fail("Fix the highlighted fields.", imageErrors);
-  const images = {
-    heroImage: formData.get("removeHeroImage") === "on" ? "" : (hero.url ?? existing.heroImage),
-    aboutImage: formData.get("removeAboutImage") === "on" ? "" : (about.url ?? existing.aboutImage),
-  };
-
 
   // Slides: a new upload for that position wins; otherwise `keep` names which saved slide's photo it keeps.
   const rawSlides = Array.isArray((json as { slides?: unknown })?.slides) ? ((json as { slides: unknown[] }).slides) : [];

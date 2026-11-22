@@ -85,6 +85,14 @@ describe("portal images", () => {
     expect(r.ok && r.value.heroImage).toBe("data:image/png;base64,AAAA");
     expect(r.ok && r.value.aboutImage).toBe("");
   });
+  it("sign-in and register photos also come only from the server", () => {
+    const c = { ...base(), signInImage: "data:image/png;base64,EVIL", registerImage: "https://evil.example/x.png" };
+    const r = parsePortalContent(c, { signInImage: "data:image/png;base64,SI", registerImage: "data:image/png;base64,RG" });
+    expect(r.ok && r.value.signInImage).toBe("data:image/png;base64,SI");
+    expect(r.ok && r.value.registerImage).toBe("data:image/png;base64,RG");
+    const none = parsePortalContent(c);
+    expect(none.ok && none.value.signInImage).toBe("");
+  });
   it("follow the default until a school sets its own", () => {
     const def = base();
     def.heroImage = "data:image/png;base64,DEF";

@@ -49,6 +49,10 @@ export type PortalContent = {
   slides: PortalSlide[];
   /** Same, shown beside the about text. */
   aboutImage: string;
+  /** Same, shown behind the brand panel on the sign-in page. */
+  signInImage: string;
+  /** Same, for the register page. */
+  registerImage: string;
   hero: {
     eyebrow: string;
     heading: string;

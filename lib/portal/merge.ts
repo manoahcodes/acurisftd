@@ -1,6 +1,6 @@
 import type { PortalContent, PortalOverride } from "@/types/portal";
 
-const KEYS: (keyof PortalContent)[] = ["websiteUrl", "nav", "heroImage", "aboutImage", "slides", "hero", "about", "features", "signIn", "register", "footerNote"];
+const KEYS: (keyof PortalContent)[] = ["websiteUrl", "nav", "heroImage", "aboutImage", "signInImage", "registerImage", "slides", "hero", "about", "features", "signIn", "register", "footerNote"];
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const clone = <T,>(v: T): T => structuredClone(v);
 
