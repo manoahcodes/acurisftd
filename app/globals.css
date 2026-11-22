@@ -109,10 +109,23 @@ body {
 }
 
 /*
- * Light/dark switch: while <html> has .theme-fading (added by the top bar
- * switcher), colours ease over 0.3s instead of snapping. It is only on during
- * a switch, so normal hover and focus effects are unchanged. Skipped for people
- * who ask their device for reduced motion.
+ * Light/dark switch: while <html> has .theme-instant (added by the top bar
+ * switcher) every transition and animation is off, so the whole page changes
+ * mode in one frame instead of parts easing at different speeds. It is only on
+ * during the switch, so normal hover and focus effects are unchanged.
+ */
+html.theme-instant,
+html.theme-instant *,
+html.theme-instant *::before,
+html.theme-instant *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
+/*
+ * Saving a theme (the Theme editor): while <html> has .theme-fading, colours
+ * ease over 0.3s from the old theme to the new one. Skipped for people who ask
+ * their device for reduced motion.
  */
 @media (prefers-reduced-motion: no-preference) {
   html.theme-fading,

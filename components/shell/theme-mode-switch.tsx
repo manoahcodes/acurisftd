@@ -3,8 +3,7 @@
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { Check, Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/format";
-import type { ModePreference } from "@/lib/theme/mode";
-import { useThemeFade } from "@/lib/theme/use-theme-fade";
+import { THEME_INSTANT_CLASS, type ModePreference } from "@/lib/theme/mode";
 import { setModePreference } from "@/server/actions/theme-mode";
 
 const OPTIONS: { value: ModePreference; label: string; Icon: LucideIcon }[] = [
@@ -20,8 +19,30 @@ export function ThemeModeSwitch({ selected }: { selected: ModePreference }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelId = useId();
-  // Keep the fade on while the new mode is being applied (see lib/theme/use-theme-fade.ts).
-  useThemeFade(pending, 500);
+  const wasPending = useRef(false);
+
+  // The switch is instant: transitions are off while the new mode is being applied, so every
+  // part of the page changes in the same frame instead of easing at different speeds.
+  // They come back only after the whole page has been painted in the new mode.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (pending) {
+      wasPending.current = true;
+      root.classList.add(THEME_INSTANT_CLASS);
+      return;
+    }
+    if (!wasPending.current) return;
+    wasPending.current = false;
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => root.classList.remove(THEME_INSTANT_CLASS));
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+      root.classList.remove(THEME_INSTANT_CLASS);
+    };
+  }, [pending]);
 
   useEffect(() => {
     if (!open) return;
@@ -78,6 +99,8 @@ export function ThemeModeSwitch({ selected }: { selected: ModePreference }) {
               disabled={pending}
               onClick={() => {
                 setOpen(false);
+                // Off before anything changes, so not even the first repaint can ease.
+                document.documentElement.classList.add(THEME_INSTANT_CLASS);
                 start(() => setModePreference(value));
               }}
               className={cn(
